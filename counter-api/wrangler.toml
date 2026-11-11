@@ -1,0 +1,8 @@
+name = "tonmatolab-counter"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tonmatolab-counter"
+database_id = "7205a2e1-0333-4b17-bcf1-8200e85986f9"

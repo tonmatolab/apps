@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>織田信長の一生クイズ｜選択をミスったら即死</title>
+<meta name="description" content="織田信長の生涯を選択肢で追体験。1問でも間違えると死亡して最初からやり直し。あなたは本能寺までたどり着けるか？">
+<meta property="og:type" content="website">
+<meta property="og:title" content="織田信長の一生クイズ🔥 1問ミスで即死">
+<meta property="og:description" content="誕生から本能寺まで、信長の人生を完走できるか？">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/nobunaga-isshou/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/nobunaga-isshou/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #efe6d4;
+    --paper: #fbf6ea;
+    --ink: #1f1a16;
+    --sub: #6f6254;
+    --red: #b3261e;
+    --red-ink: #fff;
+    --gold: #a07a2c;
+    --line: #d9ccb4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141110;
+      --paper: #211c18;
+      --ink: #f1e8d8;
+      --sub: #b5a690;
+      --red: #e0483e;
+      --red-ink: #fff;
+      --gold: #d4a94e;
+      --line: #3a322a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    line-height: 1.85;
+  }
+  main { max-width: 540px; margin: 0 auto; padding: 24px 16px 48px; }
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 28px 22px;
+    box-shadow: 0 2px 0 var(--line);
+  }
+  .hidden { display: none !important; }
+  h1 { font-size: 1.9rem; line-height: 1.35; margin: 0 0 8px; letter-spacing: .04em; }
+  .kicker { color: var(--red); font-weight: 800; letter-spacing: .2em; font-size: .85rem; margin: 0; }
+  .lead { color: var(--sub); margin: 0 0 20px; }
+  .seal {
+    width: 84px; height: 84px; margin: 4px auto 20px;
+    border: 3px solid var(--red); border-radius: 8px; color: var(--red);
+    display: grid; place-items: center; font-weight: 800; font-size: 1.15rem; line-height: 1.15;
+    text-align: center; transform: rotate(-6deg);
+  }
+  .stats { display: flex; gap: 10px; margin: 0 0 20px; }
+  .stat { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 10px; text-align: center; }
+  .stat b { display: block; font-size: 1.4rem; }
+  .stat span { font-size: .78rem; color: var(--sub); }
+  button {
+    display: block; width: 100%;
+    font: inherit; font-weight: 700;
+    border: none; border-radius: 6px;
+    padding: 14px 16px; margin-top: 10px;
+    cursor: pointer; text-align: center;
+  }
+  .primary { background: var(--red); color: var(--red-ink); }
+  .ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+  .ghost:hover { border-color: var(--red); }
+  .opt { background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); text-align: left; font-weight: 400; }
+  .opt:hover, .opt:focus-visible { border-color: var(--red); outline: none; }
+
+  .timeline { display: flex; gap: 4px; margin-bottom: 18px; }
+  .timeline i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+  .timeline i.done { background: var(--gold); }
+  .timeline i.now { background: var(--red); }
+  .year { font-size: .9rem; color: var(--sub); }
+  .year b { color: var(--red); font-size: 1.5rem; margin-right: 6px; }
+  .stage-title { font-size: 1.35rem; margin: 0 0 10px; }
+  .narr { margin: 0 0 14px; }
+  .q { font-weight: 800; margin: 0 0 6px; }
+  .ok { border-left: 4px solid var(--gold); padding: 8px 12px; background: var(--bg); margin: 0 0 14px; font-size: .95rem; }
+
+  .dead-head { text-align: center; color: var(--red); font-size: 2.6rem; font-weight: 800; letter-spacing: .3em; margin: 0; }
+  .dead-sub { text-align: center; color: var(--sub); margin: 0 0 18px; }
+  .cause { text-align: center; font-size: 1.3rem; font-weight: 800; margin: 0 0 12px; }
+  .cause small { display: block; color: var(--sub); font-size: .8rem; font-weight: 400; }
+  .reached { text-align: center; color: var(--sub); font-size: .9rem; margin: 16px 0 0; }
+
+  .clear-head { text-align: center; color: var(--gold); font-size: 1.1rem; letter-spacing: .3em; margin: 0; }
+  .clear-title { text-align: center; font-size: 2rem; margin: 4px 0 12px; }
+  .rank { text-align: center; font-size: 1.15rem; margin: 18px 0 4px; }
+  .rank b { color: var(--red); font-size: 2rem; }
+  .poem { text-align: center; color: var(--sub); font-size: .95rem; margin: 18px 0; }
+
+  footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <!-- タイトル -->
+  <section id="title" class="card">
+    <p class="kicker">一問誤れば、即退場</p>
+    <h1>織田信長の<br>一生クイズ</h1>
+    <div class="seal">天下<br>布武</div>
+    <p class="lead">あなたは織田信長。誕生から本能寺まで、史実どおりの選択をして人生を完走せよ。<br>選択を誤ると、その場で死亡。最初からやり直しです。</p>
+    <div class="stats">
+      <div class="stat"><b id="sPlay">…</b><span>挑戦者</span></div>
+      <div class="stat"><b id="sClear">…</b><span>完走者</span></div>
+      <div class="stat"><b id="sRate">…</b><span>完走率</span></div>
+    </div>
+    <button class="primary" id="startBtn">生まれる</button>
+    <p class="reached" id="myDeaths"></p>
+  </section>
+
+  <!-- ステージ -->
+  <section id="stage" class="card hidden">
+    <div class="timeline" id="tl"></div>
+    <div class="ok hidden" id="okMsg"></div>
+    <div class="year"><b id="stYear"></b><span id="stAge"></span></div>
+    <h2 class="stage-title" id="stTitle"></h2>
+    <p class="narr" id="stNarr"></p>
+    <p class="q" id="stQ"></p>
+    <div id="opts"></div>
+  </section>
+
+  <!-- 死亡 -->
+  <section id="dead" class="card hidden">
+    <p class="dead-head">無念</p>
+    <p class="dead-sub" id="dYear"></p>
+    <p class="cause"><small>死因</small><span id="dCause"></span></p>
+    <p id="dText"></p>
+    <p class="reached" id="dReached"></p>
+    <button class="primary" id="retryBtn">生まれ直す（最初から）</button>
+    <button class="ghost" id="shareDead">死に様をXでシェア</button>
+  </section>
+
+  <!-- クリア -->
+  <section id="clear" class="card hidden">
+    <p class="clear-head">人生完走</p>
+    <h2 class="clear-title">是非に及ばず</h2>
+    <p>燃え盛る本能寺の奥で、信長は静かにその生涯を閉じた。享年49。<br>尾張の大うつけと呼ばれた少年は、天下統一の目前まで駆け抜けた。史実どおりの最期、お見事です。</p>
+    <p class="poem">人間五十年、下天のうちをくらぶれば、<br>夢幻のごとくなり</p>
+    <p class="rank" id="cRankP">あなたは <b id="cRank">…</b> 人目の完走者</p>
+    <p class="reached" id="cDeaths"></p>
+    <button class="primary" id="shareClear">完走をXでシェア</button>
+    <button class="ghost" id="againBtn">もう一度生まれる</button>
+  </section>
+
+  <footer><a href="../">ほかの診断・アプリを見る</a></footer>
+</main>
+
+<script>
+const APP_TITLE = '織田信長の一生クイズ';
+const HASHTAGS = ['信長の一生クイズ'];
+
+// ===== 全員のカウント（counter-api。失敗しても遊べるようにしている） =====
+const COUNTER = {
+  base: 'https://tonmatolab-counter.tonmatolab.workers.dev',
+  play: 'nobunaga-play',
+  clear: 'nobunaga-clear',
+};
+async function api(path, method = 'GET') {
+  if (!COUNTER.base.startsWith('http')) return null;
+  try {
+    const res = await fetch(COUNTER.base + path, { method, signal: AbortSignal.timeout(8000) });
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+async function counter(action, key) {
+  if (action === 'hit') {
+    const j = await api(`/hit/${key}`, 'POST');
+    return j && typeof j.value === 'number' ? j.value : null;
+  }
+  const j = await api(`/get?keys=${key}`);
+  return j && typeof j[key] === 'number' ? j[key] : null;
+}
+
+// 端末ごとの記録（挑戦・完走は1端末1回だけ全体カウントに加算）
+const store = {
+  get(k) { try { return localStorage.getItem('nobu_' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('nobu_' + k, v); } catch {} },
+};
+
+// ===== ステージ =====
+// a: [選択肢, 正解?, 死因, 死に様の説明]
+const STAGES = [
+  {
+    year: '1534年', age: '0歳', title: '尾張に生まれる',
+    narr: '尾張の戦国大名・織田信秀の嫡男として、元気な男の子が誕生した。のちの織田信長である。',
+    q: 'この赤子につけられた幼名は？',
+    ok: '「吉法師（きっぽうし）」としてすくすく育つ。',
+    a: [
+      ['吉法師', true],
+      ['竹千代', false, '名前ちがい', 'それは徳川家康の幼名。名前を取り違えられた赤子は、なぜか三河の松平家へ。そのまま家康として育ちかけたところで、本物の家康とダブルブッキングが発覚し、歴史から静かに消された。'],
+      ['日吉丸', false, '草履の温めすぎ', 'それは豊臣秀吉の幼名とされる名前。農家の子として育ち、来る日も来る日も誰かの草履を懐で温め続けた。気づけば低温やけどだらけで一生を終えていた。'],
+    ],
+  },
+  {
+    year: '1540年代', age: '少年期', title: '尾張の大うつけ',
+    narr: '若き吉法師は城下を遊び歩き、家臣たちから「大うつけ（大バカ者）」と呼ばれていた。',
+    q: '町を歩くときの、あなたの格好は？',
+    ok: '奇抜な格好で町を練り歩き、立派に「大うつけ」の評判を獲得した。',
+    a: [
+      ['着物の袖を外し、腰に瓢箪や火打袋をジャラジャラぶら下げる', true],
+      ['きちんとした正装で、礼儀正しく挨拶して回る', false, 'まじめすぎ', '非の打ちどころのない若殿として家臣に愛され、事件ひとつ起こさず平和に過ごした。享年82の大往生。ただし歴史の教科書には一行も載らなかった。'],
+      ['最新流行の南蛮甲冑でキメる', false, '時代の先取りすぎ', 'ポルトガル人が種子島に来るのは1543年。まだ日本にない甲冑を探して堺まで走り続け、そのまま行方不明になった。'],
+    ],
+  },
+  {
+    year: '1552年', age: '18歳', title: '父の葬儀',
+    narr: '父・信秀が急死。盛大な葬儀が営まれ、いよいよ喪主の焼香の番がやってきた。',
+    q: 'どうする？',
+    ok: '抹香をわしづかみにして位牌へ投げつけた。参列者はドン引きしたが、これぞ信長。',
+    a: [
+      ['抹香をわしづかみにして、位牌に投げつける', true],
+      ['丁寧に焼香し、静かに涙を流す', false, 'キャラ崩壊', 'まさかの常識人ムーブに「うつけキャラはどうした」と家中が大混乱。キャラ迷子のまま、弟・信勝に家督をあっさり奪われた。'],
+      ['葬儀をサボって川で泳ぐ', false, '寒中水泳', '季節は春先。冷たい川に飛び込んだ結果、ひどい風邪をこじらせた。父の葬儀の翌週、自分の葬儀が同じ寺で開かれた。'],
+    ],
+  },
+  {
+    year: '1553年', age: '19歳', title: '「マムシ」との対面',
+    narr: '妻・濃姫の父であり、「美濃のマムシ」と恐れられる斎藤道三が、正徳寺で会いたいと言ってきた。道三は物陰から、あなたの様子をこっそり見ているらしい。',
+    q: 'どうやって会う？',
+    ok: '道中はうつけ姿、会見では見事な正装。道三は「わが息子たちは、あのうつけの門前に馬をつなぐことになろう」とつぶやいた。',
+    a: [
+      ['道中はいつものうつけ姿、会見の席では一転して正装で現れる', true],
+      ['最初から最後まで、いつものうつけ姿で押し通す', false, 'マムシに丸のみ', '「噂どおりのただのバカ」と判断した道三は、その日のうちに尾張攻めを決意。マムシの異名はダテではなかった。'],
+      ['毒を盛られそうなので欠席する', false, '義父ドタキャン', '会見をドタキャンされた道三は大激怒。さらに濃姫にも愛想をつかされ、美濃の大軍と嫁の冷たい視線に同時に包囲された。'],
+    ],
+  },
+  {
+    year: '1560年', age: '26歳', title: '桶狭間の戦い',
+    narr: '駿河の今川義元が、約2万5千の大軍で尾張へ攻め込んできた。織田軍はわずか数千。家臣たちは真っ青だ。',
+    q: 'どうする？',
+    ok: '「人間五十年…」と敦盛を舞って出陣。豪雨にまぎれて本陣を急襲し、義元を討ち取った！',
+    a: [
+      ['敦盛を舞って出陣し、少数精鋭で義元の本陣を急襲する', true],
+      ['清洲城にこもって守りを固める', false, '兵糧切れ', '兵力差はおよそ10倍。籠城したものの食料が尽き、最後は城中みんなで味噌をなめて耐えたが、味噌も尽きた。'],
+      ['勝てるわけがないので今川に降伏する', false, '蹴鞠の過労', '今川家の家臣となり、主な仕事は義元の蹴鞠の相手。朝から晩までボールを追い続け、天下ではなく鞠を追う人生となった。'],
+    ],
+  },
+  {
+    year: '1567年', age: '33歳', title: '美濃を手に入れる',
+    narr: '美濃を攻め取り、稲葉山城を「岐阜城」と改名。この頃から、ある言葉を刻んだハンコを使い始めた。',
+    q: 'ハンコに刻んだ言葉は？',
+    ok: '「天下布武」の印を掲げ、天下取りへの道を歩み始めた。',
+    a: [
+      ['天下布武', true],
+      ['天下泰平', false, '平和ボケ', '時はまだ戦国のまっただ中。「平和主義の信長さん」と周囲の大名になめられ、四方八方から同時に攻め込まれた。'],
+      ['一日一善', false, '町内会長として大往生', '毎日コツコツ良いことをするうちにボランティア活動にのめり込み、地域の人気者に。天下ではなく町内会長の座を手に入れ、享年88で大往生した。'],
+    ],
+  },
+  {
+    year: '1570年', age: '36歳', title: '金ヶ崎の退き口',
+    narr: '越前の朝倉を攻めていたところ、妹・お市の夫である浅井長政が裏切った！ 前は朝倉、後ろは浅井。挟み撃ちが迫る。',
+    q: 'どうする？',
+    ok: '全軍を置いて即撤退！ わずかな供回りで京へ逃げ帰り、命拾いした。',
+    a: [
+      ['すべてを捨てて、すぐさま京へ撤退する', true],
+      ['「長政が裏切るはずがない」と進軍を続ける', false, '義弟を信じすぎ', '信じる心は美しかったが、浅井軍は本当に来た。前後からきれいに挟まれ、越前の山中で散った。'],
+      ['長政に心をこめた手紙を書いて説得する', false, '筆まめ', '名文をしたためている間に挟み撃ちが完成。返事は矢文で、それも大量に届いた。'],
+    ],
+  },
+  {
+    year: '1575年', age: '41歳', title: '長篠の戦い',
+    narr: '戦国最強と名高い武田の騎馬隊が攻めてくる。徳川家康とともに、設楽原で迎え撃つことになった。',
+    q: 'どう戦う？',
+    ok: '馬防柵を築き、大量の鉄砲で迎え撃って武田軍に大勝した。',
+    a: [
+      ['馬をふせぐ柵を築き、大量の鉄砲で迎え撃つ', true],
+      ['こちらも騎馬隊で正面から突撃する', false, '本場の騎馬に完敗', '騎馬で武田に挑むのは、本場の職人に料理で勝負を挑むようなもの。気づいたときには馬ごと吹き飛ばされていた。'],
+      ['念のため雨乞いをして神頼みする', false, '火縄びしょぬれ', '願いが天に通じて、まさかの大雨。火縄が湿って鉄砲は全部不発。騎馬隊だけが元気いっぱいに突っこんできた。'],
+    ],
+  },
+  {
+    year: '1576年', age: '42歳', title: '安土城を築く',
+    narr: '琵琶湖のほとりに、天下に力を見せつける新しい城を築くことにした。',
+    q: 'この城の目玉は？',
+    ok: '金や朱に彩られた、高くそびえる豪華な天主（天守）が完成。宣教師たちも驚いた。',
+    a: [
+      ['金や朱で彩られた、そびえ立つ豪華な天主', true],
+      ['敵を惑わす、落とし穴だらけの巨大迷路', false, '城内で遭難', '完成した迷路は完璧すぎた。設計者の信長自身も出口がわからなくなり、城内で行方不明に。翌年、落とし穴の底で発見された。'],
+      ['予算節約のため、天主なしの平屋の城', false, 'なめられ死', '「信長、金欠らしいぞ」という噂が全国に広まり、各地の大名が一斉に反旗をひるがえした。平屋は守りにくかった。'],
+    ],
+  },
+  {
+    year: '1582年', age: '48歳', title: '本能寺の変',
+    narr: '6月2日の早朝、京の本能寺。外が騒がしい。家臣が駆けこんできた。「明智光秀さまの謀反でございます！」',
+    q: 'あなたのひとことは？',
+    a: [
+      ['「是非に及ばず」', true],
+      ['「光秀、話せばわかる」', false, '歴史の修正力', '史実と違うセリフを言ったため、なぜか説得に成功してしまった。だが歴史の修正力が働き、翌朝、本能寺の階段で足をすべらせた。'],
+      ['「サル（秀吉）を呼べ！」', false, '援軍まにあわず', '秀吉は遠く中国地方で毛利と戦っていた。ものすごい速さで引き返してきた（中国大返し）が、着いたのはすべてが終わった後だった。'],
+    ],
+  },
+];
+
+// ===== ゲーム進行 =====
+const $ = (id) => document.getElementById(id);
+let idx = 0;
+let lastDeath = null;
+
+function show(id) {
+  ['title', 'stage', 'dead', 'clear'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
+  window.scrollTo(0, 0);
+}
+
+function deaths() { return Number(store.get('deaths') || 0); }
+
+function renderMyDeaths() {
+  const d = deaths();
+  $('myDeaths').textContent = d ? `あなたの死亡回数：${d}回` : '';
+}
+
+async function loadStats() {
+  const [p, c] = await Promise.all([counter('get', COUNTER.play), counter('get', COUNTER.clear)]);
+  const play = p ?? 0, clear = c ?? 0;
+  if (p === null && c === null) {
+    ['sPlay', 'sClear', 'sRate'].forEach((id) => ($(id).textContent = '-'));
+    return;
+  }
+  $('sPlay').textContent = play.toLocaleString();
+  $('sClear').textContent = clear.toLocaleString();
+  $('sRate').textContent = play ? `${((clear / play) * 100).toFixed(1)}%` : '-';
+}
+
+function start() {
+  if (!store.get('played')) {
+    store.set('played', '1');
+    counter('hit', COUNTER.play);
+  }
+  idx = 0;
+  $('okMsg').classList.add('hidden');
+  renderStage();
+  show('stage');
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function renderStage() {
+  const s = STAGES[idx];
+  $('tl').innerHTML = STAGES.map((_, i) => `<i class="${i < idx ? 'done' : i === idx ? 'now' : ''}"></i>`).join('');
+  $('stYear').textContent = s.year;
+  $('stAge').textContent = s.age;
+  $('stTitle').textContent = s.title;
+  $('stNarr').textContent = s.narr;
+  $('stQ').textContent = s.q;
+  const box = $('opts');
+  box.innerHTML = '';
+  shuffle(s.a).forEach((opt) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = opt[0];
+    b.onclick = () => choose(opt);
+    box.appendChild(b);
+  });
+  window.scrollTo(0, 0);
+}
+
+function choose([, correct, cause, text]) {
+  const s = STAGES[idx];
+  if (!correct) return die(s, cause, text);
+  idx++;
+  if (idx >= STAGES.length) return clear();
+  $('okMsg').textContent = `✔ ${s.ok}`;
+  $('okMsg').classList.remove('hidden');
+  renderStage();
+}
+
+function die(s, cause, text) {
+  store.set('deaths', String(deaths() + 1));
+  lastDeath = { stage: s, cause, n: idx + 1 };
+  $('dYear').textContent = `${s.year}・${s.title}`;
+  $('dCause').textContent = cause;
+  $('dText').textContent = text;
+  $('dReached').textContent = `到達：${idx + 1} / ${STAGES.length} ステージ　｜　あなたの死亡回数：${deaths()}回`;
+  show('dead');
+}
+
+async function clear() {
+  show('clear');
+  $('cDeaths').textContent = `完走までの死亡回数：${deaths()}回`;
+  let rank = store.get('rank');
+  if (!rank) {
+    $('cRank').textContent = '…';
+    const v = await counter('hit', COUNTER.clear);
+    if (v !== null) { rank = String(v); store.set('rank', rank); }
+  }
+  $('cRank').textContent = rank ? Number(rank).toLocaleString() : '';
+  $('cRankP').classList.toggle('hidden', !rank);
+}
+
+function pageUrl() { return location.origin + location.pathname; }
+
+function tweet(text) {
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', text);
+  u.searchParams.set('url', pageUrl());
+  u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+
+$('startBtn').onclick = start;
+$('retryBtn').onclick = start;
+$('againBtn').onclick = start;
+$('shareDead').onclick = () => {
+  const d = lastDeath;
+  tweet(`織田信長として生きたら、${d.stage.year}「${d.stage.title}」で死にました💀\n死因：${d.cause}\n（${d.n}/${STAGES.length}ステージ・通算${deaths()}回死亡）\n\nあなたは本能寺までたどり着ける？`);
+};
+$('shareClear').onclick = () => {
+  const r = store.get('rank');
+  tweet(`織田信長の一生を完走しました🔥${r ? `\n${Number(r).toLocaleString()}人目の完走者！` : ''}\n（死亡回数：${deaths()}回）\n\n是非に及ばず。あなたは完走できる？`);
+};
+
+renderMyDeaths();
+loadStats();
+</script>
+</body>
+</html>

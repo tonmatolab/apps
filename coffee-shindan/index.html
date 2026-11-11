@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>コーヒータイプ診断｜8問であなたにぴったりの1杯がわかる</title>
+<meta name="description" content="8つの質問に答えるだけで、あなたの性格にぴったりのコーヒータイプがわかる無料診断。結果は画像でシェアできます。">
+<!-- OGP -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="コーヒータイプ診断☕ あなたにぴったりの1杯は？">
+<meta property="og:description" content="8問で診断。結果を画像でシェアしよう">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/coffee-shindan/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/coffee-shindan/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6efe6;
+    --card: #fffaf4;
+    --ink: #3b2a20;
+    --sub: #8a7262;
+    --accent: #b5652d;
+    --accent-ink: #fff;
+    --line: #e6d8c8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1d1714;
+      --card: #2a211c;
+      --ink: #f3e8dc;
+      --sub: #b9a291;
+      --accent: #e08a4a;
+      --accent-ink: #1d1714;
+      --line: #3d3029;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
+    line-height: 1.7;
+  }
+  main { max-width: 520px; margin: 0 auto; padding: 24px 16px 48px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 28px 22px;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; line-height: 1.4; }
+  .lead { color: var(--sub); margin: 0 0 24px; }
+  .hero { font-size: 4rem; text-align: center; margin: 8px 0 16px; }
+  button, .btn {
+    display: block; width: 100%;
+    font: inherit; font-weight: 700;
+    border: none; border-radius: 14px;
+    padding: 14px 16px; margin-top: 10px;
+    cursor: pointer; text-align: center; text-decoration: none;
+  }
+  .primary { background: var(--accent); color: var(--accent-ink); }
+  .ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+  .ghost:hover { border-color: var(--accent); }
+  .opt { background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); text-align: left; font-weight: 400; }
+  .opt:hover, .opt:focus-visible { border-color: var(--accent); outline: none; }
+  .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
+  .progress > div { height: 100%; background: var(--accent); transition: width .3s; }
+  .qnum { color: var(--sub); font-size: .9rem; }
+  .q { font-size: 1.25rem; font-weight: 700; margin: 4px 0 16px; }
+  .type-label { color: var(--sub); text-align: center; margin: 0; }
+  .type-name { font-size: 1.6rem; text-align: center; margin: 0 0 4px; }
+  .type-drink { text-align: center; color: var(--accent); font-weight: 700; margin: 0 0 16px; }
+  .traits { padding-left: 1.2em; }
+  .section-title { font-weight: 800; margin: 24px 0 4px; }
+  .rec a { display: block; padding: 12px 14px; margin-top: 8px; border: 1.5px solid var(--line); border-radius: 12px; color: var(--ink); text-decoration: none; }
+  .rec a:hover { border-color: var(--accent); }
+  .pr { font-size: .75rem; color: var(--sub); margin-top: 8px; }
+  .hidden { display: none; }
+  footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <!-- スタート -->
+  <section id="start" class="card">
+    <div class="hero">☕</div>
+    <h1>コーヒータイプ診断</h1>
+    <p class="lead">8つの質問に答えるだけ。あなたの性格にぴったりの1杯がわかります。（約1分）</p>
+    <button class="primary" id="startBtn">診断をはじめる</button>
+  </section>
+
+  <!-- 質問 -->
+  <section id="quiz" class="card hidden">
+    <div class="progress"><div id="bar"></div></div>
+    <div class="qnum" id="qnum"></div>
+    <div class="q" id="qtext"></div>
+    <div id="opts"></div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="result" class="card hidden">
+    <p class="type-label">あなたのコーヒータイプは…</p>
+    <div class="hero" id="rEmoji"></div>
+    <h2 class="type-name" id="rName"></h2>
+    <p class="type-drink" id="rDrink"></p>
+    <p id="rDesc"></p>
+    <ul class="traits" id="rTraits"></ul>
+
+    <button class="primary" id="shareX">結果をXでシェア</button>
+    <button class="ghost" id="saveImg">結果画像を保存（インスタ用）</button>
+
+    <div class="rec">
+      <div class="section-title">このタイプにおすすめ</div>
+      <div id="rRec"></div>
+      <div class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</div>
+    </div>
+
+    <button class="ghost" id="retry">もう一度診断する</button>
+  </section>
+
+  <footer><a href="../">ほかの診断・アプリを見る</a></footer>
+</main>
+
+<script>
+// ===== アフィリエイト設定（IDを入れると自動でリンクに付与＆PR表記が出ます） =====
+const AFFILIATE = {
+  amazonTag: '',   // 例: 'yourname-22'
+};
+
+const APP_TITLE = 'コーヒータイプ診断';
+const HASHTAGS = ['コーヒータイプ診断'];
+
+// ===== タイプ定義 =====
+const TYPES = {
+  espresso: {
+    emoji: '🔥', name: '情熱のエスプレッソタイプ', drink: 'おすすめ：濃いめのエスプレッソ',
+    desc: '決めたら一直線、行動力のかたまり。周りを引っぱるエネルギーがあり、短時間で結果を出すのが得意です。',
+    traits: ['即決・即行動', '集中すると止まらない', '頼られるとうれしい'],
+    rec: [{ label: '深煎りエスプレッソ豆', q: 'エスプレッソ 豆 深煎り' }, { label: '直火式エスプレッソメーカー', q: 'マキネッタ' }],
+  },
+  latte: {
+    emoji: '🤍', name: '癒しのカフェラテタイプ', drink: 'おすすめ：ふわふわミルクのカフェラテ',
+    desc: 'やさしい空気で周りを和ませる人。人との時間を大切にし、ちょっとした甘さやご褒美で元気になれます。',
+    traits: ['聞き上手', 'かわいいものに弱い', 'まったり時間が好き'],
+    rec: [{ label: '電動ミルクフォーマー', q: 'ミルクフォーマー 電動' }, { label: 'カフェラテ向けブレンド豆', q: 'コーヒー豆 ラテ ブレンド' }],
+  },
+  drip: {
+    emoji: '🎯', name: 'こだわりのハンドドリップタイプ', drink: 'おすすめ：丁寧に淹れたハンドドリップ',
+    desc: '細部まで手を抜かない職人気質。調べて比べて納得してから動くので、選んだものへの満足度はいつも高め。',
+    traits: ['道具にこだわる', 'ルーティンを大事にする', 'レビューは必ず読む'],
+    rec: [{ label: 'ハンドドリップ スターターセット', q: 'ハンドドリップ セット' }, { label: '細口ドリップケトル', q: 'ドリップケトル 細口' }],
+  },
+  cold: {
+    emoji: '🧊', name: '自由なコールドブリュータイプ', drink: 'おすすめ：すっきり水出しコーヒー',
+    desc: '気分で動ける身軽な自由人。ルールに縛られず、自分が心地よいスタイルを見つけるのが上手です。',
+    traits: ['ノリと直感で動く', '夜型になりがち', '堅苦しいのが苦手'],
+    rec: [{ label: '水出しコーヒーポット', q: '水出しコーヒー ポット' }, { label: '水出し用コーヒーバッグ', q: '水出しコーヒー パック' }],
+  },
+  decaf: {
+    emoji: '🌙', name: 'マイペースなデカフェタイプ', drink: 'おすすめ：夜でも安心のデカフェ',
+    desc: '自分のリズムを大切にするおだやかな人。無理をしない分、長く安定して力を発揮できるタイプです。',
+    traits: ['睡眠を大事にする', '温泉やサウナが好き', '人に流されない'],
+    rec: [{ label: 'デカフェ コーヒー豆', q: 'デカフェ コーヒー 豆' }, { label: 'デカフェ ドリップバッグ', q: 'デカフェ ドリップバッグ' }],
+  },
+  fruity: {
+    emoji: '🍓', name: '冒険の浅煎りフルーティタイプ', drink: 'おすすめ：華やかな浅煎りシングルオリジン',
+    desc: '新しいもの・珍しいものに目がない探検家。好奇心が強く、まだ誰も知らない「好き」を見つけるのが得意。',
+    traits: ['新店開拓が趣味', '流行に敏感', '旅先で冒険する'],
+    rec: [{ label: '浅煎り シングルオリジン豆', q: 'コーヒー豆 浅煎り シングルオリジン' }, { label: '飲み比べセット', q: 'コーヒー豆 飲み比べ セット' }],
+  },
+};
+
+// ===== 質問（各選択肢がタイプに加点） =====
+const QUESTIONS = [
+  { q: '朝起きて、まず何をする？', a: [
+    ['すぐ起きて動き出す', { espresso: 2 }],
+    ['しばらく布団でゴロゴロ', { latte: 2, decaf: 1 }],
+    ['いつものルーティンをこなす', { drip: 2 }],
+    ['その日の気分で決める', { cold: 2, fruity: 1 }],
+  ]},
+  { q: '理想の休日は？', a: [
+    ['気になっていたお店を開拓', { fruity: 2, cold: 1 }],
+    ['家でまったり過ごす', { latte: 2, decaf: 1 }],
+    ['趣味にとことん没頭', { drip: 2 }],
+    ['予定をぎっしり詰め込む', { espresso: 2 }],
+  ]},
+  { q: '好きな味はどれ？', a: [
+    ['ビターで大人な味', { espresso: 2, drip: 1 }],
+    ['やさしい甘さ', { latte: 2 }],
+    ['さっぱり・すっきり', { cold: 2 }],
+    ['フルーツみたいな酸味', { fruity: 2 }],
+  ]},
+  { q: 'カフェインとの付き合い方は？', a: [
+    ['ないと一日が始まらない', { espresso: 2 }],
+    ['午後からは控えたい', { decaf: 2 }],
+    ['夜でも気にせず飲む', { cold: 2 }],
+    ['ほどほどに楽しむ', { drip: 1, latte: 1 }],
+  ]},
+  { q: '仕事や勉強のスタイルは？', a: [
+    ['短時間で一気に集中', { espresso: 2 }],
+    ['コツコツ丁寧に', { drip: 2 }],
+    ['みんなでワイワイ', { latte: 2 }],
+    ['自分のペースを守る', { decaf: 1, cold: 1 }],
+  ]},
+  { q: '行ってみたい旅先は？', a: [
+    ['まだ誰も知らない秘境', { fruity: 2 }],
+    ['南国のビーチリゾート', { cold: 2 }],
+    ['のんびり温泉宿', { decaf: 2 }],
+    ['刺激的な大都会', { espresso: 1, latte: 1 }],
+  ]},
+  { q: '買い物のときのあなたは？', a: [
+    ['ピンときたら即決', { espresso: 2 }],
+    ['レビューを読み比べる', { drip: 2 }],
+    ['見た目のかわいさ重視', { latte: 2 }],
+    ['珍しいものに惹かれる', { fruity: 2 }],
+  ]},
+  { q: '理想の夜の過ごし方は？', a: [
+    ['早めに寝てしっかり休む', { decaf: 2 }],
+    ['好きな映画をゆっくり観る', { latte: 1, decaf: 1 }],
+    ['夜ふかしして作業する', { espresso: 1, cold: 1 }],
+    ['気になることを調べまくる', { fruity: 1, drip: 1 }],
+  ]},
+];
+
+// ===== 診断ロジック =====
+const $ = (id) => document.getElementById(id);
+let idx = 0;
+let score = {};
+let resultKey = null;
+
+function show(id) {
+  ['start', 'quiz', 'result'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
+  window.scrollTo(0, 0);
+}
+
+function startQuiz() {
+  idx = 0;
+  score = Object.fromEntries(Object.keys(TYPES).map((k) => [k, 0]));
+  show('quiz');
+  renderQ();
+}
+
+function renderQ() {
+  const item = QUESTIONS[idx];
+  $('bar').style.width = `${(idx / QUESTIONS.length) * 100}%`;
+  $('qnum').textContent = `Q${idx + 1} / ${QUESTIONS.length}`;
+  $('qtext').textContent = item.q;
+  const box = $('opts');
+  box.innerHTML = '';
+  item.a.forEach(([label, pts]) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = label;
+    b.onclick = () => {
+      for (const [k, v] of Object.entries(pts)) score[k] += v;
+      idx++;
+      idx < QUESTIONS.length ? renderQ() : finish();
+    };
+    box.appendChild(b);
+  });
+}
+
+function finish() {
+  // 同点のときは TYPES の定義順で先のものを採用
+  resultKey = Object.keys(TYPES).reduce((best, k) => (score[k] > score[best] ? k : best));
+  renderResult(resultKey);
+  history.replaceState(null, '', `?r=${resultKey}`);
+}
+
+function amazonUrl(q) {
+  const u = new URL('https://www.amazon.co.jp/s');
+  u.searchParams.set('k', q);
+  if (AFFILIATE.amazonTag) u.searchParams.set('tag', AFFILIATE.amazonTag);
+  return u.toString();
+}
+
+function renderResult(key) {
+  const t = TYPES[key];
+  $('rEmoji').textContent = t.emoji;
+  $('rName').textContent = t.name;
+  $('rDrink').textContent = t.drink;
+  $('rDesc').textContent = t.desc;
+  $('rTraits').innerHTML = '';
+  t.traits.forEach((s) => {
+    const li = document.createElement('li');
+    li.textContent = s;
+    $('rTraits').appendChild(li);
+  });
+  $('rRec').innerHTML = '';
+  t.rec.forEach((r) => {
+    const a = document.createElement('a');
+    a.href = amazonUrl(r.q);
+    a.target = '_blank';
+    a.rel = 'noopener sponsored';
+    a.textContent = `${r.label} をAmazonで見る →`;
+    $('rRec').appendChild(a);
+  });
+  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag);
+  show('result');
+}
+
+function pageUrl() {
+  return location.origin + location.pathname;
+}
+
+function shareX() {
+  const t = TYPES[resultKey];
+  const text = `私のコーヒータイプは「${t.name}」${t.emoji}\n${t.drink}\n\nあなたは何タイプ？👇`;
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', text);
+  u.searchParams.set('url', pageUrl());
+  u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+
+// ===== 結果画像（1080x1350：インスタのフィード／ストーリーに使いやすい縦長） =====
+async function makeImage(key) {
+  const t = TYPES[key];
+  await document.fonts.load('800 60px "M PLUS Rounded 1c"');
+  await document.fonts.load('400 40px "M PLUS Rounded 1c"');
+  const W = 1080, H = 1350;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const F = '"M PLUS Rounded 1c", sans-serif';
+
+  g.fillStyle = '#f6efe6'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#fffaf4';
+  roundRect(g, 60, 60, W - 120, H - 120, 48); g.fill();
+  g.strokeStyle = '#e6d8c8'; g.lineWidth = 3; g.stroke();
+
+  g.textAlign = 'center';
+  g.fillStyle = '#8a7262'; g.font = `400 40px ${F}`;
+  g.fillText('あなたのコーヒータイプは…', W / 2, 200);
+  g.font = `220px ${F}`;
+  g.fillText(t.emoji, W / 2, 470);
+  g.fillStyle = '#3b2a20'; g.font = `800 64px ${F}`;
+  wrap(g, t.name, W / 2, 600, W - 220, 84);
+  g.fillStyle = '#b5652d'; g.font = `700 40px ${F}`;
+  g.fillText(t.drink, W / 2, 790);
+
+  g.fillStyle = '#3b2a20'; g.font = `400 38px ${F}`;
+  t.traits.forEach((s, i) => g.fillText(`✔ ${s}`, W / 2, 900 + i * 64));
+
+  g.fillStyle = '#8a7262'; g.font = `700 36px ${F}`;
+  g.fillText(`☕ ${APP_TITLE}`, W / 2, H - 150);
+  return c;
+}
+
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+function wrap(g, text, x, y, maxW, lh) {
+  let line = '', lines = [];
+  for (const ch of text) {
+    if (g.measureText(line + ch).width > maxW) { lines.push(line); line = ch; }
+    else line += ch;
+  }
+  lines.push(line);
+  lines.forEach((l, i) => g.fillText(l, x, y + i * lh));
+}
+
+async function saveImage() {
+  const canvas = await makeImage(resultKey);
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+  const file = new File([blob], `coffee-${resultKey}.png`, { type: 'image/png' });
+  // スマホなら共有シートから直接インスタへ
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+$('startBtn').onclick = startQuiz;
+$('retry').onclick = () => { history.replaceState(null, '', pageUrl()); show('start'); };
+$('shareX').onclick = shareX;
+$('saveImg').onclick = saveImage;
+
+// ?r=タイプ でアクセスされたら結果を直接表示
+const r = new URLSearchParams(location.search).get('r');
+if (r && TYPES[r]) { resultKey = r; renderResult(r); }
+</script>
+</body>
+</html>

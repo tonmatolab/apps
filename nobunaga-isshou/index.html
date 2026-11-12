@@ -13,141 +13,184 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Shippori+Mincho:wght@800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #ebe2cf;
-    --paper: #fbf6ea;
-    --ink: #1f1a16;
-    --sub: #6f6254;
-    --red: #b3261e;
+    --bg: #fff4e2;
+    --bg2: #ffe7c4;
+    --paper: #ffffff;
+    --ink: #2b2118;
+    --sub: #7a6a5c;
+    --red: #e63b2e;
+    --red-dark: #b0251a;
     --red-ink: #fff;
-    --gold: #a07a2c;
-    --line: #d9ccb4;
-    --chip: #f2ead9;
+    --gold: #ffb703;
+    --gold-dark: #c98a00;
+    --green: #22a866;
+    --line: #f1dfc4;
+    --chip: #fff3df;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #12100e;
-      --paper: #1f1a16;
-      --ink: #f1e8d8;
-      --sub: #b5a690;
-      --red: #e0483e;
+      --bg: #17120e;
+      --bg2: #241a12;
+      --paper: #231c16;
+      --ink: #fbefe0;
+      --sub: #c2ae99;
+      --red: #ff5a4b;
+      --red-dark: #b8382d;
       --red-ink: #fff;
-      --gold: #d4a94e;
-      --line: #3a322a;
-      --chip: #2a231d;
+      --gold: #ffc23a;
+      --gold-dark: #b88400;
+      --green: #3ccf86;
+      --line: #3a2e25;
+      --chip: #2d241d;
     }
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: var(--bg);
+    background: radial-gradient(circle at 20% 0%, var(--bg2), var(--bg) 60%) fixed, var(--bg);
     color: var(--ink);
-    font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
-    line-height: 1.85;
+    font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
+    line-height: 1.75;
     -webkit-tap-highlight-color: transparent;
   }
-  main { max-width: 520px; margin: 0 auto; padding: 16px 16px 48px; }
+  main { max-width: 500px; margin: 0 auto; padding: 14px 16px 48px; }
   .card {
     background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 10px 30px -18px rgba(0, 0, 0, .45);
+    box-shadow: 0 6px 0 var(--line), 0 18px 40px -20px rgba(80, 40, 0, .35);
     animation: rise .35s ease both;
   }
-  .card + .card { margin-top: 16px; }
   .body { padding: 20px 20px 24px; }
-  .scene { display: block; width: 100%; aspect-ratio: 400 / 220; background: #222; }
-  .scene svg { display: block; width: 100%; height: 100%; }
+  .scene { display: block; width: 100%; aspect-ratio: 400 / 220; background: #222; position: relative; }
+  .scene svg, .scene img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .hidden { display: none !important; }
-  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { 0% { transform: scale(1.8) rotate(-8deg); opacity: 0; } 60% { transform: scale(.92) rotate(-8deg); opacity: 1; } 100% { transform: scale(1) rotate(-8deg); } }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  .display { font-family: "Dela Gothic One", "M PLUS Rounded 1c", sans-serif; font-weight: 400; }
 
-  h1 { font-size: 2rem; line-height: 1.3; margin: 0 0 6px; letter-spacing: .04em; }
-  .kicker { color: var(--red); font-weight: 800; letter-spacing: .2em; font-size: .82rem; margin: 0 0 2px; }
-  .lead { color: var(--sub); margin: 0 0 18px; font-size: .95rem; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 16px; }
-  .stat { background: var(--chip); border-radius: 10px; padding: 10px 6px; text-align: center; line-height: 1.4; }
-  .stat b { display: block; font-size: 1.35rem; }
-  .stat span { font-size: .72rem; color: var(--sub); }
-  .hint { text-align: center; color: var(--gold); font-size: .85rem; margin: 14px 0 0; }
+  /* タイトル */
+  .kicker {
+    display: inline-block; background: var(--ink); color: var(--paper);
+    font-weight: 800; font-size: .85rem; padding: 2px 12px; border-radius: 99px; margin: 0 0 10px;
+  }
+  h1 { font-size: 2.3rem; line-height: 1.2; margin: 0 0 10px; letter-spacing: .02em; }
+  h1 .hl { color: var(--red); }
+  .lead { color: var(--sub); margin: 0 0 14px; font-size: .95rem; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+  .tags span { background: var(--chip); border-radius: 99px; padding: 4px 12px; font-size: .82rem; font-weight: 700; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 6px; }
+  .stat { background: var(--chip); border-radius: 16px; padding: 10px 4px 8px; text-align: center; line-height: 1.3; }
+  .stat b { display: block; font-size: 1.45rem; font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
+  .stat:nth-child(3) b { color: var(--red); }
+  .stat span { font-size: .72rem; color: var(--sub); font-weight: 700; }
+  .hint {
+    text-align: center; color: var(--gold-dark); font-size: .85rem; font-weight: 700;
+    margin: 16px 0 0; animation: bounce 2.4s ease-in-out infinite;
+  }
 
+  /* ボタン */
   button {
     display: block; width: 100%;
-    font: inherit; font-weight: 700;
-    border: none; border-radius: 10px;
-    padding: 14px 16px; margin-top: 10px;
+    font: inherit; font-weight: 800; font-size: 1.02rem;
+    border: none; border-radius: 16px;
+    padding: 15px 16px; margin-top: 12px;
     cursor: pointer; text-align: center;
-    transition: transform .08s ease, border-color .15s ease, background .15s ease;
+    transition: transform .06s ease, box-shadow .06s ease, border-color .15s ease;
   }
-  button:active { transform: scale(.98); }
-  .primary { background: var(--red); color: var(--red-ink); box-shadow: 0 3px 0 rgba(0, 0, 0, .25); }
-  .ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
-  .ghost:hover { border-color: var(--red); }
+  .primary { background: var(--red); color: var(--red-ink); box-shadow: 0 5px 0 var(--red-dark); font-size: 1.15rem; }
+  .primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--red-dark); }
+  .ghost { background: var(--paper); color: var(--ink); border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); }
+  .ghost:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .ghost:hover { border-color: var(--gold); }
+  .x { background: #111; color: #fff; box-shadow: 0 5px 0 #000; }
+  .x:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .row button { margin-top: 10px; }
 
-  .opt {
-    display: flex; gap: 12px; align-items: center;
-    background: var(--chip); color: var(--ink);
-    border: 1.5px solid transparent; text-align: left; font-weight: 400;
-  }
-  .opt:hover, .opt:focus-visible { border-color: var(--red); outline: none; }
-  .opt .no {
-    flex: none; width: 30px; height: 30px; border-radius: 50%;
-    display: grid; place-items: center;
-    background: var(--ink); color: var(--paper); font-size: .85rem; font-weight: 800;
-  }
-  .opt.secret { border-color: var(--gold); }
-  .opt.secret .no { background: var(--gold); }
-
+  /* 問題 */
+  .qhead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 6px; }
+  .qno { font-family: "Dela Gothic One", sans-serif; color: var(--red); font-size: 1.1rem; margin-right: 4px; }
+  .chip { background: var(--chip); border-radius: 99px; padding: 1px 10px; font-size: .8rem; font-weight: 700; color: var(--sub); }
   .timeline { display: flex; gap: 4px; margin: 0 0 14px; }
-  .timeline i { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
+  .timeline i { flex: 1; height: 8px; border-radius: 4px; background: var(--line); }
   .timeline i.done { background: var(--gold); }
   .timeline i.now { background: var(--red); }
-  .year { font-size: .9rem; color: var(--sub); line-height: 1.3; }
-  .year b { color: var(--red); font-size: 1.6rem; margin-right: 8px; }
-  .stage-title { font-size: 1.4rem; margin: 4px 0 8px; }
-  .narr { margin: 0 0 12px; }
-  .q { font-weight: 800; margin: 0 0 4px; }
+  .stage-title { font-size: 1.5rem; margin: 2px 0 10px; line-height: 1.3; }
+  .narr { margin: 0 0 14px; background: var(--chip); padding: 12px 14px; border-radius: 16px; font-size: .95rem; }
+  .q { font-weight: 800; font-size: 1.15rem; margin: 0 0 2px; }
+  .opt {
+    display: flex; gap: 12px; align-items: center;
+    background: var(--paper); color: var(--ink);
+    border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line);
+    text-align: left; font-weight: 700; font-size: .98rem; padding: 13px 14px;
+  }
+  .opt:hover, .opt:focus-visible { border-color: var(--red); outline: none; }
+  .opt:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .opt .no {
+    flex: none; width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; color: #fff;
+    font-family: "Dela Gothic One", sans-serif; font-size: .95rem;
+  }
+  #opts .opt:nth-child(1) .no { background: #e63b2e; }
+  #opts .opt:nth-child(2) .no { background: #2f7de1; }
+  #opts .opt:nth-child(3) .no { background: #22a866; }
+  .opt.secret { border-color: var(--gold); box-shadow: 0 4px 0 var(--gold-dark); background: linear-gradient(90deg, #fff6d6, var(--paper)); color: #2b2118; }
+  #opts .opt.secret .no { background: var(--gold); }
   .ok {
-    border-left: 4px solid var(--gold); padding: 8px 12px; background: var(--chip);
-    margin: 0 0 14px; font-size: .92rem; border-radius: 0 8px 8px 0; animation: rise .4s ease both;
+    display: flex; gap: 10px; align-items: flex-start;
+    background: color-mix(in srgb, var(--green) 14%, var(--paper)); border: 2px solid var(--green);
+    padding: 10px 12px; margin: 0 0 14px; font-size: .9rem; border-radius: 16px; animation: rise .4s ease both;
   }
+  .ok::before { content: "⭕"; font-size: 1.2rem; line-height: 1.4; }
 
-  .dead-head { text-align: center; color: var(--red); font-size: 2.8rem; font-weight: 800; letter-spacing: .35em; margin: 0 0 0 .35em; line-height: 1.3; }
-  .dead-sub { text-align: center; color: var(--sub); margin: 0 0 14px; font-size: .9rem; }
-  .cause { text-align: center; font-size: 1.35rem; font-weight: 800; margin: 0 0 10px; line-height: 1.5; }
-  .cause small { display: block; color: var(--sub); font-size: .78rem; font-weight: 400; letter-spacing: .2em; }
-  .new { display: inline-block; background: var(--gold); color: #fff; font-size: .7rem; padding: 0 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle; letter-spacing: .1em; }
-  .meta { text-align: center; color: var(--sub); font-size: .85rem; margin: 14px 0 0; line-height: 1.6; }
+  /* 死亡 */
+  .dead-top { text-align: center; margin: -4px 0 8px; }
+  .stamp {
+    display: inline-block; font-family: "Dela Gothic One", sans-serif; color: var(--red);
+    font-size: 3rem; line-height: 1; padding: 10px 22px 12px; border: 6px solid var(--red); border-radius: 14px;
+    animation: pop .45s cubic-bezier(.2, .9, .3, 1.3) both; letter-spacing: .1em;
+  }
+  .dead-sub { text-align: center; color: var(--sub); margin: 12px 0 10px; font-size: .9rem; font-weight: 700; }
+  .cause { text-align: center; margin: 0 0 12px; }
+  .cause small { display: block; color: var(--sub); font-size: .78rem; font-weight: 800; letter-spacing: .2em; }
+  .cause #dCause { display: inline-block; background: var(--ink); color: var(--paper); font-size: 1.3rem; font-weight: 800; padding: 4px 18px; border-radius: 12px; margin-top: 4px; }
+  .new { display: inline-block; background: var(--gold); color: #2b2118; font-size: .75rem; font-weight: 800; padding: 1px 10px; border-radius: 99px; margin-left: 6px; vertical-align: middle; animation: bounce 1.6s ease-in-out infinite; }
+  #dText { background: var(--chip); padding: 12px 14px; border-radius: 16px; margin: 0; }
+  .meta { text-align: center; color: var(--sub); font-size: .85rem; margin: 14px 0 0; line-height: 1.6; font-weight: 700; }
 
-  .clear-head { text-align: center; color: var(--gold); font-size: 1rem; letter-spacing: .35em; margin: 0; }
-  .clear-title { text-align: center; font-size: 2rem; margin: 2px 0 12px; line-height: 1.35; }
-  .rank { text-align: center; font-size: 1.1rem; margin: 16px 0 4px; }
-  .rank b { color: var(--red); font-size: 2rem; margin: 0 4px; }
-  .poem { text-align: center; color: var(--sub); font-size: .92rem; margin: 16px 0; }
+  /* クリア */
+  .clear-head { text-align: center; margin: 0; }
+  .clear-head span { display: inline-block; background: var(--gold); color: #2b2118; font-weight: 800; padding: 2px 14px; border-radius: 99px; font-size: .9rem; }
+  .clear-title { text-align: center; font-size: 2.1rem; margin: 8px 0 12px; line-height: 1.3; }
+  #cText { background: var(--chip); padding: 12px 14px; border-radius: 16px; margin: 0; }
+  .rank { text-align: center; font-size: 1.05rem; margin: 18px 0 4px; font-weight: 800; }
+  .rank b { color: var(--red); font-size: 2.4rem; margin: 0 6px; font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
+  .poem { text-align: center; color: var(--sub); font-size: .9rem; margin: 14px 0 0; font-family: "Shippori Mincho", serif; }
 
+  /* 図鑑 */
   .zk-head { display: flex; justify-content: space-between; align-items: baseline; }
-  .zk-head h2 { margin: 0; font-size: 1.4rem; }
-  .zk-head span { color: var(--sub); font-size: .9rem; }
-  .bar { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; margin: 8px 0 14px; }
-  .bar > div { height: 100%; background: linear-gradient(90deg, var(--gold), var(--red)); }
+  .zk-head h2 { margin: 0; font-size: 1.6rem; }
+  .zk-head span { color: var(--red); font-family: "Dela Gothic One", sans-serif; font-size: 1.2rem; }
+  .bar { height: 12px; background: var(--chip); border-radius: 6px; overflow: hidden; margin: 10px 0 16px; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, var(--gold), var(--red)); border-radius: 6px; }
   .zk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .zk {
-    background: var(--chip); border-radius: 10px; padding: 10px 12px; line-height: 1.5;
-    border: 1.5px solid transparent; font-size: .88rem;
-  }
-  .zk small { display: block; color: var(--sub); font-size: .72rem; }
+  .zk { background: var(--chip); border-radius: 14px; padding: 10px 12px; line-height: 1.45; border: 2px solid transparent; font-size: .88rem; }
+  .zk small { display: block; color: var(--sub); font-size: .72rem; font-weight: 700; }
   .zk b { display: block; }
+  .zk.locked { opacity: .7; }
   .zk.locked b { color: var(--sub); letter-spacing: .2em; }
-  .zk.got { cursor: pointer; }
+  .zk.got { cursor: pointer; background: var(--paper); border-color: var(--line); box-shadow: 0 3px 0 var(--line); }
+  .zk.got b::before { content: "💀 "; }
   .zk.got:hover { border-color: var(--red); }
   .zk.secret { grid-column: 1 / -1; border-color: var(--gold); }
-  .zk-detail { margin: 14px 0 0; padding: 12px 14px; background: var(--chip); border-radius: 10px; font-size: .92rem; }
+  .zk.secret.got b::before { content: "✦ "; }
+  .zk-detail { margin: 14px 0 0; padding: 12px 14px; background: var(--chip); border-radius: 14px; font-size: .92rem; }
 
-  .flash { position: fixed; inset: 0; background: #b3261e; pointer-events: none; opacity: 0; z-index: 10; }
+  .flash { position: fixed; inset: 0; background: #e63b2e; pointer-events: none; opacity: 0; z-index: 10; }
   .flash.on { animation: flash .6s ease; }
   @keyframes flash { 0% { opacity: .55; } 100% { opacity: 0; } }
 
@@ -162,19 +205,20 @@
   <section id="title" class="card">
     <div class="scene" data-scene="title"></div>
     <div class="body">
-      <p class="kicker">一問誤れば、即退場</p>
-      <h1>織田信長の<br>一生クイズ</h1>
-      <p class="lead">あなたは織田信長。誕生から本能寺まで、史実どおりの選択をして人生を完走せよ。選択を誤ると、その場で死亡。最初からやり直しです。</p>
+      <p class="kicker">1問ミスで即死!?</p>
+      <h1 class="display">織田信長の<br><span class="hl">一生クイズ</span></h1>
+      <p class="lead">あなたは織田信長。史実どおりに選んで、本能寺まで生き残れ！ まちがえたら…その場で即死です。</p>
+      <div class="tags"><span>⏱ 約2分</span><span>📝 全10問</span><span>💀 死因は20種類</span></div>
       <div class="stats">
-        <div class="stat"><b id="sPlay">…</b><span>挑戦者</span></div>
-        <div class="stat"><b id="sClear">…</b><span>完走者</span></div>
+        <div class="stat"><b id="sPlay">…</b><span>挑戦した人</span></div>
+        <div class="stat"><b id="sClear">…</b><span>完走した人</span></div>
         <div class="stat"><b id="sRate">…</b><span>完走率</span></div>
       </div>
       <button class="primary hidden" id="resumeBtn"></button>
-      <button class="primary" id="startBtn">生まれる</button>
-      <button class="ghost" id="zukanBtn">死因図鑑</button>
+      <button class="primary" id="startBtn">人生スタート！</button>
+      <button class="ghost" id="zukanBtn">📖 死因図鑑</button>
       <p class="meta" id="myStats"></p>
-      <p class="hint">死因図鑑を半分集めると、何かが起きるらしい…</p>
+      <p class="hint">👀 図鑑を半分集めると、何かが起きるらしい…</p>
     </div>
   </section>
 
@@ -184,8 +228,8 @@
     <div class="body">
       <div class="timeline" id="tl"></div>
       <div class="ok hidden" id="okMsg"></div>
-      <div class="year"><b id="stYear"></b><span id="stAge"></span></div>
-      <h2 class="stage-title" id="stTitle"></h2>
+      <div class="qhead"><span class="qno" id="stNo"></span><span class="chip" id="stYear"></span><span class="chip" id="stAge"></span></div>
+      <h2 class="stage-title display" id="stTitle"></h2>
       <p class="narr" id="stNarr"></p>
       <p class="q" id="stQ"></p>
       <div id="opts"></div>
@@ -196,17 +240,17 @@
   <section id="dead" class="card hidden">
     <div class="scene" data-scene="grave"></div>
     <div class="body">
-      <p class="dead-head">無念</p>
+      <div class="dead-top"><span class="stamp">死亡</span></div>
       <p class="dead-sub" id="dYear"></p>
-      <p class="cause"><small>死因</small><span id="dCause"></span><span class="new hidden" id="dNew">図鑑に追加</span></p>
+      <p class="cause"><small>死因</small><span id="dCause"></span><span class="new hidden" id="dNew">NEW 図鑑に追加</span></p>
       <p id="dText"></p>
       <p class="meta" id="dMeta"></p>
-      <button class="primary" id="retryBtn">生まれ直す（最初から）</button>
+      <button class="primary" id="retryBtn">もう一回生まれる！</button>
       <div class="row">
-        <button class="ghost" id="shareDead">Xでシェア</button>
-        <button class="ghost" id="imgDead">墓石画像</button>
+        <button class="x" id="shareDead">𝕏 でシェア</button>
+        <button class="ghost" id="imgDead">🪦 墓石画像</button>
       </div>
-      <button class="ghost" id="zukanBtn2">死因図鑑を見る</button>
+      <button class="ghost" id="zukanBtn2">📖 死因図鑑を見る</button>
     </div>
   </section>
 
@@ -214,25 +258,25 @@
   <section id="clear" class="card hidden">
     <div class="scene" id="cScene"></div>
     <div class="body">
-      <p class="clear-head" id="cHead"></p>
-      <h2 class="clear-title" id="cTitle"></h2>
+      <p class="clear-head"><span id="cHead"></span></p>
+      <h2 class="clear-title display" id="cTitle"></h2>
       <p id="cText"></p>
       <p class="poem" id="cPoem"></p>
       <p class="rank" id="cRankP"><span id="cRankPre"></span><b id="cRank"></b><span id="cRankPost"></span></p>
       <p class="meta" id="cMeta"></p>
       <div class="row">
-        <button class="primary" id="shareClear">Xでシェア</button>
+        <button class="x" id="shareClear">𝕏 でシェア</button>
         <button class="ghost" id="imgClear">認定証画像</button>
       </div>
-      <button class="ghost" id="againBtn">もう一度生まれる</button>
-      <button class="ghost" id="zukanBtn3">死因図鑑を見る</button>
+      <button class="primary" id="againBtn">もう一度生まれる</button>
+      <button class="ghost" id="zukanBtn3">📖 死因図鑑を見る</button>
     </div>
   </section>
 
   <!-- 死因図鑑 -->
   <section id="zukan" class="card hidden">
     <div class="body">
-      <div class="zk-head"><h2>死因図鑑</h2><span id="zkCount"></span></div>
+      <div class="zk-head"><h2 class="display">📖 死因図鑑</h2><span id="zkCount"></span></div>
       <div class="bar"><div id="zkBar"></div></div>
       <div class="zk-grid" id="zkGrid"></div>
       <div class="zk-detail hidden" id="zkDetail"></div>
@@ -417,6 +461,13 @@ const SKY = {
   secret: ['#f6d79a', '#9cc7d8', '#3f7890', '#1d3e4e'],
 };
 
+// img/<名前>.jpg を置いたシーンはイラスト画像、それ以外はSVGの影絵を表示
+const SCENE_IMAGES = new Set([]);
+function scene(kind) {
+  if (SCENE_IMAGES.has(kind)) return `<img src="img/${kind}.jpg" alt="" loading="lazy">`;
+  return sceneSVG(kind);
+}
+
 function sceneSVG(kind) {
   const [t, b, far, near] = SKY[kind];
   const id = 'g' + Math.random().toString(36).slice(2, 8);
@@ -600,7 +651,7 @@ function ship(cx, by, fill) {
 
 // ===== ゲーム進行 =====
 const $ = (id) => document.getElementById(id);
-const NUMS = ['壱', '弐', '参', '肆'];
+const NUMS = ['1', '2', '3', '4'];
 let idx = 0;
 let lastDeath = null;
 let lastEnd = 'clear';
@@ -619,14 +670,14 @@ function renderTitle() {
   const p = store.get('progress');
   const pi = p === null ? -1 : Number(p);
   if (pi > 0 && pi < STAGES.length) {
-    $('resumeBtn').textContent = `続きから：${STAGES[pi].title}`;
+    $('resumeBtn').textContent = `▶ 続きから（${STAGES[pi].title}）`;
     $('resumeBtn').classList.remove('hidden');
     $('startBtn').className = 'ghost';
-    $('startBtn').textContent = '最初から生まれる';
+    $('startBtn').textContent = '最初からやり直す';
   } else {
     $('resumeBtn').classList.add('hidden');
     $('startBtn').className = 'primary';
-    $('startBtn').textContent = '生まれる';
+    $('startBtn').textContent = '人生スタート！';
   }
   const parts = [];
   if (deaths()) parts.push(`死亡回数 ${deaths()}回`);
@@ -661,8 +712,9 @@ function shuffle(arr) {
 function renderStage() {
   const s = STAGES[idx];
   store.set('progress', String(idx));
-  $('stScene').innerHTML = sceneSVG(s.scene);
+  $('stScene').innerHTML = scene(s.scene);
   $('tl').innerHTML = STAGES.map((_, i) => `<i class="${i < idx ? 'done' : i === idx ? 'now' : ''}"></i>`).join('');
+  $('stNo').textContent = `第${idx + 1}問`;
   $('stYear').textContent = s.year;
   $('stAge').textContent = s.age;
   $('stTitle').textContent = s.title;
@@ -690,7 +742,7 @@ function choose(o, ai) {
   if (!o[1]) return die(s, `${idx}-${ai}`, o[2], o[3]);
   idx++;
   if (idx >= STAGES.length) return finish('clear');
-  $('okMsg').textContent = `✔ ${s.ok}`;
+  $('okMsg').textContent = `正解！ ${s.ok}`;
   $('okMsg').classList.remove('hidden');
   renderStage();
 }
@@ -715,13 +767,13 @@ function die(s, id, cause, text) {
 
 const ENDS = {
   clear: {
-    scene: 'clear', head: '人生完走', title: '是非に及ばず',
+    scene: 'clear', head: '🎉 人生完走！', title: '是非に及ばず',
     text: '燃え盛る本能寺の奥で、信長は静かにその生涯を閉じた。享年49。尾張の大うつけと呼ばれた少年は、天下統一の目前まで駆け抜けた。史実どおりの最期、お見事です。',
     poem: '人間五十年、下天のうちをくらぶれば、夢幻のごとくなり',
     key: 'clear', rankKey: 'rank', pre: 'あなたは', post: '人目の完走者',
   },
   secret: {
-    scene: 'secret', head: '隠しエンド', title: 'IF：南蛮王ノブナガ',
+    scene: 'secret', head: '✦ 隠しエンド', title: 'IF：南蛮王ノブナガ',
     text: '床下の抜け穴をくぐり抜け、堺から南蛮船に飛び乗った信長。たどり着いたローマで教皇に謁見し、なぜかピザ職人として大成功する。看板メニュー「マルゲリータ・ノブナーガ」は、今もどこかで焼かれているという。',
     poem: '天下より、窯の火を制した男',
     key: 'secret', rankKey: 'srank', pre: 'あなたは', post: '人目の到達者',
@@ -733,7 +785,7 @@ async function finish(kind) {
   const e = ENDS[kind];
   store.del('progress');
   if (kind === 'secret') addZukan('secret');
-  $('cScene').innerHTML = sceneSVG(e.scene);
+  $('cScene').innerHTML = scene(e.scene);
   $('cHead').textContent = e.head;
   $('cTitle').textContent = e.title;
   $('cText').textContent = e.text;
@@ -941,7 +993,7 @@ $('shareClear').onclick = () => {
 $('imgDead').onclick = async () => saveCanvas(await graveImage(), 'nobunaga-grave.png');
 $('imgClear').onclick = async () => saveCanvas(await certImage(), `nobunaga-${lastEnd}.png`);
 
-document.querySelectorAll('[data-scene]').forEach((el) => (el.innerHTML = sceneSVG(el.dataset.scene)));
+document.querySelectorAll('[data-scene]').forEach((el) => (el.innerHTML = scene(el.dataset.scene)));
 renderTitle();
 loadStats();
 </script>

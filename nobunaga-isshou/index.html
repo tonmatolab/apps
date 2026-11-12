@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #efe6d4;
+    --bg: #ebe2cf;
     --paper: #fbf6ea;
     --ink: #1f1a16;
     --sub: #6f6254;
@@ -24,17 +24,19 @@
     --red-ink: #fff;
     --gold: #a07a2c;
     --line: #d9ccb4;
+    --chip: #f2ead9;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #141110;
-      --paper: #211c18;
+      --bg: #12100e;
+      --paper: #1f1a16;
       --ink: #f1e8d8;
       --sub: #b5a690;
       --red: #e0483e;
       --red-ink: #fff;
       --gold: #d4a94e;
       --line: #3a322a;
+      --chip: #2a231d;
     }
   }
   * { box-sizing: border-box; }
@@ -44,118 +46,198 @@
     color: var(--ink);
     font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
     line-height: 1.85;
+    -webkit-tap-highlight-color: transparent;
   }
-  main { max-width: 540px; margin: 0 auto; padding: 24px 16px 48px; }
+  main { max-width: 520px; margin: 0 auto; padding: 16px 16px 48px; }
   .card {
     background: var(--paper);
     border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 28px 22px;
-    box-shadow: 0 2px 0 var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px -18px rgba(0, 0, 0, .45);
+    animation: rise .35s ease both;
   }
+  .card + .card { margin-top: 16px; }
+  .body { padding: 20px 20px 24px; }
+  .scene { display: block; width: 100%; aspect-ratio: 400 / 220; background: #222; }
+  .scene svg { display: block; width: 100%; height: 100%; }
   .hidden { display: none !important; }
-  h1 { font-size: 1.9rem; line-height: 1.35; margin: 0 0 8px; letter-spacing: .04em; }
-  .kicker { color: var(--red); font-weight: 800; letter-spacing: .2em; font-size: .85rem; margin: 0; }
-  .lead { color: var(--sub); margin: 0 0 20px; }
-  .seal {
-    width: 84px; height: 84px; margin: 4px auto 20px;
-    border: 3px solid var(--red); border-radius: 8px; color: var(--red);
-    display: grid; place-items: center; font-weight: 800; font-size: 1.15rem; line-height: 1.15;
-    text-align: center; transform: rotate(-6deg);
-  }
-  .stats { display: flex; gap: 10px; margin: 0 0 20px; }
-  .stat { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 10px; text-align: center; }
-  .stat b { display: block; font-size: 1.4rem; }
-  .stat span { font-size: .78rem; color: var(--sub); }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  h1 { font-size: 2rem; line-height: 1.3; margin: 0 0 6px; letter-spacing: .04em; }
+  .kicker { color: var(--red); font-weight: 800; letter-spacing: .2em; font-size: .82rem; margin: 0 0 2px; }
+  .lead { color: var(--sub); margin: 0 0 18px; font-size: .95rem; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 16px; }
+  .stat { background: var(--chip); border-radius: 10px; padding: 10px 6px; text-align: center; line-height: 1.4; }
+  .stat b { display: block; font-size: 1.35rem; }
+  .stat span { font-size: .72rem; color: var(--sub); }
+  .hint { text-align: center; color: var(--gold); font-size: .85rem; margin: 14px 0 0; }
+
   button {
     display: block; width: 100%;
     font: inherit; font-weight: 700;
-    border: none; border-radius: 6px;
+    border: none; border-radius: 10px;
     padding: 14px 16px; margin-top: 10px;
     cursor: pointer; text-align: center;
+    transition: transform .08s ease, border-color .15s ease, background .15s ease;
   }
-  .primary { background: var(--red); color: var(--red-ink); }
+  button:active { transform: scale(.98); }
+  .primary { background: var(--red); color: var(--red-ink); box-shadow: 0 3px 0 rgba(0, 0, 0, .25); }
   .ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
   .ghost:hover { border-color: var(--red); }
-  .opt { background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); text-align: left; font-weight: 400; }
-  .opt:hover, .opt:focus-visible { border-color: var(--red); outline: none; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row button { margin-top: 10px; }
 
-  .timeline { display: flex; gap: 4px; margin-bottom: 18px; }
-  .timeline i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+  .opt {
+    display: flex; gap: 12px; align-items: center;
+    background: var(--chip); color: var(--ink);
+    border: 1.5px solid transparent; text-align: left; font-weight: 400;
+  }
+  .opt:hover, .opt:focus-visible { border-color: var(--red); outline: none; }
+  .opt .no {
+    flex: none; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--ink); color: var(--paper); font-size: .85rem; font-weight: 800;
+  }
+  .opt.secret { border-color: var(--gold); }
+  .opt.secret .no { background: var(--gold); }
+
+  .timeline { display: flex; gap: 4px; margin: 0 0 14px; }
+  .timeline i { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
   .timeline i.done { background: var(--gold); }
   .timeline i.now { background: var(--red); }
-  .year { font-size: .9rem; color: var(--sub); }
-  .year b { color: var(--red); font-size: 1.5rem; margin-right: 6px; }
-  .stage-title { font-size: 1.35rem; margin: 0 0 10px; }
-  .narr { margin: 0 0 14px; }
-  .q { font-weight: 800; margin: 0 0 6px; }
-  .ok { border-left: 4px solid var(--gold); padding: 8px 12px; background: var(--bg); margin: 0 0 14px; font-size: .95rem; }
+  .year { font-size: .9rem; color: var(--sub); line-height: 1.3; }
+  .year b { color: var(--red); font-size: 1.6rem; margin-right: 8px; }
+  .stage-title { font-size: 1.4rem; margin: 4px 0 8px; }
+  .narr { margin: 0 0 12px; }
+  .q { font-weight: 800; margin: 0 0 4px; }
+  .ok {
+    border-left: 4px solid var(--gold); padding: 8px 12px; background: var(--chip);
+    margin: 0 0 14px; font-size: .92rem; border-radius: 0 8px 8px 0; animation: rise .4s ease both;
+  }
 
-  .dead-head { text-align: center; color: var(--red); font-size: 2.6rem; font-weight: 800; letter-spacing: .3em; margin: 0; }
-  .dead-sub { text-align: center; color: var(--sub); margin: 0 0 18px; }
-  .cause { text-align: center; font-size: 1.3rem; font-weight: 800; margin: 0 0 12px; }
-  .cause small { display: block; color: var(--sub); font-size: .8rem; font-weight: 400; }
-  .reached { text-align: center; color: var(--sub); font-size: .9rem; margin: 16px 0 0; }
+  .dead-head { text-align: center; color: var(--red); font-size: 2.8rem; font-weight: 800; letter-spacing: .35em; margin: 0 0 0 .35em; line-height: 1.3; }
+  .dead-sub { text-align: center; color: var(--sub); margin: 0 0 14px; font-size: .9rem; }
+  .cause { text-align: center; font-size: 1.35rem; font-weight: 800; margin: 0 0 10px; line-height: 1.5; }
+  .cause small { display: block; color: var(--sub); font-size: .78rem; font-weight: 400; letter-spacing: .2em; }
+  .new { display: inline-block; background: var(--gold); color: #fff; font-size: .7rem; padding: 0 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle; letter-spacing: .1em; }
+  .meta { text-align: center; color: var(--sub); font-size: .85rem; margin: 14px 0 0; line-height: 1.6; }
 
-  .clear-head { text-align: center; color: var(--gold); font-size: 1.1rem; letter-spacing: .3em; margin: 0; }
-  .clear-title { text-align: center; font-size: 2rem; margin: 4px 0 12px; }
-  .rank { text-align: center; font-size: 1.15rem; margin: 18px 0 4px; }
-  .rank b { color: var(--red); font-size: 2rem; }
-  .poem { text-align: center; color: var(--sub); font-size: .95rem; margin: 18px 0; }
+  .clear-head { text-align: center; color: var(--gold); font-size: 1rem; letter-spacing: .35em; margin: 0; }
+  .clear-title { text-align: center; font-size: 2rem; margin: 2px 0 12px; line-height: 1.35; }
+  .rank { text-align: center; font-size: 1.1rem; margin: 16px 0 4px; }
+  .rank b { color: var(--red); font-size: 2rem; margin: 0 4px; }
+  .poem { text-align: center; color: var(--sub); font-size: .92rem; margin: 16px 0; }
+
+  .zk-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .zk-head h2 { margin: 0; font-size: 1.4rem; }
+  .zk-head span { color: var(--sub); font-size: .9rem; }
+  .bar { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; margin: 8px 0 14px; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, var(--gold), var(--red)); }
+  .zk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .zk {
+    background: var(--chip); border-radius: 10px; padding: 10px 12px; line-height: 1.5;
+    border: 1.5px solid transparent; font-size: .88rem;
+  }
+  .zk small { display: block; color: var(--sub); font-size: .72rem; }
+  .zk b { display: block; }
+  .zk.locked b { color: var(--sub); letter-spacing: .2em; }
+  .zk.got { cursor: pointer; }
+  .zk.got:hover { border-color: var(--red); }
+  .zk.secret { grid-column: 1 / -1; border-color: var(--gold); }
+  .zk-detail { margin: 14px 0 0; padding: 12px 14px; background: var(--chip); border-radius: 10px; font-size: .92rem; }
+
+  .flash { position: fixed; inset: 0; background: #b3261e; pointer-events: none; opacity: 0; z-index: 10; }
+  .flash.on { animation: flash .6s ease; }
+  @keyframes flash { 0% { opacity: .55; } 100% { opacity: 0; } }
 
   footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
   footer a { color: var(--sub); }
 </style>
 </head>
 <body>
+<div class="flash" id="flash"></div>
 <main>
   <!-- タイトル -->
   <section id="title" class="card">
-    <p class="kicker">一問誤れば、即退場</p>
-    <h1>織田信長の<br>一生クイズ</h1>
-    <div class="seal">天下<br>布武</div>
-    <p class="lead">あなたは織田信長。誕生から本能寺まで、史実どおりの選択をして人生を完走せよ。<br>選択を誤ると、その場で死亡。最初からやり直しです。</p>
-    <div class="stats">
-      <div class="stat"><b id="sPlay">…</b><span>挑戦者</span></div>
-      <div class="stat"><b id="sClear">…</b><span>完走者</span></div>
-      <div class="stat"><b id="sRate">…</b><span>完走率</span></div>
+    <div class="scene" data-scene="title"></div>
+    <div class="body">
+      <p class="kicker">一問誤れば、即退場</p>
+      <h1>織田信長の<br>一生クイズ</h1>
+      <p class="lead">あなたは織田信長。誕生から本能寺まで、史実どおりの選択をして人生を完走せよ。選択を誤ると、その場で死亡。最初からやり直しです。</p>
+      <div class="stats">
+        <div class="stat"><b id="sPlay">…</b><span>挑戦者</span></div>
+        <div class="stat"><b id="sClear">…</b><span>完走者</span></div>
+        <div class="stat"><b id="sRate">…</b><span>完走率</span></div>
+      </div>
+      <button class="primary hidden" id="resumeBtn"></button>
+      <button class="primary" id="startBtn">生まれる</button>
+      <button class="ghost" id="zukanBtn">死因図鑑</button>
+      <p class="meta" id="myStats"></p>
+      <p class="hint">死因図鑑を半分集めると、何かが起きるらしい…</p>
     </div>
-    <button class="primary" id="startBtn">生まれる</button>
-    <p class="reached" id="myDeaths"></p>
   </section>
 
   <!-- ステージ -->
   <section id="stage" class="card hidden">
-    <div class="timeline" id="tl"></div>
-    <div class="ok hidden" id="okMsg"></div>
-    <div class="year"><b id="stYear"></b><span id="stAge"></span></div>
-    <h2 class="stage-title" id="stTitle"></h2>
-    <p class="narr" id="stNarr"></p>
-    <p class="q" id="stQ"></p>
-    <div id="opts"></div>
+    <div class="scene" id="stScene"></div>
+    <div class="body">
+      <div class="timeline" id="tl"></div>
+      <div class="ok hidden" id="okMsg"></div>
+      <div class="year"><b id="stYear"></b><span id="stAge"></span></div>
+      <h2 class="stage-title" id="stTitle"></h2>
+      <p class="narr" id="stNarr"></p>
+      <p class="q" id="stQ"></p>
+      <div id="opts"></div>
+    </div>
   </section>
 
   <!-- 死亡 -->
   <section id="dead" class="card hidden">
-    <p class="dead-head">無念</p>
-    <p class="dead-sub" id="dYear"></p>
-    <p class="cause"><small>死因</small><span id="dCause"></span></p>
-    <p id="dText"></p>
-    <p class="reached" id="dReached"></p>
-    <button class="primary" id="retryBtn">生まれ直す（最初から）</button>
-    <button class="ghost" id="shareDead">死に様をXでシェア</button>
+    <div class="scene" data-scene="grave"></div>
+    <div class="body">
+      <p class="dead-head">無念</p>
+      <p class="dead-sub" id="dYear"></p>
+      <p class="cause"><small>死因</small><span id="dCause"></span><span class="new hidden" id="dNew">図鑑に追加</span></p>
+      <p id="dText"></p>
+      <p class="meta" id="dMeta"></p>
+      <button class="primary" id="retryBtn">生まれ直す（最初から）</button>
+      <div class="row">
+        <button class="ghost" id="shareDead">Xでシェア</button>
+        <button class="ghost" id="imgDead">墓石画像</button>
+      </div>
+      <button class="ghost" id="zukanBtn2">死因図鑑を見る</button>
+    </div>
   </section>
 
-  <!-- クリア -->
+  <!-- クリア／隠しエンド -->
   <section id="clear" class="card hidden">
-    <p class="clear-head">人生完走</p>
-    <h2 class="clear-title">是非に及ばず</h2>
-    <p>燃え盛る本能寺の奥で、信長は静かにその生涯を閉じた。享年49。<br>尾張の大うつけと呼ばれた少年は、天下統一の目前まで駆け抜けた。史実どおりの最期、お見事です。</p>
-    <p class="poem">人間五十年、下天のうちをくらぶれば、<br>夢幻のごとくなり</p>
-    <p class="rank" id="cRankP">あなたは <b id="cRank">…</b> 人目の完走者</p>
-    <p class="reached" id="cDeaths"></p>
-    <button class="primary" id="shareClear">完走をXでシェア</button>
-    <button class="ghost" id="againBtn">もう一度生まれる</button>
+    <div class="scene" id="cScene"></div>
+    <div class="body">
+      <p class="clear-head" id="cHead"></p>
+      <h2 class="clear-title" id="cTitle"></h2>
+      <p id="cText"></p>
+      <p class="poem" id="cPoem"></p>
+      <p class="rank" id="cRankP"><span id="cRankPre"></span><b id="cRank"></b><span id="cRankPost"></span></p>
+      <p class="meta" id="cMeta"></p>
+      <div class="row">
+        <button class="primary" id="shareClear">Xでシェア</button>
+        <button class="ghost" id="imgClear">認定証画像</button>
+      </div>
+      <button class="ghost" id="againBtn">もう一度生まれる</button>
+      <button class="ghost" id="zukanBtn3">死因図鑑を見る</button>
+    </div>
+  </section>
+
+  <!-- 死因図鑑 -->
+  <section id="zukan" class="card hidden">
+    <div class="body">
+      <div class="zk-head"><h2>死因図鑑</h2><span id="zkCount"></span></div>
+      <div class="bar"><div id="zkBar"></div></div>
+      <div class="zk-grid" id="zkGrid"></div>
+      <div class="zk-detail hidden" id="zkDetail"></div>
+      <button class="primary" id="zkBack">タイトルへ戻る</button>
+    </div>
   </section>
 
   <footer><a href="../">ほかの診断・アプリを見る</a></footer>
@@ -164,12 +246,15 @@
 <script>
 const APP_TITLE = '織田信長の一生クイズ';
 const HASHTAGS = ['信長の一生クイズ'];
+const SITE = 'tonmatolab.github.io/apps';
+const SECRET_NEED = 10; // 隠しエンドの解放に必要な死因の数
 
-// ===== 全員のカウント（counter-api。失敗しても遊べるようにしている） =====
+// ===== 全員のカウント（counter-api。失敗しても遊べる） =====
 const COUNTER = {
   base: 'https://tonmatolab-counter.tonmatolab.workers.dev',
   play: 'nobunaga-play',
   clear: 'nobunaga-clear',
+  secret: 'nobunaga-secret',
 };
 async function api(path, method = 'GET') {
   if (!COUNTER.base.startsWith('http')) return null;
@@ -187,50 +272,51 @@ async function counter(action, key) {
   return j && typeof j[key] === 'number' ? j[key] : null;
 }
 
-// 端末ごとの記録（挑戦・完走は1端末1回だけ全体カウントに加算）
+// ===== 端末ごとの記録 =====
 const store = {
   get(k) { try { return localStorage.getItem('nobu_' + k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem('nobu_' + k, v); } catch {} },
+  del(k) { try { localStorage.removeItem('nobu_' + k); } catch {} },
 };
 
 // ===== ステージ =====
 // a: [選択肢, 正解?, 死因, 死に様の説明]
 const STAGES = [
   {
-    year: '1534年', age: '0歳', title: '尾張に生まれる',
+    year: '1534年', age: '0歳', title: '尾張に生まれる', scene: 'birth',
     narr: '尾張の戦国大名・織田信秀の嫡男として、元気な男の子が誕生した。のちの織田信長である。',
     q: 'この赤子につけられた幼名は？',
     ok: '「吉法師（きっぽうし）」としてすくすく育つ。',
     a: [
       ['吉法師', true],
-      ['竹千代', false, '名前ちがい', 'それは徳川家康の幼名。名前を取り違えられた赤子は、なぜか三河の松平家へ。そのまま家康として育ちかけたところで、本物の家康とダブルブッキングが発覚し、歴史から静かに消された。'],
-      ['日吉丸', false, '草履の温めすぎ', 'それは豊臣秀吉の幼名とされる名前。農家の子として育ち、来る日も来る日も誰かの草履を懐で温め続けた。気づけば低温やけどだらけで一生を終えていた。'],
+      ['竹千代', false, '名前ちがい', 'それは徳川家康の幼名。名前を取り違えられた赤子は、なぜか三河の松平家へ。家康として育ちかけたところで本物とのダブルブッキングが発覚し、歴史から静かに消された。'],
+      ['三法師', false, '孫あつかい', 'それは信長の孫の幼名。生まれた瞬間から「孫」として扱われ、0歳にして跡継ぎ争いに担ぎ出される。おしゃぶりをくわえたまま会議に出席させられ、心労で倒れた。'],
     ],
   },
   {
-    year: '1540年代', age: '少年期', title: '尾張の大うつけ',
+    year: '1540年代', age: '少年期', title: '尾張の大うつけ', scene: 'utsuke',
     narr: '若き吉法師は城下を遊び歩き、家臣たちから「大うつけ（大バカ者）」と呼ばれていた。',
     q: '町を歩くときの、あなたの格好は？',
     ok: '奇抜な格好で町を練り歩き、立派に「大うつけ」の評判を獲得した。',
     a: [
       ['着物の袖を外し、腰に瓢箪や火打袋をジャラジャラぶら下げる', true],
-      ['きちんとした正装で、礼儀正しく挨拶して回る', false, 'まじめすぎ', '非の打ちどころのない若殿として家臣に愛され、事件ひとつ起こさず平和に過ごした。享年82の大往生。ただし歴史の教科書には一行も載らなかった。'],
-      ['最新流行の南蛮甲冑でキメる', false, '時代の先取りすぎ', 'ポルトガル人が種子島に来るのは1543年。まだ日本にない甲冑を探して堺まで走り続け、そのまま行方不明になった。'],
+      ['頭を丸めて墨染めの衣をまとい、お経を唱えて歩く', false, '出家まちがい', 'あまりに堂に入った僧侶っぷりに、通りがかりの和尚が「ぜひ弟子に」とスカウト。そのまま寺に入り、修行一筋の静かな一生を送った。'],
+      ['南蛮渡来の甲冑とマントでキメる', false, '時代の先取りすぎ', 'ポルトガル人が種子島に来るのは1543年。まだ日本にない南蛮甲冑を探して堺まで走り続け、そのまま行方不明になった。'],
     ],
   },
   {
-    year: '1552年', age: '18歳', title: '父の葬儀',
+    year: '1552年', age: '18歳', title: '父の葬儀', scene: 'funeral',
     narr: '父・信秀が急死。盛大な葬儀が営まれ、いよいよ喪主の焼香の番がやってきた。',
     q: 'どうする？',
     ok: '抹香をわしづかみにして位牌へ投げつけた。参列者はドン引きしたが、これぞ信長。',
     a: [
       ['抹香をわしづかみにして、位牌に投げつける', true],
-      ['丁寧に焼香し、静かに涙を流す', false, 'キャラ崩壊', 'まさかの常識人ムーブに「うつけキャラはどうした」と家中が大混乱。キャラ迷子のまま、弟・信勝に家督をあっさり奪われた。'],
+      ['位牌の前で刀を抜き、「父上の仇はどこだ！」と叫ぶ', false, '乱心', '父は病死である。存在しない仇を探して寺中を走り回った結果、「若殿ご乱心」として座敷牢へ。家督は弟・信勝のものになった。'],
       ['葬儀をサボって川で泳ぐ', false, '寒中水泳', '季節は春先。冷たい川に飛び込んだ結果、ひどい風邪をこじらせた。父の葬儀の翌週、自分の葬儀が同じ寺で開かれた。'],
     ],
   },
   {
-    year: '1553年', age: '19歳', title: '「マムシ」との対面',
+    year: '1553年', age: '19歳', title: '「マムシ」との対面', scene: 'mamushi',
     narr: '妻・濃姫の父であり、「美濃のマムシ」と恐れられる斎藤道三が、正徳寺で会いたいと言ってきた。道三は物陰から、あなたの様子をこっそり見ているらしい。',
     q: 'どうやって会う？',
     ok: '道中はうつけ姿、会見では見事な正装。道三は「わが息子たちは、あのうつけの門前に馬をつなぐことになろう」とつぶやいた。',
@@ -241,7 +327,7 @@ const STAGES = [
     ],
   },
   {
-    year: '1560年', age: '26歳', title: '桶狭間の戦い',
+    year: '1560年', age: '26歳', title: '桶狭間の戦い', scene: 'okehazama',
     narr: '駿河の今川義元が、約2万5千の大軍で尾張へ攻め込んできた。織田軍はわずか数千。家臣たちは真っ青だ。',
     q: 'どうする？',
     ok: '「人間五十年…」と敦盛を舞って出陣。豪雨にまぎれて本陣を急襲し、義元を討ち取った！',
@@ -252,8 +338,8 @@ const STAGES = [
     ],
   },
   {
-    year: '1567年', age: '33歳', title: '美濃を手に入れる',
-    narr: '美濃を攻め取り、稲葉山城を「岐阜城」と改名。この頃から、ある言葉を刻んだハンコを使い始めた。',
+    year: '1567年', age: '33歳', title: '美濃を手に入れる', scene: 'seal',
+    narr: '美濃を攻め取り、稲葉山城を「岐阜城」と改名。この頃から、ある四文字を刻んだハンコを使い始めた。',
     q: 'ハンコに刻んだ言葉は？',
     ok: '「天下布武」の印を掲げ、天下取りへの道を歩み始めた。',
     a: [
@@ -263,40 +349,40 @@ const STAGES = [
     ],
   },
   {
-    year: '1570年', age: '36歳', title: '金ヶ崎の退き口',
-    narr: '越前の朝倉を攻めていたところ、妹・お市の夫である浅井長政が裏切った！ 前は朝倉、後ろは浅井。挟み撃ちが迫る。',
+    year: '1570年', age: '36歳', title: '金ヶ崎の退き口', scene: 'kanegasaki',
+    narr: '越前の朝倉を攻めていたところ、陣中に妹・お市から「両端をしばった小豆の袋」が届いた。どうやら、お市の夫・浅井長政が裏切ったらしい。',
     q: 'どうする？',
-    ok: '全軍を置いて即撤退！ わずかな供回りで京へ逃げ帰り、命拾いした。',
+    ok: '「袋のネズミ」の意味を悟り、全軍を置いて即撤退。わずかな供回りで京へ逃げ帰った。',
     a: [
       ['すべてを捨てて、すぐさま京へ撤退する', true],
       ['「長政が裏切るはずがない」と進軍を続ける', false, '義弟を信じすぎ', '信じる心は美しかったが、浅井軍は本当に来た。前後からきれいに挟まれ、越前の山中で散った。'],
-      ['長政に心をこめた手紙を書いて説得する', false, '筆まめ', '名文をしたためている間に挟み撃ちが完成。返事は矢文で、それも大量に届いた。'],
+      ['小豆でお汁粉を作り、兵の士気を上げる', false, '甘い見通し', 'お汁粉は大好評で士気は最高潮。しかし煮込んでいる間に挟み撃ちが完成した。見通しも小豆も甘かった。'],
     ],
   },
   {
-    year: '1575年', age: '41歳', title: '長篠の戦い',
+    year: '1575年', age: '41歳', title: '長篠の戦い', scene: 'nagashino',
     narr: '戦国最強と名高い武田の騎馬隊が攻めてくる。徳川家康とともに、設楽原で迎え撃つことになった。',
     q: 'どう戦う？',
     ok: '馬防柵を築き、大量の鉄砲で迎え撃って武田軍に大勝した。',
     a: [
       ['馬をふせぐ柵を築き、大量の鉄砲で迎え撃つ', true],
-      ['こちらも騎馬隊で正面から突撃する', false, '本場の騎馬に完敗', '騎馬で武田に挑むのは、本場の職人に料理で勝負を挑むようなもの。気づいたときには馬ごと吹き飛ばされていた。'],
+      ['こちらも騎馬隊を集め、正面から突撃する', false, '本場の騎馬に完敗', '騎馬で武田に挑むのは、本場の職人に料理で勝負を挑むようなもの。気づいたときには馬ごと吹き飛ばされていた。'],
       ['念のため雨乞いをして神頼みする', false, '火縄びしょぬれ', '願いが天に通じて、まさかの大雨。火縄が湿って鉄砲は全部不発。騎馬隊だけが元気いっぱいに突っこんできた。'],
     ],
   },
   {
-    year: '1576年', age: '42歳', title: '安土城を築く',
+    year: '1576年', age: '42歳', title: '安土城を築く', scene: 'azuchi',
     narr: '琵琶湖のほとりに、天下に力を見せつける新しい城を築くことにした。',
     q: 'この城の目玉は？',
     ok: '金や朱に彩られた、高くそびえる豪華な天主（天守）が完成。宣教師たちも驚いた。',
     a: [
       ['金や朱で彩られた、そびえ立つ豪華な天主', true],
-      ['敵を惑わす、落とし穴だらけの巨大迷路', false, '城内で遭難', '完成した迷路は完璧すぎた。設計者の信長自身も出口がわからなくなり、城内で行方不明に。翌年、落とし穴の底で発見された。'],
-      ['予算節約のため、天主なしの平屋の城', false, 'なめられ死', '「信長、金欠らしいぞ」という噂が全国に広まり、各地の大名が一斉に反旗をひるがえした。平屋は守りにくかった。'],
+      ['石垣を使わない、土と木だけの質素な城', false, '土の城', '「天下人の城が土まんじゅう」と全国で笑いものに。梅雨の長雨で城ごと溶け、本人も泥に埋もれた。'],
+      ['敵を惑わす、落とし穴だらけの巨大迷路', false, '城内で遭難', '完成した迷路は完璧すぎた。設計した本人も出口がわからなくなり、城内で行方不明に。翌年、落とし穴の底で発見された。'],
     ],
   },
   {
-    year: '1582年', age: '48歳', title: '本能寺の変',
+    year: '1582年', age: '48歳', title: '本能寺の変', scene: 'honnoji',
     narr: '6月2日の早朝、京の本能寺。外が騒がしい。家臣が駆けこんできた。「明智光秀さまの謀反でございます！」',
     q: 'あなたのひとことは？',
     a: [
@@ -304,44 +390,263 @@ const STAGES = [
       ['「光秀、話せばわかる」', false, '歴史の修正力', '史実と違うセリフを言ったため、なぜか説得に成功してしまった。だが歴史の修正力が働き、翌朝、本能寺の階段で足をすべらせた。'],
       ['「サル（秀吉）を呼べ！」', false, '援軍まにあわず', '秀吉は遠く中国地方で毛利と戦っていた。ものすごい速さで引き返してきた（中国大返し）が、着いたのはすべてが終わった後だった。'],
     ],
+    secret: ['寺の床下の抜け穴から脱出し、南蛮船で海を渡る', 'secret'],
   },
 ];
 
+const DEATHS = [];
+STAGES.forEach((s, si) => s.a.forEach((o, ai) => {
+  if (!o[1]) DEATHS.push({ id: `${si}-${ai}`, si, cause: o[2], text: o[3] });
+}));
+
+// ===== 絵（SVG） =====
+const SKY = {
+  title: ['#14121f', '#3b2340', '#2a1c22', '#0d0b10'],
+  birth: ['#fbe3b4', '#f0a56f', '#c47d52', '#5a3624'],
+  utsuke: ['#cfe4ea', '#f3ead6', '#9bb3a0', '#4f6650'],
+  funeral: ['#bdb8af', '#e6dfd2', '#8e877c', '#4a443d'],
+  mamushi: ['#efd9ab', '#f6ecd3', '#b59a6b', '#5c4a30'],
+  okehazama: ['#3e4954', '#7a858f', '#3a434b', '#1c2126'],
+  seal: ['#f2d68c', '#f8edd1', '#c9a65a', '#6d5426'],
+  kanegasaki: ['#b8643c', '#f0bd86', '#7c4a32', '#3a2318'],
+  nagashino: ['#d9cfb8', '#f1e8d3', '#9a8f78', '#4e4636'],
+  azuchi: ['#8fbccd', '#e9f0ea', '#6b8f96', '#2f4448'],
+  honnoji: ['#140c16', '#5e1a10', '#2b1410', '#0c0707'],
+  grave: ['#1b1f26', '#3a404a', '#262a31', '#111317'],
+  clear: ['#0f0c18', '#4a2030', '#2a1a20', '#0b080c'],
+  secret: ['#f6d79a', '#9cc7d8', '#3f7890', '#1d3e4e'],
+};
+
+function sceneSVG(kind) {
+  const [t, b, far, near] = SKY[kind];
+  const id = 'g' + Math.random().toString(36).slice(2, 8);
+  const ink = near;
+  let m = '';
+  const ground = `<path d="M0 196 Q100 182 200 192 T400 186 V220 H0Z" fill="${near}"/>`;
+  const mountains = `<path d="M0 172 L55 128 L100 152 L165 100 L225 150 L285 116 L345 150 L400 128 V220 H0Z" fill="${far}" opacity=".75"/>`;
+  switch (kind) {
+    case 'title':
+      m = moon(310, 58, 30) + mountains + castle(150, 196, ink, '#d4a94e') + ground + crest(330, 160, 26, '#d4a94e', near);
+      break;
+    case 'birth':
+      m = `<circle cx="200" cy="150" r="58" fill="#fff4d6" opacity=".9"/>` + mountains + ground + crest(200, 150, 34, '#b3261e', '#fff4d6');
+      break;
+    case 'utsuke':
+      m = mountains + ground + houses(ink) + gourd(200, 120, '#6d4a22');
+      break;
+    case 'funeral':
+      m = mountains + ground + ihai(170, 196, ink) + incense(255, 196, ink);
+      break;
+    case 'mamushi':
+      m = mountains + temple(140, 186, ink, 0.7) + ground + snake('#3d5a2a');
+      break;
+    case 'okehazama':
+      m = mountains + ground + fan(200, 132) + rain();
+      break;
+    case 'seal':
+      m = mountains + ground + seal(200, 110);
+      break;
+    case 'kanegasaki':
+      m = mountains + ground + bag(200, 120);
+      break;
+    case 'nagashino':
+      m = mountains + ground + fence(ink) + smoke();
+      break;
+    case 'azuchi':
+      m = `<rect y="160" width="400" height="60" fill="#5d8a9a" opacity=".5"/>` + castle(200, 176, ink, '#d4a94e') + `<path d="M0 182 Q100 176 200 184 T400 180 V220 H0Z" fill="#3f6f80" opacity=".8"/>` + waves();
+      break;
+    case 'honnoji':
+      m = flames(200, 150, 1.05) + temple(200, 192, '#0c0707', 1.15) + ground + flames(40, 206, .35) + flames(360, 206, .35);
+      break;
+    case 'grave':
+      m = mountains + ground + grave(200, 196) + incense(270, 196, '#0d0f12');
+      break;
+    case 'clear':
+      m = moon(200, 70, 36) + mountains + ground + crest(200, 150, 30, '#d4a94e', '#1a1218');
+      break;
+    case 'secret':
+      m = `<circle cx="300" cy="80" r="26" fill="#fff1c9"/>` + `<rect y="150" width="400" height="70" fill="${far}"/>` + ship(190, 166, near) + waves();
+      break;
+  }
+  return `<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${t}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>
+    <rect width="400" height="220" fill="url(#${id})"/>${m}</svg>`;
+}
+
+function moon(x, y, r) { return `<circle cx="${x}" cy="${y}" r="${r}" fill="#f3e3b5"/><circle cx="${x}" cy="${y}" r="${r + 14}" fill="#f3e3b5" opacity=".12"/>`; }
+function crest(cx, cy, s, fill, inner) {
+  let p = '';
+  for (let k = 0; k < 5; k++) {
+    const a = (-90 + k * 72) * Math.PI / 180;
+    p += `<circle cx="${cx + Math.cos(a) * s * .55}" cy="${cy + Math.sin(a) * s * .55}" r="${s * .5}" fill="${fill}"/>`;
+  }
+  p += `<circle cx="${cx}" cy="${cy}" r="${s * .5}" fill="${inner}"/>`;
+  for (let k = 0; k < 5; k++) {
+    const a = (-90 + k * 72) * Math.PI / 180;
+    p += `<circle cx="${cx + Math.cos(a) * s * .22}" cy="${cy + Math.sin(a) * s * .22}" r="${s * .13}" fill="${fill}"/>`;
+  }
+  return p + `<circle cx="${cx}" cy="${cy}" r="${s * .08}" fill="${inner}"/>`;
+}
+function castle(cx, by, fill, accent) {
+  const poly = (pts) => `<polygon points="${pts.map(([x, y]) => `${cx + x},${by - y}`).join(' ')}" fill="${fill}"/>`;
+  return poly([[-74, 0], [74, 0], [56, 34], [-56, 34]])
+    + `<rect x="${cx - 46}" y="${by - 64}" width="92" height="32" fill="${fill}"/>`
+    + poly([[-64, 60], [64, 60], [40, 76], [-40, 76]])
+    + `<rect x="${cx - 32}" y="${by - 100}" width="64" height="28" fill="${fill}"/>`
+    + poly([[-48, 96], [48, 96], [26, 110], [-26, 110]])
+    + `<rect x="${cx - 20}" y="${by - 132}" width="40" height="26" fill="${accent}"/>`
+    + poly([[-34, 128], [34, 128], [12, 144], [-12, 144]])
+    + `<rect x="${cx - 4}" y="${by - 154}" width="8" height="12" fill="${accent}"/>`
+    + `<rect x="${cx - 30}" y="${by - 56}" width="10" height="12" fill="${accent}" opacity=".8"/><rect x="${cx + 20}" y="${by - 56}" width="10" height="12" fill="${accent}" opacity=".8"/>`;
+}
+function temple(cx, by, fill, s) {
+  const w = 110 * s, h = 46 * s;
+  return `<rect x="${cx - w * .72}" y="${by - h}" width="${w * 1.44}" height="${h}" fill="${fill}"/>
+    <path d="M${cx - w} ${by - h} Q${cx - w * .55} ${by - h - 8 * s} ${cx - w * .38} ${by - h - 40 * s} L${cx + w * .38} ${by - h - 40 * s} Q${cx + w * .55} ${by - h - 8 * s} ${cx + w} ${by - h} Z" fill="${fill}"/>`;
+}
+function flames(cx, by, s) {
+  const f = (x, h, w, c) => `<path d="M${x - w} ${by} Q${x - w * 1.3} ${by - h * .55} ${x} ${by - h} Q${x + w * 1.3} ${by - h * .55} ${x + w} ${by} Z" fill="${c}"/>`;
+  return [[-120, 110, 34], [-60, 150, 40], [0, 175, 46], [70, 140, 40], [130, 100, 32]]
+    .map(([dx, h, w]) => f(cx + dx * s, h * s, w * s, '#e0483e') + f(cx + dx * s, h * s * .7, w * s * .6, '#f2a33a') + f(cx + dx * s, h * s * .4, w * s * .3, '#ffe08a')).join('');
+}
+function houses(fill) {
+  let p = '';
+  [[40, 30], [95, 24], [300, 28], [355, 34]].forEach(([x, h]) => {
+    p += `<rect x="${x - 22}" y="${192 - h}" width="44" height="${h}" fill="${fill}"/><polygon points="${x - 30},${192 - h} ${x + 30},${192 - h} ${x},${170 - h}" fill="${fill}"/>`;
+  });
+  return p;
+}
+function gourd(cx, cy, fill) {
+  return `<path d="M${cx} ${cy - 62} q6 -12 18 -10" stroke="${fill}" stroke-width="4" fill="none"/>
+    <circle cx="${cx}" cy="${cy - 30}" r="22" fill="${fill}"/><circle cx="${cx}" cy="${cy + 18}" r="34" fill="${fill}"/>
+    <rect x="${cx - 10}" y="${cy - 12}" width="20" height="10" fill="${fill}"/>
+    <rect x="${cx - 18}" y="${cy - 10}" width="36" height="6" rx="3" fill="#b3261e"/>
+    <circle cx="${cx - 12}" cy="${cy + 6}" r="8" fill="#fff" opacity=".18"/>`;
+}
+function ihai(cx, by, fill) {
+  return `<rect x="${cx - 34}" y="${by - 16}" width="68" height="16" fill="${fill}"/>
+    <path d="M${cx - 20} ${by - 16} V${by - 110} Q${cx} ${by - 132} ${cx + 20} ${by - 110} V${by - 16} Z" fill="${fill}"/>
+    <rect x="${cx - 4}" y="${by - 100}" width="8" height="70" fill="#a07a2c" opacity=".8"/>`;
+}
+function incense(cx, by, fill) {
+  return `<path d="M${cx - 24} ${by - 18} Q${cx} ${by + 2} ${cx + 24} ${by - 18} Z" fill="${fill}"/>
+    <path d="M${cx} ${by - 22} C${cx - 14} ${by - 50}, ${cx + 14} ${by - 70}, ${cx} ${by - 100} S${cx + 10} ${by - 140} ${cx - 6} ${by - 160}" stroke="#ffffff" stroke-opacity=".55" stroke-width="3" fill="none"/>`;
+}
+function snake(fill) {
+  return `<path d="M70 200 C120 150, 160 214, 214 178 S300 140, 322 168" stroke="${fill}" stroke-width="16" stroke-linecap="round" fill="none"/>
+    <ellipse cx="330" cy="166" rx="16" ry="11" fill="${fill}"/><circle cx="334" cy="161" r="2.6" fill="#f2c94c"/>
+    <path d="M345 168 l14 -2 m-14 2 l13 6" stroke="#b3261e" stroke-width="2.5"/>`;
+}
+function fan(cx, cy) {
+  const px = cx, py = cy + 56, r = 118;
+  const pt = (deg, rr) => [px + Math.cos(deg * Math.PI / 180) * rr, py + Math.sin(deg * Math.PI / 180) * rr];
+  const [sx, sy] = pt(-152, r), [ex, ey] = pt(-28, r);
+  const [isx, isy] = pt(-152, 34), [iex, iey] = pt(-28, 34);
+  let ribs = '';
+  for (let d = -152; d <= -28; d += 15.5) { const [x, y] = pt(d, r); ribs += `<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="#7a5a1c" stroke-width="1.2"/>`; }
+  return `<path d="M${isx} ${isy} L${sx} ${sy} A${r} ${r} 0 0 1 ${ex} ${ey} L${iex} ${iey} A34 34 0 0 0 ${isx} ${isy} Z" fill="#e2b24a"/>${ribs}
+    <circle cx="${px}" cy="${py - 78}" r="24" fill="#b3261e"/><circle cx="${px}" cy="${py}" r="6" fill="#3a2a10"/>`;
+}
+function rain() {
+  let p = '';
+  for (let i = 0; i < 46; i++) {
+    const x = (i * 53) % 420, y = (i * 37) % 210;
+    p += `<line x1="${x}" y1="${y}" x2="${x - 10}" y2="${y + 26}" stroke="#ffffff" stroke-opacity=".35" stroke-width="1.5"/>`;
+  }
+  return p;
+}
+function seal(cx, cy) {
+  return `<g transform="rotate(-7 ${cx} ${cy})"><rect x="${cx - 62}" y="${cy - 62}" width="124" height="124" rx="10" fill="#fbf3dc" stroke="#b3261e" stroke-width="9"/>
+    <text x="${cx}" y="${cy - 8}" text-anchor="middle" font-family="Shippori Mincho, serif" font-weight="800" font-size="46" fill="#b3261e">天下</text>
+    <text x="${cx}" y="${cy + 46}" text-anchor="middle" font-family="Shippori Mincho, serif" font-weight="800" font-size="46" fill="#b3261e">布武</text></g>`;
+}
+function bag(cx, cy) {
+  return `<path d="M${cx - 76} ${cy} Q${cx - 64} ${cy - 44} ${cx} ${cy - 46} Q${cx + 64} ${cy - 44} ${cx + 76} ${cy} Q${cx + 64} ${cy + 44} ${cx} ${cy + 46} Q${cx - 64} ${cy + 44} ${cx - 76} ${cy} Z" fill="#c9a26b"/>
+    <path d="M${cx - 76} ${cy} L${cx - 104} ${cy - 20} L${cx - 100} ${cy + 20} Z M${cx + 76} ${cy} L${cx + 104} ${cy - 20} L${cx + 100} ${cy + 20} Z" fill="#c9a26b"/>
+    <rect x="${cx - 82}" y="${cy - 12}" width="10" height="24" rx="3" fill="#b3261e"/><rect x="${cx + 72}" y="${cy - 12}" width="10" height="24" rx="3" fill="#b3261e"/>
+    <path d="M${cx - 40} ${cy - 20} Q${cx} ${cy - 30} ${cx + 40} ${cy - 20}" stroke="#fff" stroke-opacity=".3" stroke-width="5" fill="none"/>`;
+}
+function fence(fill) {
+  let p = '';
+  for (let x = 30; x <= 250; x += 28) p += `<rect x="${x}" y="128" width="7" height="68" fill="${fill}"/>`;
+  return p + `<rect x="24" y="142" width="236" height="6" fill="${fill}"/><rect x="24" y="166" width="236" height="6" fill="${fill}"/>`;
+}
+function smoke() {
+  return [[290, 140, 22], [318, 124, 26], [350, 140, 20], [270, 120, 16], [336, 104, 18]]
+    .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffffff" opacity=".75"/>`).join('')
+    + `<path d="M262 150 l-30 8" stroke="#2b2620" stroke-width="5"/>`;
+}
+function waves() {
+  let p = '';
+  for (let i = 0; i < 7; i++) { const x = 20 + i * 60, y = 198 + (i % 2) * 8; p += `<path d="M${x} ${y} q12 -8 24 0 q12 8 24 0" stroke="#ffffff" stroke-opacity=".5" stroke-width="2" fill="none"/>`; }
+  return p;
+}
+function grave(cx, by) {
+  return `<rect x="${cx - 70}" y="${by - 22}" width="140" height="22" fill="#5d636c"/>
+    <rect x="${cx - 52}" y="${by - 40}" width="104" height="20" fill="#727a84"/>
+    <path d="M${cx - 34} ${by - 40} V${by - 146} Q${cx} ${by - 166} ${cx + 34} ${by - 146} V${by - 40} Z" fill="#8c949e"/>
+    <text x="${cx}" y="${by - 118}" text-anchor="middle" font-family="Shippori Mincho, serif" font-weight="800" font-size="22" fill="#3a3f46">信</text>
+    <text x="${cx}" y="${by - 92}" text-anchor="middle" font-family="Shippori Mincho, serif" font-weight="800" font-size="22" fill="#3a3f46">長</text>
+    <text x="${cx}" y="${by - 66}" text-anchor="middle" font-family="Shippori Mincho, serif" font-weight="800" font-size="22" fill="#3a3f46">之墓</text>`;
+}
+function ship(cx, by, fill) {
+  return `<path d="M${cx - 90} ${by - 18} L${cx + 96} ${by - 18} L${cx + 70} ${by + 8} L${cx - 70} ${by + 8} Z" fill="${fill}"/>
+    <line x1="${cx - 30}" y1="${by - 18}" x2="${cx - 30}" y2="${by - 120}" stroke="${fill}" stroke-width="5"/>
+    <line x1="${cx + 30}" y1="${by - 18}" x2="${cx + 30}" y2="${by - 100}" stroke="${fill}" stroke-width="5"/>
+    <path d="M${cx - 66} ${by - 110} Q${cx - 30} ${by - 96} ${cx + 6} ${by - 110} V${by - 40} Q${cx - 30} ${by - 30} ${cx - 66} ${by - 40} Z" fill="#fbf3dc"/>
+    <path d="M${cx + 2} ${by - 92} Q${cx + 30} ${by - 80} ${cx + 58} ${by - 92} V${by - 40} Q${cx + 30} ${by - 30} ${cx + 2} ${by - 40} Z" fill="#fbf3dc"/>
+    <path d="M${cx - 40} ${by - 86} h20 M${cx - 30} ${by - 96} v20" stroke="#b3261e" stroke-width="4"/>`;
+}
+
 // ===== ゲーム進行 =====
 const $ = (id) => document.getElementById(id);
+const NUMS = ['壱', '弐', '参', '肆'];
 let idx = 0;
 let lastDeath = null;
+let lastEnd = 'clear';
 
 function show(id) {
-  ['title', 'stage', 'dead', 'clear'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
+  ['title', 'stage', 'dead', 'clear', 'zukan'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
   window.scrollTo(0, 0);
 }
 
-function deaths() { return Number(store.get('deaths') || 0); }
+const deaths = () => Number(store.get('deaths') || 0);
+function zukan() { try { return new Set(JSON.parse(store.get('zukan') || '[]')); } catch { return new Set(); } }
+function addZukan(id) { const z = zukan(); const isNew = !z.has(id); z.add(id); store.set('zukan', JSON.stringify([...z])); return isNew; }
+const zCount = () => [...zukan()].filter((id) => id !== 'secret').length;
 
-function renderMyDeaths() {
-  const d = deaths();
-  $('myDeaths').textContent = d ? `あなたの死亡回数：${d}回` : '';
+function renderTitle() {
+  const p = store.get('progress');
+  const pi = p === null ? -1 : Number(p);
+  if (pi > 0 && pi < STAGES.length) {
+    $('resumeBtn').textContent = `続きから：${STAGES[pi].title}`;
+    $('resumeBtn').classList.remove('hidden');
+    $('startBtn').className = 'ghost';
+    $('startBtn').textContent = '最初から生まれる';
+  } else {
+    $('resumeBtn').classList.add('hidden');
+    $('startBtn').className = 'primary';
+    $('startBtn').textContent = '生まれる';
+  }
+  const parts = [];
+  if (deaths()) parts.push(`死亡回数 ${deaths()}回`);
+  parts.push(`死因図鑑 ${zCount()} / ${DEATHS.length}`);
+  $('myStats').textContent = parts.join('　｜　');
+  show('title');
 }
 
 async function loadStats() {
-  const [p, c] = await Promise.all([counter('get', COUNTER.play), counter('get', COUNTER.clear)]);
-  const play = p ?? 0, clear = c ?? 0;
-  if (p === null && c === null) {
-    ['sPlay', 'sClear', 'sRate'].forEach((id) => ($(id).textContent = '-'));
-    return;
-  }
+  const j = await api(`/get?keys=${COUNTER.play},${COUNTER.clear}`);
+  if (!j) { ['sPlay', 'sClear', 'sRate'].forEach((id) => ($(id).textContent = '-')); return; }
+  const play = j[COUNTER.play] || 0, clear = j[COUNTER.clear] || 0;
   $('sPlay').textContent = play.toLocaleString();
   $('sClear').textContent = clear.toLocaleString();
   $('sRate').textContent = play ? `${((clear / play) * 100).toFixed(1)}%` : '-';
 }
 
-function start() {
-  if (!store.get('played')) {
-    store.set('played', '1');
-    counter('hit', COUNTER.play);
-  }
-  idx = 0;
+function start(from = 0) {
+  if (!store.get('played')) { store.set('played', '1'); counter('hit', COUNTER.play); }
+  idx = from;
   $('okMsg').classList.add('hidden');
   renderStage();
   show('stage');
@@ -349,68 +654,263 @@ function start() {
 
 function shuffle(arr) {
   const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
 
 function renderStage() {
   const s = STAGES[idx];
+  store.set('progress', String(idx));
+  $('stScene').innerHTML = sceneSVG(s.scene);
   $('tl').innerHTML = STAGES.map((_, i) => `<i class="${i < idx ? 'done' : i === idx ? 'now' : ''}"></i>`).join('');
   $('stYear').textContent = s.year;
   $('stAge').textContent = s.age;
   $('stTitle').textContent = s.title;
   $('stNarr').textContent = s.narr;
   $('stQ').textContent = s.q;
+  const opts = shuffle(s.a.map((o, ai) => ({ o, ai })));
+  if (s.secret && zCount() >= SECRET_NEED) opts.push({ o: s.secret, ai: 'secret' });
   const box = $('opts');
   box.innerHTML = '';
-  shuffle(s.a).forEach((opt) => {
+  opts.forEach(({ o, ai }, n) => {
     const b = document.createElement('button');
-    b.className = 'opt';
-    b.textContent = opt[0];
-    b.onclick = () => choose(opt);
+    b.className = 'opt' + (ai === 'secret' ? ' secret' : '');
+    b.innerHTML = `<span class="no">${ai === 'secret' ? '✦' : NUMS[n]}</span><span></span>`;
+    b.lastChild.textContent = o[0];
+    b.onclick = () => choose(o, ai);
     box.appendChild(b);
   });
+  $('stage').style.animation = 'none'; void $('stage').offsetWidth; $('stage').style.animation = '';
   window.scrollTo(0, 0);
 }
 
-function choose([, correct, cause, text]) {
+function choose(o, ai) {
   const s = STAGES[idx];
-  if (!correct) return die(s, cause, text);
+  if (o[1] === 'secret') return finish('secret');
+  if (!o[1]) return die(s, `${idx}-${ai}`, o[2], o[3]);
   idx++;
-  if (idx >= STAGES.length) return clear();
+  if (idx >= STAGES.length) return finish('clear');
   $('okMsg').textContent = `✔ ${s.ok}`;
   $('okMsg').classList.remove('hidden');
   renderStage();
 }
 
-function die(s, cause, text) {
+function die(s, id, cause, text) {
   store.set('deaths', String(deaths() + 1));
+  store.del('progress');
+  const isNew = addZukan(id);
   lastDeath = { stage: s, cause, n: idx + 1 };
   $('dYear').textContent = `${s.year}・${s.title}`;
   $('dCause').textContent = cause;
+  $('dNew').classList.toggle('hidden', !isNew);
   $('dText').textContent = text;
-  $('dReached').textContent = `到達：${idx + 1} / ${STAGES.length} ステージ　｜　あなたの死亡回数：${deaths()}回`;
+  const unlock = zCount() >= SECRET_NEED && isNew && zCount() === SECRET_NEED ? '\n✦ 図鑑が半分埋まった。本能寺で何かが起きるかもしれない…' : '';
+  $('dMeta').textContent = `到達 ${idx + 1} / ${STAGES.length}　｜　死亡 ${deaths()}回　｜　図鑑 ${zCount()} / ${DEATHS.length}${unlock}`;
+  $('dMeta').style.whiteSpace = 'pre-line';
+  const f = $('flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  setTimeout(() => f.classList.remove('on'), 700);
+  if (navigator.vibrate) navigator.vibrate(180);
   show('dead');
 }
 
-async function clear() {
+const ENDS = {
+  clear: {
+    scene: 'clear', head: '人生完走', title: '是非に及ばず',
+    text: '燃え盛る本能寺の奥で、信長は静かにその生涯を閉じた。享年49。尾張の大うつけと呼ばれた少年は、天下統一の目前まで駆け抜けた。史実どおりの最期、お見事です。',
+    poem: '人間五十年、下天のうちをくらぶれば、夢幻のごとくなり',
+    key: 'clear', rankKey: 'rank', pre: 'あなたは', post: '人目の完走者',
+  },
+  secret: {
+    scene: 'secret', head: '隠しエンド', title: 'IF：南蛮王ノブナガ',
+    text: '床下の抜け穴をくぐり抜け、堺から南蛮船に飛び乗った信長。たどり着いたローマで教皇に謁見し、なぜかピザ職人として大成功する。看板メニュー「マルゲリータ・ノブナーガ」は、今もどこかで焼かれているという。',
+    poem: '天下より、窯の火を制した男',
+    key: 'secret', rankKey: 'srank', pre: 'あなたは', post: '人目の到達者',
+  },
+};
+
+async function finish(kind) {
+  lastEnd = kind;
+  const e = ENDS[kind];
+  store.del('progress');
+  if (kind === 'secret') addZukan('secret');
+  $('cScene').innerHTML = sceneSVG(e.scene);
+  $('cHead').textContent = e.head;
+  $('cTitle').textContent = e.title;
+  $('cText').textContent = e.text;
+  $('cPoem').textContent = e.poem;
+  $('cRankPre').textContent = e.pre;
+  $('cRankPost').textContent = e.post;
+  $('cMeta').textContent = `死亡回数 ${deaths()}回　｜　図鑑 ${zCount()} / ${DEATHS.length}`;
+  $('imgClear').textContent = kind === 'secret' ? '到達証画像' : '認定証画像';
   show('clear');
-  $('cDeaths').textContent = `完走までの死亡回数：${deaths()}回`;
-  let rank = store.get('rank');
+  let rank = store.get(e.rankKey);
+  $('cRank').textContent = rank ? Number(rank).toLocaleString() : '…';
+  $('cRankP').classList.remove('hidden');
   if (!rank) {
-    $('cRank').textContent = '…';
-    const v = await counter('hit', COUNTER.clear);
-    if (v !== null) { rank = String(v); store.set('rank', rank); }
+    const v = await counter('hit', COUNTER[e.key]);
+    if (v !== null) { rank = String(v); store.set(e.rankKey, rank); }
   }
   $('cRank').textContent = rank ? Number(rank).toLocaleString() : '';
   $('cRankP').classList.toggle('hidden', !rank);
 }
 
-function pageUrl() { return location.origin + location.pathname; }
+// ===== 死因図鑑 =====
+function renderZukan() {
+  const z = zukan();
+  const n = zCount();
+  $('zkCount').textContent = `${n} / ${DEATHS.length}`;
+  $('zkBar').style.width = `${(n / DEATHS.length) * 100}%`;
+  const grid = $('zkGrid');
+  grid.innerHTML = '';
+  $('zkDetail').classList.add('hidden');
+  DEATHS.forEach((d) => {
+    const got = z.has(d.id);
+    const s = STAGES[d.si];
+    const el = document.createElement('div');
+    el.className = 'zk ' + (got ? 'got' : 'locked');
+    el.innerHTML = `<small></small><b></b>`;
+    el.firstChild.textContent = `${s.year}・${s.title}`;
+    el.lastChild.textContent = got ? d.cause : '？？？';
+    if (got) el.onclick = () => {
+      $('zkDetail').textContent = `【${d.cause}】${d.text}`;
+      $('zkDetail').classList.remove('hidden');
+      $('zkDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    grid.appendChild(el);
+  });
+  const sec = document.createElement('div');
+  sec.className = 'zk secret ' + (z.has('secret') ? 'got' : 'locked');
+  sec.innerHTML = `<small>隠しエンド</small><b>${z.has('secret') ? 'IF：南蛮王ノブナガ' : '？？？'}</b>`;
+  if (z.has('secret')) sec.onclick = () => { $('zkDetail').textContent = ENDS.secret.text; $('zkDetail').classList.remove('hidden'); };
+  grid.appendChild(sec);
+  show('zukan');
+}
 
+// ===== 画像（1080x1350） =====
+const F = '"Shippori Mincho", serif';
+async function fontsReady() {
+  await Promise.all([document.fonts.load(`800 60px ${F}`), document.fonts.load(`400 40px ${F}`)]);
+}
+function canvas() {
+  const c = document.createElement('canvas');
+  c.width = 1080; c.height = 1350;
+  return [c, c.getContext('2d')];
+}
+function wrapText(g, text, x, y, maxW, lh) {
+  let line = '', n = 0;
+  for (const ch of text) {
+    if (g.measureText(line + ch).width > maxW) { g.fillText(line, x, y + n * lh); n++; line = ch; } else line += ch;
+  }
+  g.fillText(line, x, y + n * lh);
+  return n + 1;
+}
+function rrect(g, x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+
+async function graveImage() {
+  await fontsReady();
+  const d = lastDeath;
+  const [c, g] = canvas();
+  const W = 1080, H = 1350;
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#1b1f26'); bg.addColorStop(1, '#0d0f12');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.textAlign = 'center';
+  g.fillStyle = '#e0483e'; g.font = `800 120px ${F}`;
+  g.fillText('無 念', W / 2, 190);
+  g.fillStyle = '#b5a690'; g.font = `400 40px ${F}`;
+  g.fillText(`${d.stage.year}・${d.stage.title}`, W / 2, 268);
+  // 墓石
+  const cx = W / 2, top = 330, bottom = 1010, sw = 300;
+  g.fillStyle = '#5d636c'; g.fillRect(cx - 250, bottom, 500, 60);
+  g.fillStyle = '#727a84'; g.fillRect(cx - 200, bottom - 50, 400, 54);
+  const st = g.createLinearGradient(cx - sw / 2, 0, cx + sw / 2, 0);
+  st.addColorStop(0, '#9aa2ac'); st.addColorStop(1, '#737b85');
+  g.fillStyle = st;
+  g.beginPath();
+  g.moveTo(cx - sw / 2, bottom - 50); g.lineTo(cx - sw / 2, top + 60);
+  g.quadraticCurveTo(cx, top - 30, cx + sw / 2, top + 60); g.lineTo(cx + sw / 2, bottom - 50); g.closePath(); g.fill();
+  // 縦書きの死因
+  const chars = [...d.cause].map((ch) => (ch === 'ー' ? '｜' : ch));
+  const size = Math.min(100, Math.floor(560 / chars.length));
+  g.fillStyle = '#2f343b'; g.font = `800 ${size}px ${F}`;
+  const startY = top + 90 + (560 - size * chars.length) / 2 + size * .85;
+  chars.forEach((ch, i) => g.fillText(ch, cx, startY + i * size));
+  g.fillStyle = '#3a3f46'; g.font = `700 30px ${F}`;
+  g.fillText('死因', cx, top + 70);
+  // 煙
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 5;
+  g.beginPath(); g.moveTo(cx + 330, bottom + 20);
+  g.bezierCurveTo(cx + 290, bottom - 120, cx + 370, bottom - 220, cx + 330, bottom - 360); g.stroke();
+  g.fillStyle = '#2b2f36'; g.beginPath(); g.ellipse(cx + 330, bottom + 30, 60, 22, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#f1e8d8'; g.font = `400 38px ${F}`;
+  g.fillText(`到達 ${d.n}/${STAGES.length}　死亡 ${deaths()}回　図鑑 ${zCount()}/${DEATHS.length}`, W / 2, 1160);
+  g.fillStyle = '#d4a94e'; g.font = `800 44px ${F}`;
+  g.fillText(APP_TITLE, W / 2, 1250);
+  g.fillStyle = '#b5a690'; g.font = `400 28px ${F}`;
+  g.fillText(SITE, W / 2, 1296);
+  return c;
+}
+
+async function certImage() {
+  await fontsReady();
+  const e = ENDS[lastEnd];
+  const rank = store.get(e.rankKey);
+  const [c, g] = canvas();
+  const W = 1080, H = 1350;
+  g.fillStyle = '#f4ecd8'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#a07a2c'; g.lineWidth = 10; g.strokeRect(50, 50, W - 100, H - 100);
+  g.strokeStyle = '#b3261e'; g.lineWidth = 3; g.strokeRect(78, 78, W - 156, H - 156);
+  g.textAlign = 'center';
+  // 家紋
+  const cx = W / 2, cy = 220, s = 70;
+  g.fillStyle = '#1f1a16';
+  for (let k = 0; k < 5; k++) { const a = (-90 + k * 72) * Math.PI / 180; g.beginPath(); g.arc(cx + Math.cos(a) * s * .55, cy + Math.sin(a) * s * .55, s * .5, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = '#f4ecd8'; g.beginPath(); g.arc(cx, cy, s * .5, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#1f1a16';
+  for (let k = 0; k < 5; k++) { const a = (-90 + k * 72) * Math.PI / 180; g.beginPath(); g.arc(cx + Math.cos(a) * s * .22, cy + Math.sin(a) * s * .22, s * .13, 0, Math.PI * 2); g.fill(); }
+  const secret = lastEnd === 'secret';
+  g.fillStyle = '#1f1a16'; g.font = `800 96px ${F}`;
+  g.fillText(secret ? '南蛮王到達証' : '天下人認定証', W / 2, 420);
+  g.fillStyle = '#b3261e'; g.font = `800 64px ${F}`;
+  g.fillText(rank ? `第 ${Number(rank).toLocaleString()} 号` : '', W / 2, 520);
+  g.fillStyle = '#3a312a'; g.font = `400 44px ${F}`;
+  const lines = secret
+    ? ['右の者', '本能寺より南蛮へ渡り', '歴史にない道を切り拓いたことを', 'ここに認める']
+    : ['右の者', '織田信長の生涯を', '史実どおりに完走したことを', 'ここに認める'];
+  lines.forEach((l, i) => g.fillText(l, W / 2, 640 + i * 76));
+  g.fillStyle = '#6f6254'; g.font = `400 36px ${F}`;
+  g.fillText(`死亡回数 ${deaths()}回　｜　死因図鑑 ${zCount()} / ${DEATHS.length}`, W / 2, 990);
+  // 朱印
+  g.save(); g.translate(820, 1100); g.rotate(-0.12);
+  g.strokeStyle = '#b3261e'; g.lineWidth = 10; rrect(g, -90, -90, 180, 180, 14); g.stroke();
+  g.fillStyle = '#b3261e'; g.font = `800 64px ${F}`;
+  g.fillText('天下', 0, -10); g.fillText('布武', 0, 66);
+  g.restore();
+  g.textAlign = 'left';
+  g.fillStyle = '#a07a2c'; g.font = `800 40px ${F}`;
+  g.fillText(APP_TITLE, 130, 1150);
+  g.fillStyle = '#6f6254'; g.font = `400 28px ${F}`;
+  g.fillText(SITE, 130, 1200);
+  return c;
+}
+
+async function saveCanvas(c, name) {
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const file = new File([blob], name, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ===== シェア =====
+function pageUrl() { return location.origin + location.pathname; }
 function tweet(text) {
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);
@@ -419,19 +919,30 @@ function tweet(text) {
   window.open(u.toString(), '_blank', 'noopener');
 }
 
-$('startBtn').onclick = start;
-$('retryBtn').onclick = start;
-$('againBtn').onclick = start;
+// ===== イベント =====
+$('startBtn').onclick = () => start(0);
+$('resumeBtn').onclick = () => start(Number(store.get('progress') || 0));
+$('retryBtn').onclick = () => start(0);
+$('againBtn').onclick = () => start(0);
+['zukanBtn', 'zukanBtn2', 'zukanBtn3'].forEach((id) => ($(id).onclick = renderZukan));
+$('zkBack').onclick = () => { renderTitle(); loadStats(); };
 $('shareDead').onclick = () => {
   const d = lastDeath;
-  tweet(`織田信長として生きたら、${d.stage.year}「${d.stage.title}」で死にました💀\n死因：${d.cause}\n（${d.n}/${STAGES.length}ステージ・通算${deaths()}回死亡）\n\nあなたは本能寺までたどり着ける？`);
+  tweet(`織田信長として生きたら、${d.stage.year}「${d.stage.title}」で死にました💀\n死因：${d.cause}\n（到達${d.n}/${STAGES.length}・通算${deaths()}回死亡・死因図鑑${zCount()}/${DEATHS.length}）\n\nあなたは本能寺までたどり着ける？`);
 };
 $('shareClear').onclick = () => {
-  const r = store.get('rank');
-  tweet(`織田信長の一生を完走しました🔥${r ? `\n${Number(r).toLocaleString()}人目の完走者！` : ''}\n（死亡回数：${deaths()}回）\n\n是非に及ばず。あなたは完走できる？`);
+  const e = ENDS[lastEnd];
+  const r = store.get(e.rankKey);
+  const rankText = r ? `\n${Number(r).toLocaleString()}${e.post}！` : '';
+  tweet(lastEnd === 'secret'
+    ? `織田信長の一生クイズで隠しエンド「${e.title}」に到達しました✦${rankText}\n（死亡${deaths()}回・死因図鑑${zCount()}/${DEATHS.length}）\n\n本能寺の先に、まさかの展開が…`
+    : `織田信長の一生を完走しました🔥${rankText}\n（死亡${deaths()}回・死因図鑑${zCount()}/${DEATHS.length}）\n\n是非に及ばず。あなたは完走できる？`);
 };
+$('imgDead').onclick = async () => saveCanvas(await graveImage(), 'nobunaga-grave.png');
+$('imgClear').onclick = async () => saveCanvas(await certImage(), `nobunaga-${lastEnd}.png`);
 
-renderMyDeaths();
+document.querySelectorAll('[data-scene]').forEach((el) => (el.innerHTML = sceneSVG(el.dataset.scene)));
+renderTitle();
 loadStats();
 </script>
 </body>

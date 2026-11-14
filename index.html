@@ -9,35 +9,74 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #f7f4ef; --card: #fff; --ink: #2b2622; --sub: #857a70; --line: #e7e0d6; --accent: #b5652d; }
+  :root { --bg: #f7f4ef; --card: #fff; --ink: #2b2622; --sub: #857a70; --line: #e7e0d6; --accent: #b5652d; --chip: #f2ece3; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1b1917; --card: #262320; --ink: #f2ece5; --sub: #b0a597; --line: #3a3530; --accent: #e08a4a; }
+    :root { --bg: #1b1917; --card: #262320; --ink: #f2ece5; --sub: #b0a597; --line: #3a3530; --accent: #e08a4a; --chip: #312d29; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: "M PLUS Rounded 1c", system-ui, sans-serif; }
   main { max-width: 560px; margin: 0 auto; padding: 32px 16px 48px; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  p { color: var(--sub); margin: 0 0 24px; }
+  p { color: var(--sub); margin: 0 0 16px; }
+  .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 20px; }
+  .totals div { background: var(--chip); border-radius: 14px; padding: 10px; text-align: center; line-height: 1.35; }
+  .totals b { display: block; font-size: 1.4rem; }
+  .totals span { font-size: .75rem; color: var(--sub); font-weight: 700; }
   a.app { display: flex; gap: 16px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; color: var(--ink); text-decoration: none; }
   a.app:hover { border-color: var(--accent); }
   .icon { font-size: 2.2rem; }
   .name { font-weight: 800; }
   .desc { color: var(--sub); font-size: .9rem; }
+  .plays { display: inline-block; margin-top: 4px; font-size: .78rem; font-weight: 700; color: var(--accent); min-height: 1.2em; }
 </style>
 </head>
 <body>
 <main>
   <h1>無料診断・ミニアプリ集</h1>
   <p>1分で遊べる診断やツールを公開しています。</p>
-  <!-- 新しいアプリはここに1ブロック追加（新しいものを上に） -->
-  <a class="app" href="nobunaga-isshou/">
-    <div class="icon">🔥</div>
-    <div><div class="name">織田信長の一生クイズ</div><div class="desc">1問ミスで即死。本能寺まで完走できるか？</div></div>
+  <div class="totals">
+    <div><b id="views">…</b><span>👀 このページの閲覧数</span></div>
+    <div><b id="players">…</b><span>🎮 遊んだ人の合計</span></div>
+  </div>
+  <!-- 新しいアプリはここに1ブロック追加（新しいものを上に）。data-key はカウンターのキー -->
+  <a class="app" href="iai/" data-key="iai-play">
+    <div class="icon">⚔️</div>
+    <div><div class="name">居合斬り 反射神経テスト</div><div class="desc">「斬！」の瞬間にタップ。あなたは全国上位何%？</div><span class="plays"></span></div>
   </a>
-  <a class="app" href="coffee-shindan/">
+  <a class="app" href="nobunaga-isshou/" data-key="nobunaga-play">
+    <div class="icon">🔥</div>
+    <div><div class="name">織田信長の一生クイズ</div><div class="desc">1問ミスで即死。本能寺まで完走できるか？</div><span class="plays"></span></div>
+  </a>
+  <a class="app" href="coffee-shindan/" data-key="coffee-play">
     <div class="icon">☕</div>
-    <div><div class="name">コーヒータイプ診断</div><div class="desc">8問であなたにぴったりの1杯がわかる</div></div>
+    <div><div class="name">コーヒータイプ診断</div><div class="desc">8問であなたにぴったりの1杯がわかる</div><span class="plays"></span></div>
   </a>
 </main>
+<script>
+const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+const fmt = (n) => n.toLocaleString();
+async function call(path, method = 'GET') {
+  try {
+    const r = await fetch(API + path, { method, signal: AbortSignal.timeout(8000) });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+(async () => {
+  // 閲覧数：開かれるたびに+1
+  const v = await call('/hit/portal-view', 'POST');
+  document.getElementById('views').textContent = v ? fmt(v.value) : '-';
+  // 各アプリの遊んだ人数（各アプリ側で1端末1回だけ数えている）
+  const cards = [...document.querySelectorAll('a.app[data-key]')];
+  const j = await call('/get?keys=' + cards.map((c) => c.dataset.key).join(','));
+  if (!j) { document.getElementById('players').textContent = '-'; return; }
+  let total = 0;
+  cards.forEach((c) => {
+    const n = j[c.dataset.key] || 0;
+    total += n;
+    c.querySelector('.plays').textContent = `👤 ${fmt(n)}人が遊びました`;
+  });
+  document.getElementById('players').textContent = fmt(total);
+})();
+</script>
 </body>
 </html>

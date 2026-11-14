@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>居合斬り｜反射神経テスト</title>
+<meta name="description" content="「斬！」の合図で即タップ。3人の剣士と居合で勝負する反射神経テスト。あなたの反応速度は全国で何位？">
+<meta property="og:type" content="website">
+<meta property="og:title" content="居合斬り⚔️ 反射神経テスト">
+<meta property="og:description" content="合図の瞬間に斬れ。あなたの反応速度は全国上位何%？">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/iai/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/iai/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Shippori+Mincho:wght@800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0b0a;
+    --paper: #17130f;
+    --ink: #f6ece0;
+    --sub: #a8988a;
+    --red: #e3342a;
+    --red-dark: #8f1b14;
+    --gold: #f0b429;
+    --line: #2e2620;
+    --chip: #211b16;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
+    line-height: 1.7;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+    overscroll-behavior: none;
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 14px 16px 40px; }
+  .hidden { display: none !important; }
+  .display { font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
+  .mincho { font-family: "Shippori Mincho", serif; font-weight: 800; }
+
+  /* 絵 */
+  .art {
+    position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden;
+    background: radial-gradient(circle at 50% 35%, #3a2a22, #0d0b0a 70%);
+  }
+  .art img, .art svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 55%, rgba(0, 0, 0, .85)); pointer-events: none; }
+  .art .cap { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; z-index: 2; }
+
+  /* タイトル */
+  .kicker { display: inline-block; background: var(--red); color: #fff; font-weight: 800; font-size: .8rem; padding: 1px 12px; border-radius: 99px; }
+  h1 { font-size: 3rem; line-height: 1.1; margin: 6px 0 0; letter-spacing: .06em; text-shadow: 0 4px 0 #000; }
+  .lead { color: var(--sub); margin: 16px 0 12px; font-size: .95rem; }
+  .rules { display: grid; gap: 6px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .rules li { background: var(--chip); border-radius: 12px; padding: 8px 12px; font-size: .9rem; }
+  .rules b { color: var(--gold); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { background: var(--chip); border-radius: 14px; padding: 10px; text-align: center; line-height: 1.3; }
+  .stat b { display: block; font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.4rem; }
+  .stat span { font-size: .72rem; color: var(--sub); font-weight: 700; }
+
+  button {
+    display: block; width: 100%;
+    font: inherit; font-weight: 800; font-size: 1.05rem;
+    border: none; border-radius: 16px; padding: 15px 16px; margin-top: 12px;
+    cursor: pointer; transition: transform .06s ease, box-shadow .06s ease;
+  }
+  .primary { background: var(--red); color: #fff; box-shadow: 0 5px 0 var(--red-dark); font-size: 1.2rem; }
+  .primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--red-dark); }
+  .ghost { background: var(--chip); color: var(--ink); box-shadow: 0 4px 0 #000; }
+  .ghost:active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
+  .x { background: #fff; color: #000; box-shadow: 0 5px 0 #888; }
+  .x:active { transform: translateY(4px); box-shadow: 0 1px 0 #888; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* 対決画面（全画面） */
+  #duel {
+    position: fixed; inset: 0; z-index: 20; background: #000; touch-action: none; cursor: pointer;
+    display: flex; flex-direction: column;
+  }
+  #duel .art { flex: 1; border-radius: 0; aspect-ratio: auto; }
+  #duel .art img, #duel .art svg { object-position: center 30%; }
+  .hud { position: absolute; top: 0; left: 0; right: 0; z-index: 5; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .foe { background: rgba(0, 0, 0, .6); border-radius: 12px; padding: 4px 12px; font-size: .85rem; }
+  .foe b { color: var(--gold); }
+  .pips { display: flex; gap: 6px; }
+  .pips i { width: 12px; height: 12px; border-radius: 50%; background: #333; border: 2px solid #666; }
+  .pips i.win { background: var(--gold); border-color: var(--gold); }
+  .pips i.lose { background: var(--red); border-color: var(--red); }
+  .call {
+    position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); z-index: 6; text-align: center;
+    pointer-events: none;
+  }
+  .call .big { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 3.2rem; letter-spacing: .3em; margin-left: .3em; text-shadow: 0 0 20px #000, 0 4px 0 #000; }
+  .call .small { font-size: .95rem; color: #ddd; text-shadow: 0 2px 6px #000; }
+  .call.go .big { font-size: 9rem; color: #fff; letter-spacing: 0; margin: 0; text-shadow: 0 0 30px var(--red), 0 0 60px var(--red), 0 6px 0 #000; animation: slam .18s ease-out both; }
+  .call.res { background: radial-gradient(ellipse at center, rgba(0, 0, 0, .7), transparent 70%); padding: 40px 0; }
+  .call.res .big { font-size: 2.6rem; letter-spacing: .05em; margin: 0; }
+  .call.res .ms { font-family: "Dela Gothic One", sans-serif; font-size: 3.4rem; line-height: 1.1; text-shadow: 0 4px 0 #000, 0 0 20px #000; }
+  .call.res .ms small { font-size: 1.4rem; }
+  @keyframes slam { from { transform: scale(2.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .whiteout { position: absolute; inset: 0; z-index: 4; background: #fff; opacity: 0; pointer-events: none; }
+  .whiteout.on { animation: white .35s ease-out; }
+  @keyframes white { 0% { opacity: .95; } 100% { opacity: 0; } }
+  .slash { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; }
+  .slash.on { animation: slash .5s ease-out; }
+  @keyframes slash { 0% { opacity: 1; clip-path: inset(0 100% 0 0); } 30% { opacity: 1; clip-path: inset(0 0 0 0); } 100% { opacity: 0; } }
+  .shake { animation: shake .3s linear; }
+  @keyframes shake { 0%, 100% { transform: none; } 25% { transform: translate(6px, -4px); } 50% { transform: translate(-6px, 4px); } 75% { transform: translate(4px, 2px); } }
+  .tapnote { position: absolute; left: 0; right: 0; bottom: 20px; z-index: 6; text-align: center; color: #bbb; font-size: .85rem; pointer-events: none; }
+
+  /* 結果 */
+  .result-top { text-align: center; padding: 6px 0 0; }
+  .rank-label { color: var(--sub); font-weight: 700; margin: 0; }
+  .rank { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 3rem; line-height: 1.2; margin: 0; color: var(--gold); text-shadow: 0 4px 0 #000; }
+  .avg { font-family: "Dela Gothic One", sans-serif; font-size: 2.6rem; margin: 6px 0 0; line-height: 1.1; }
+  .avg small { font-size: 1.1rem; color: var(--sub); }
+  .pct { display: inline-block; margin-top: 10px; background: var(--red); color: #fff; font-weight: 800; padding: 4px 16px; border-radius: 99px; }
+  .rounds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 0; }
+  .rounds div { background: var(--chip); border-radius: 12px; padding: 8px 4px; text-align: center; line-height: 1.35; font-size: .8rem; color: var(--sub); }
+  .rounds b { display: block; font-size: 1.05rem; color: var(--ink); }
+  .rounds .w b { color: var(--gold); }
+  .rounds .l b { color: var(--red); }
+  .comment { background: var(--chip); border-radius: 14px; padding: 12px 14px; margin: 14px 0 0; font-size: .92rem; }
+  .best { text-align: center; color: var(--sub); font-size: .85rem; margin: 12px 0 0; font-weight: 700; }
+
+  footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <!-- タイトル -->
+  <section id="title">
+    <div class="art" id="titleArt"></div>
+    <div style="margin-top:16px">
+      <span class="kicker">反射神経テスト</span>
+      <h1 class="mincho">居合斬り</h1>
+      <p class="lead">「斬！」の合図が出た瞬間に画面をタップ。相手より速く斬れば勝ち。3人の剣士を倒せるか？</p>
+      <ul class="rules">
+        <li>⚔️ 合図の前に触ると <b>お手つきで負け</b></li>
+        <li>⏱ 相手より遅いと <b>斬られて負け</b></li>
+        <li>🏆 3人の平均タイムで <b>称号と全国順位</b>が決まる</li>
+      </ul>
+      <div class="stats">
+        <div class="stat"><b id="sPlays">…</b><span>挑戦した人</span></div>
+        <div class="stat"><b id="sBest">-</b><span>あなたの最速</span></div>
+      </div>
+      <button class="primary" id="startBtn">勝負する</button>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="result" class="hidden">
+    <div class="art" id="resultArt"></div>
+    <div class="result-top">
+      <p class="rank-label" style="margin-top:14px">あなたの称号</p>
+      <p class="rank" id="rRank"></p>
+      <p class="avg"><span id="rAvg"></span><small> ミリ秒（平均）</small></p>
+      <span class="pct hidden" id="rPct"></span>
+    </div>
+    <div class="rounds" id="rRounds"></div>
+    <p class="comment" id="rComment"></p>
+    <p class="best" id="rBest"></p>
+    <button class="primary" id="againBtn">もう一度勝負</button>
+    <div class="row">
+      <button class="x" id="shareBtn">𝕏 でシェア</button>
+      <button class="ghost" id="imgBtn">結果画像</button>
+    </div>
+  </section>
+
+  <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
+</main>
+
+<!-- 対決 -->
+<div id="duel" class="hidden">
+  <div class="art" id="duelArt"></div>
+  <div class="whiteout" id="whiteout"></div>
+  <svg class="slash" id="slash" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M-5 78 L105 18 L105 24 L-5 84 Z" fill="#fff"/><path d="M-5 80 L105 20" stroke="#e3342a" stroke-width=".6"/></svg>
+  <div class="hud"><div class="foe" id="foe"></div><div class="pips" id="pips"></div></div>
+  <div class="call" id="call"></div>
+  <div class="tapnote" id="tapnote">画面のどこをタップしてもOK</div>
+</div>
+
+<script>
+const APP_TITLE = '居合斬り｜反射神経テスト';
+const HASHTAGS = ['居合斬りテスト'];
+const SITE = 'tonmatolab.github.io/apps/iai';
+
+// ===== 相手 =====
+const FOES = [
+  { name: '足軽', speed: 420 },
+  { name: '剣豪', speed: 320 },
+  { name: '剣聖', speed: 250 },
+];
+
+// ===== 称号（平均ミリ秒） =====
+const RANKS = [
+  [180, '神速', 'もはや人間の反応ではない。刀を抜いたことすら誰にも見えなかった。'],
+  [220, '剣聖', '達人の域。相手は自分が斬られたことに3秒遅れて気づいた。'],
+  [260, '剣豪', 'かなりの腕前。道場の看板を背負える速さ。'],
+  [300, '侍', '立派な侍。戦場でも生き残れるだろう。'],
+  [360, '足軽', '人並みの反応。修行あるのみ。'],
+  [Infinity, '町人', '刀より先に、まずは早起きから始めよう。'],
+];
+const rankOf = (ms) => RANKS.find((r) => ms < r[0]);
+
+// ===== 画像（img/ に置いたものを使い、なければ影絵） =====
+const IMAGES = new Set(['ready', 'win', 'lose', 'early']);
+function art(kind) {
+  if (IMAGES.has(kind)) return `<img src="img/${kind}.jpg" alt="">`;
+  return fallbackArt(kind);
+}
+function fallbackArt(kind) {
+  const ink = '#000';
+  const moon = kind === 'lose' ? '#7a1e18' : '#e9dcc4';
+  const samurai = `<g fill="${ink}">
+      <ellipse cx="200" cy="168" rx="38" ry="44"/>
+      <path d="M190 120 q10 -30 20 0 Z"/>
+      <path d="M110 500 Q100 330 140 270 Q170 228 200 226 Q230 228 260 270 Q300 330 290 500 Z"/>
+      <path d="M150 300 Q120 360 150 400 L250 360 Q260 330 240 310 Z"/>
+    </g>`;
+  const katana = kind === 'win'
+    ? `<path d="M40 420 L370 120" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M30 430 L380 110" stroke="#e3342a" stroke-width="2" opacity=".8"/>`
+    : `<path d="M150 380 L320 300" stroke="#cfcfcf" stroke-width="7" stroke-linecap="round"/><path d="M150 380 L190 361" stroke="#3a2a22" stroke-width="10" stroke-linecap="round"/>`;
+  let bamboo = '';
+  for (let i = 0; i < 9; i++) {
+    const x = 20 + i * 46 + (i % 2) * 10;
+    bamboo += `<rect x="${x}" y="0" width="${8 + (i % 3) * 3}" height="500" fill="#1d2a1d" opacity="${.4 + (i % 3) * .15}"/>`;
+  }
+  const fall = kind === 'lose' || kind === 'early';
+  return `<svg viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="500" fill="#0d0b0a"/>
+    <circle cx="200" cy="170" r="120" fill="${moon}" opacity=".9"/>
+    ${bamboo}
+    <g ${fall ? 'transform="rotate(18 200 480)"' : ''}>${samurai}${kind === 'early' ? '' : katana}</g>
+    ${kind === 'early' ? '<path d="M300 120 L360 60" stroke="#cfcfcf" stroke-width="7" stroke-linecap="round"/>' : ''}
+    <rect y="440" width="400" height="60" fill="#000"/>
+  </svg>`;
+}
+
+// ===== 全国カウント（共通 counter-api） =====
+const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+// 平均タイムを25ms刻みの20区間（100ms〜600ms）に分けて記録し、全国順位を出す
+const BUCKETS = 20, B0 = 100, BW = 25;
+const bucketOf = (ms) => Math.max(0, Math.min(BUCKETS - 1, Math.floor((ms - B0) / BW)));
+const bkey = (i) => `iai-b${i}`;
+async function api(path, method = 'GET') {
+  try {
+    const res = await fetch(API + path, { method, signal: AbortSignal.timeout(8000) });
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+async function getDist() {
+  const keys = Array.from({ length: BUCKETS }, (_, i) => bkey(i));
+  const j = await api(`/get?keys=${keys.join(',')}`);
+  return j ? keys.map((k) => j[k] || 0) : null;
+}
+
+// ===== 端末の記録 =====
+const store = {
+  get(k) { try { return localStorage.getItem('iai_' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('iai_' + k, v); } catch {} },
+};
+
+// ===== 効果音（WebAudio） =====
+let ac = null;
+function audio() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch {} return ac; }
+function noise(dur, freq, gain = .5) {
+  const a = audio(); if (!a) return;
+  const buf = a.createBuffer(1, a.sampleRate * dur, a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = .8;
+  const g = a.createGain(); g.gain.value = gain;
+  src.connect(f).connect(g).connect(a.destination); src.start();
+}
+function tone(freq, dur, type = 'sine', gain = .3) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(gain, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + dur);
+  o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + dur);
+}
+const sfx = {
+  go() { tone(880, .25, 'square', .18); },
+  slash() { noise(.35, 3200, .7); },
+  cut() { noise(.6, 600, .6); tone(90, .5, 'sawtooth', .2); },
+  bad() { tone(160, .5, 'sawtooth', .25); },
+};
+
+// ===== 対決の進行 =====
+const $ = (id) => document.getElementById(id);
+let round = 0, results = [], state = 'idle', t0 = 0, waitTimer = null, slowTimer = null;
+
+function setCall(html, cls = '') { $('call').className = 'call ' + cls; $('call').innerHTML = html; }
+function renderPips() {
+  $('pips').innerHTML = FOES.map((_, i) => {
+    const r = results[i];
+    return `<i class="${r ? (r.win ? 'win' : 'lose') : ''}"></i>`;
+  }).join('');
+}
+
+function startGame() {
+  audio();
+  if (!store.get('played')) { store.set('played', '1'); api('/hit/iai-play', 'POST'); }
+  round = 0; results = [];
+  $('duel').classList.remove('hidden');
+  nextRound();
+}
+
+function nextRound() {
+  const foe = FOES[round];
+  $('duelArt').innerHTML = art('ready');
+  $('foe').innerHTML = `第${round + 1}戦　<b>${foe.name}</b>（${foe.speed}ms）`;
+  renderPips();
+  $('tapnote').classList.remove('hidden');
+  state = 'wait';
+  setCall(`<div class="big">構え</div><div class="small">合図を待て…</div>`);
+  const wait = 1600 + Math.random() * 2800;
+  waitTimer = setTimeout(go, wait);
+}
+
+function go() {
+  if (state !== 'wait') return;
+  state = 'go';
+  $('duel').classList.add('shake');
+  setTimeout(() => $('duel').classList.remove('shake'), 300);
+  setCall(`<div class="big">斬</div>`, 'go');
+  sfx.go();
+  if (navigator.vibrate) navigator.vibrate(30);
+  // 合図が実際に描画されたフレームから計測
+  requestAnimationFrame(() => {
+    t0 = performance.now();
+    slowTimer = setTimeout(() => finishRound(null), 1000);
+  });
+}
+
+function onTap(e) {
+  e.preventDefault();
+  if (state === 'wait') {
+    clearTimeout(waitTimer);
+    return finishRound('early');
+  }
+  if (state === 'go' && t0) {
+    const ms = Math.round(performance.now() - t0);
+    clearTimeout(slowTimer);
+    finishRound(ms);
+  }
+}
+
+function finishRound(ms) {
+  if (state !== 'wait' && state !== 'go') return;
+  state = 'show';
+  t0 = 0;
+  $('tapnote').classList.add('hidden');
+  const foe = FOES[round];
+  let r;
+  if (ms === 'early') {
+    r = { win: false, ms: null, why: 'early' };
+    $('duelArt').innerHTML = art('early');
+    sfx.bad();
+    setCall(`<div class="big" style="color:#e3342a">お手つき</div><div class="small">合図の前に動いてしまった…</div>`, 'res');
+  } else if (ms === null || ms > foe.speed) {
+    r = { win: false, ms, why: 'slow' };
+    $('duelArt').innerHTML = art('lose');
+    $('whiteout').classList.remove('on'); void $('whiteout').offsetWidth; $('whiteout').classList.add('on');
+    sfx.cut();
+    if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+    setCall(`<div class="big" style="color:#e3342a">斬られた</div><div class="ms">${ms === null ? '—' : ms}<small>ms</small></div><div class="small">${foe.name}は ${foe.speed}ms</div>`, 'res');
+  } else {
+    r = { win: true, ms, why: 'win' };
+    $('duelArt').innerHTML = art('win');
+    $('slash').classList.remove('on'); void $('slash').offsetWidth; $('slash').classList.add('on');
+    $('whiteout').classList.remove('on'); void $('whiteout').offsetWidth; $('whiteout').classList.add('on');
+    sfx.slash();
+    setCall(`<div class="big" style="color:#f0b429">一閃</div><div class="ms">${ms}<small>ms</small></div><div class="small">${foe.name}（${foe.speed}ms）を斬った！</div>`, 'res');
+  }
+  results.push(r);
+  renderPips();
+  setTimeout(() => {
+    if (!r.win || round === FOES.length - 1) return showResult();
+    round++;
+    nextRound();
+  }, 1700);
+}
+
+async function showResult() {
+  $('duel').classList.add('hidden');
+  state = 'idle';
+  const times = results.filter((r) => r.ms != null).map((r) => r.ms);
+  const allWin = results.length === FOES.length && results.every((r) => r.win);
+  // お手つきは1000ms扱い（称号は平均で決まる）
+  const scored = results.map((r) => (r.ms == null ? 1000 : r.ms));
+  while (scored.length < FOES.length) scored.push(1000);
+  const avg = Math.round(scored.reduce((a, b) => a + b, 0) / scored.length);
+  const [, title, comment] = allWin ? rankOf(avg) : (results.some((r) => r.why === 'early') ? [0, '早とちり', '気合いは十分。ただ、刀を抜くのは合図のあとだ。'] : [0, '修行中', '途中で斬られてしまった。次は最後まで生き残れ。']);
+  const best = Math.min(...times, Number(store.get('best') || Infinity));
+  if (times.length && isFinite(best)) store.set('best', String(best));
+  const plays = Number(store.get('plays') || 0) + 1;
+  store.set('plays', String(plays));
+
+  $('resultArt').innerHTML = art(allWin ? 'win' : results.some((r) => r.why === 'early') ? 'early' : 'lose');
+  $('rRank').textContent = title;
+  $('rAvg').textContent = allWin ? avg : (times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : '—');
+  $('rRounds').innerHTML = FOES.map((f, i) => {
+    const r = results[i];
+    const v = !r ? '—' : r.why === 'early' ? 'お手つき' : r.ms == null ? '時間切れ' : `${r.ms}ms`;
+    return `<div class="${r ? (r.win ? 'w' : 'l') : ''}">${f.name}<b>${v}</b></div>`;
+  }).join('');
+  $('rComment').textContent = comment;
+  $('rBest').textContent = isFinite(best) ? `あなたの最速：${best}ms　｜　挑戦 ${plays}回` : `挑戦 ${plays}回`;
+  $('rPct').classList.add('hidden');
+  lastShare = { title, avg, allWin, results: results.slice() };
+  $('result').classList.remove('hidden');
+  $('title').classList.add('hidden');
+  window.scrollTo(0, 0);
+
+  // 3人抜きした記録だけ全国分布に登録し、上位何%かを出す
+  if (allWin) {
+    const b = bucketOf(avg);
+    await api(`/hit/${bkey(b)}`, 'POST');
+    const dist = await getDist();
+    if (dist) {
+      const total = dist.reduce((a, c) => a + c, 0);
+      const faster = dist.slice(0, b).reduce((a, c) => a + c, 0) + dist[b] / 2;
+      const pct = Math.max(1, Math.round((faster / total) * 100));
+      lastShare.pct = pct;
+      $('rPct').textContent = `全国の完走者で上位 ${pct}%`;
+      $('rPct').classList.remove('hidden');
+    }
+  }
+}
+
+let lastShare = null;
+function share() {
+  const s = lastShare;
+  const line = s.results.map((r) => (r.win ? '⚔️' : r.why === 'early' ? '💦' : '🩸')).join('');
+  const text = s.allWin
+    ? `居合斬りで3人抜き！称号「${s.title}」⚔️\n平均 ${s.avg}ms${s.pct ? `（全国上位${s.pct}%）` : ''}\n${line}\n\nあなたの反射神経は？`
+    : `居合斬りで「${s.title}」でした…\n${line}\n\n剣聖（250ms）を斬れる人いる？`;
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', text);
+  u.searchParams.set('url', location.origin + location.pathname);
+  u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+
+// ===== 結果画像（1080x1350） =====
+async function resultImage() {
+  const F = '"Shippori Mincho", serif', G = '"Dela Gothic One", sans-serif';
+  await Promise.all([document.fonts.load(`800 60px ${F}`), document.fonts.load(`60px ${G}`)]);
+  const s = lastShare;
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+  const g = c.getContext('2d');
+  const W = 1080, H = 1350;
+  const bg = g.createRadialGradient(W / 2, 420, 50, W / 2, 500, 900);
+  bg.addColorStop(0, '#3a2a22'); bg.addColorStop(1, '#0d0b0a');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  // 斬撃
+  g.save(); g.translate(W / 2, 470); g.rotate(-0.5);
+  g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(-700, -6, 1400, 12);
+  g.fillStyle = '#e3342a'; g.fillRect(-700, 10, 1400, 3);
+  g.restore();
+  g.textAlign = 'center';
+  g.fillStyle = '#a8988a'; g.font = `800 44px ${F}`; g.fillText('居合斬り 反射神経テスト', W / 2, 150);
+  g.fillStyle = '#f0b429'; g.font = `800 230px ${F}`; g.fillText(s.title, W / 2, 470);
+  g.fillStyle = '#f6ece0'; g.font = `150px ${G}`;
+  g.fillText(s.allWin ? `${s.avg}` : '—', W / 2, 720);
+  g.font = `48px ${G}`; g.fillStyle = '#a8988a'; g.fillText('ミリ秒（平均）', W / 2, 800);
+  if (s.pct) {
+    g.fillStyle = '#e3342a'; g.beginPath(); g.roundRect(W / 2 - 300, 850, 600, 90, 45); g.fill();
+    g.fillStyle = '#fff'; g.font = `800 46px ${F}`; g.fillText(`全国上位 ${s.pct}%`, W / 2, 912);
+  }
+  FOES.forEach((f, i) => {
+    const r = s.results[i];
+    const x = 230 + i * 310, y = 1040;
+    g.fillStyle = '#211b16'; g.beginPath(); g.roundRect(x - 130, y - 60, 260, 150, 24); g.fill();
+    g.fillStyle = '#a8988a'; g.font = `800 36px ${F}`; g.fillText(f.name, x, y);
+    g.fillStyle = !r ? '#555' : r.win ? '#f0b429' : '#e3342a';
+    g.font = `48px ${G}`;
+    g.fillText(!r ? '—' : r.why === 'early' ? 'お手つき' : r.ms == null ? '時間切れ' : `${r.ms}ms`, x, y + 66);
+  });
+  g.fillStyle = '#a8988a'; g.font = `800 32px ${F}`; g.fillText(SITE, W / 2, 1270);
+  return c;
+}
+async function saveImage() {
+  const c = await resultImage();
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const file = new File([blob], 'iai-result.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ===== 初期化 =====
+async function loadStats() {
+  const j = await api('/get?keys=iai-play');
+  $('sPlays').textContent = j ? (j['iai-play'] || 0).toLocaleString() : '-';
+}
+function renderTitle() {
+  const b = store.get('best');
+  $('sBest').textContent = b ? `${b}ms` : '-';
+  $('titleArt').innerHTML = art('ready');
+  // 対決中に絵がすぐ切り替わるよう先読み
+  IMAGES.forEach((k) => { const i = new Image(); i.src = `img/${k}.jpg`; });
+}
+
+$('duel').addEventListener('pointerdown', onTap);
+$('startBtn').onclick = startGame;
+$('againBtn').onclick = startGame;
+$('shareBtn').onclick = share;
+$('imgBtn').onclick = saveImage;
+renderTitle();
+loadStats();
+</script>
+</body>
+</html>

@@ -79,6 +79,7 @@
   .rec a:hover { border-color: var(--accent); }
   .pr { font-size: .75rem; color: var(--sub); margin-top: 8px; }
   .hidden { display: none; }
+  .play-count { text-align: center; color: var(--sub); font-size: .85rem; margin: 12px 0 0; min-height: 1.4em; }
   footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
   footer a { color: var(--sub); }
 </style>
@@ -91,6 +92,7 @@
     <h1>コーヒータイプ診断</h1>
     <p class="lead">8つの質問に答えるだけ。あなたの性格にぴったりの1杯がわかります。（約1分）</p>
     <button class="primary" id="startBtn">診断をはじめる</button>
+    <p class="play-count" id="playCount"></p>
   </section>
 
   <!-- 質問 -->
@@ -269,6 +271,25 @@ function finish() {
   resultKey = Object.keys(TYPES).reduce((best, k) => (score[k] > score[best] ? k : best));
   renderResult(resultKey);
   history.replaceState(null, '', `?r=${resultKey}`);
+  countPlay();
+}
+
+// ===== 診断した人数（共通 counter-api。1端末1回だけ数える） =====
+const COUNTER_API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+const PLAY_KEY = 'coffee-play';
+function countPlay() {
+  try {
+    if (localStorage.getItem('coffee_played')) return;
+    localStorage.setItem('coffee_played', '1');
+  } catch { return; }
+  fetch(`${COUNTER_API}/hit/${PLAY_KEY}`, { method: 'POST' }).catch(() => {});
+}
+async function loadCount() {
+  try {
+    const j = await fetch(`${COUNTER_API}/get?keys=${PLAY_KEY}`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json());
+    const n = j[PLAY_KEY] || 0;
+    if (n > 0) $('playCount').textContent = `☕ これまでに ${n.toLocaleString()}人 が診断しました`;
+  } catch {}
 }
 
 function amazonUrl(q) {
@@ -394,6 +415,7 @@ $('saveImg').onclick = saveImage;
 // ?r=タイプ でアクセスされたら結果を直接表示
 const r = new URLSearchParams(location.search).get('r');
 if (r && TYPES[r]) { resultKey = r; renderResult(r); }
+loadCount();
 </script>
 </body>
 </html>

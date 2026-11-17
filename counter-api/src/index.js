@@ -6,6 +6,7 @@
 const KEY_RE = /^[a-z0-9-]{1,64}$/;
 const ALLOWED_ORIGINS = [
   'https://tonmatolab.github.io',
+  'https://tonmatolab.tonmatolab.workers.dev',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
 ];

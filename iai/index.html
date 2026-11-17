@@ -120,6 +120,27 @@
   .rank { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 3rem; line-height: 1.2; margin: 0; color: var(--gold); text-shadow: 0 4px 0 #000; }
   .avg { font-family: "Dela Gothic One", sans-serif; font-size: 2.6rem; margin: 6px 0 0; line-height: 1.1; }
   .avg small { font-size: 1.1rem; color: var(--sub); }
+  .nat { margin: 12px 0 0; font-weight: 800; font-size: 1.1rem; }
+  .nat b { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 3rem; color: var(--gold); margin: 0 4px; text-shadow: 0 4px 0 #000; }
+  .nat small { color: var(--sub); font-size: .9rem; }
+  .namebox { margin: 16px 0 0; padding: 14px; border-radius: 16px; background: linear-gradient(135deg, #3a2a10, #211b16); border: 2px solid var(--gold); }
+  .nb-head { margin: 0 0 10px; font-weight: 800; color: var(--gold); text-align: center; }
+  .nb-row { display: flex; gap: 8px; }
+  .nb-row input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--line); background: #0d0b0a; color: var(--ink); }
+  .nb-row input:focus { outline: none; border-color: var(--gold); }
+  .nb-row button { width: auto; margin: 0; padding: 12px 18px; font-size: 1rem; }
+  .nb-row button:disabled { opacity: .5; }
+  .nb-msg { margin: 8px 0 0; font-size: .85rem; text-align: center; color: var(--ink); min-height: 1.2em; }
+  .board { margin: 20px 0 0; }
+  .board h3 { margin: 0 0 8px; font-size: 1rem; text-align: center; }
+  .board ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .board li { display: flex; align-items: center; gap: 10px; background: var(--chip); border-radius: 10px; padding: 7px 12px; font-size: .92rem; }
+  .board li .no { width: 26px; text-align: center; font-family: "Dela Gothic One", sans-serif; color: var(--sub); }
+  .board li .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .board li .ms { font-family: "Dela Gothic One", sans-serif; }
+  .board li.top1 { background: linear-gradient(90deg, #5a4210, var(--chip)); } .board li.top1 .no { color: #ffd34d; }
+  .board li.top2 .no { color: #d9d9d9; } .board li.top3 .no { color: #d08a4a; }
+  .board li.empty { justify-content: center; color: var(--sub); font-size: .85rem; }
   .pct { display: inline-block; margin-top: 10px; background: var(--red); color: #fff; font-weight: 800; padding: 4px 16px; border-radius: 99px; }
   .rounds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 0; }
   .rounds div { background: var(--chip); border-radius: 12px; padding: 8px 4px; text-align: center; line-height: 1.35; font-size: .8rem; color: var(--sub); }
@@ -152,6 +173,7 @@
         <div class="stat"><b id="sBest">-</b><span>あなたの最速</span></div>
       </div>
       <button class="primary" id="startBtn">勝負する</button>
+      <div class="board"><h3>🏆 全国ランキング TOP10</h3><ol id="boardTitle"></ol></div>
     </div>
   </section>
 
@@ -162,7 +184,13 @@
       <p class="rank-label" style="margin-top:14px">あなたの称号</p>
       <p class="rank" id="rRank"></p>
       <p class="avg"><span id="rAvg"></span><small> ミリ秒（平均）</small></p>
+      <div class="nat hidden" id="rNatBox">全国 <b id="rNat"></b>位 <small id="rTotal"></small></div>
       <span class="pct hidden" id="rPct"></span>
+    </div>
+    <div class="namebox hidden" id="nameBox">
+      <p class="nb-head">🏆 トップ10入り！ランキングに名前を残そう</p>
+      <div class="nb-row"><input id="nameInput" maxlength="12" placeholder="名前（12文字まで）" autocomplete="nickname"><button class="primary" id="nameBtn">登録</button></div>
+      <p class="nb-msg" id="nameMsg"></p>
     </div>
     <div class="rounds" id="rRounds"></div>
     <p class="comment" id="rComment"></p>
@@ -172,6 +200,7 @@
       <button class="x" id="shareBtn">𝕏 でシェア</button>
       <button class="ghost" id="imgBtn">結果画像</button>
     </div>
+    <div class="board"><h3>🏆 全国ランキング TOP10</h3><ol id="boardResult"></ol></div>
   </section>
 
   <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
@@ -246,20 +275,32 @@ function fallbackArt(kind) {
 
 // ===== 全国カウント（共通 counter-api） =====
 const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
-// 平均タイムを25ms刻みの20区間（100ms〜600ms）に分けて記録し、全国順位を出す
-const BUCKETS = 20, B0 = 100, BW = 25;
-const bucketOf = (ms) => Math.max(0, Math.min(BUCKETS - 1, Math.floor((ms - B0) / BW)));
-const bkey = (i) => `iai-b${i}`;
-async function api(path, method = 'GET') {
+async function api(path, method = 'GET', data) {
   try {
-    const res = await fetch(API + path, { method, signal: AbortSignal.timeout(8000) });
-    return res.ok ? await res.json() : null;
+    const opt = { method, signal: AbortSignal.timeout(8000) };
+    if (data) { opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(data); }
+    const res = await fetch(API + path, opt);
+    const j = await res.json().catch(() => null);
+    return res.ok ? j : (j && j.error ? { error: j.error } : null);
   } catch { return null; }
 }
-async function getDist() {
-  const keys = Array.from({ length: BUCKETS }, (_, i) => bkey(i));
-  const j = await api(`/get?keys=${keys.join(',')}`);
-  return j ? keys.map((k) => j[k] || 0) : null;
+
+// ===== 全国ランキング（3人抜きした平均タイムで順位を決める） =====
+async function loadBoard(el) {
+  const j = await api('/board?game=iai');
+  if (!j || j.error) { el.innerHTML = '<li class="empty">読み込めませんでした</li>'; return null; }
+  if (!j.top.length) { el.innerHTML = '<li class="empty">まだ誰も3人抜きしていません。一番乗りを狙え！</li>'; return j; }
+  el.innerHTML = '';
+  j.top.forEach((r) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="no"></span><span class="nm"></span><span class="ms"></span>`;
+    li.children[0].textContent = r.rank;
+    li.children[1].textContent = r.name;
+    li.children[2].textContent = `${r.ms}ms`;
+    if (r.rank <= 3) li.className = 'top' + r.rank;
+    el.appendChild(li);
+  });
+  return j;
 }
 
 // ===== 端末の記録 =====
@@ -422,20 +463,50 @@ async function showResult() {
   $('title').classList.add('hidden');
   window.scrollTo(0, 0);
 
-  // 3人抜きした記録だけ全国分布に登録し、上位何%かを出す
+  $('nameBox').classList.add('hidden');
+  $('rNatBox').classList.add('hidden');
+  // 3人抜きした記録だけ全国ランキングに登録して順位を出す
   if (allWin) {
-    const b = bucketOf(avg);
-    await api(`/hit/${bkey(b)}`, 'POST');
-    const dist = await getDist();
-    if (dist) {
-      const total = dist.reduce((a, c) => a + c, 0);
-      const faster = dist.slice(0, b).reduce((a, c) => a + c, 0) + dist[b] / 2;
-      const pct = Math.max(1, Math.round((faster / total) * 100));
-      lastShare.pct = pct;
-      $('rPct').textContent = `全国の完走者で上位 ${pct}%`;
-      $('rPct').classList.remove('hidden');
+    const s = await api('/score', 'POST', { game: 'iai', ms: avg });
+    if (s && !s.error) {
+      const pct = Math.max(1, Math.ceil((s.rank / s.total) * 100));
+      Object.assign(lastShare, { rank: s.rank, total: s.total, pct });
+      lastScore = s;
+      $('rNat').textContent = s.rank.toLocaleString();
+      $('rTotal').textContent = `/ ${s.total.toLocaleString()}人中`;
+      $('rPct').textContent = `全国上位 ${pct}%`;
+      $('rPct').classList.toggle('hidden', s.total < 10);
+      $('rNatBox').classList.remove('hidden');
+      if (s.top10) {
+        $('nameInput').value = store.get('name') || '';
+        $('nameMsg').textContent = '';
+        $('nameBtn').disabled = false;
+        $('nameBox').classList.remove('hidden');
+        document.querySelector('.nb-row').classList.remove('hidden');
+      }
     }
   }
+  loadBoard($('boardResult'));
+}
+
+let lastScore = null;
+async function submitName() {
+  const name = $('nameInput').value.trim();
+  if (!name) { $('nameMsg').textContent = '名前を入力してください'; return; }
+  $('nameBtn').disabled = true;
+  const r = await api('/name', 'POST', { game: 'iai', id: lastScore.id, token: lastScore.token, name });
+  if (r && r.ok) {
+    store.set('name', name);
+    document.querySelector('.nb-row').classList.add('hidden');
+    $('nameMsg').textContent = `「${r.name}」で ${r.rank}位 に登録しました！`;
+    loadBoard($('boardResult'));
+    return;
+  }
+  $('nameBtn').disabled = false;
+  const why = r && r.error;
+  $('nameMsg').textContent = why === 'bad_name' ? 'その名前は使えません。別の名前にしてください'
+    : why === 'not_top' ? '他の人に抜かれて、トップ10から外れてしまいました…'
+    : why === 'already' ? 'すでに登録済みです' : '登録できませんでした。通信状況を確認してください';
 }
 
 let lastShare = null;
@@ -443,7 +514,7 @@ function share() {
   const s = lastShare;
   const line = s.results.map((r) => (r.win ? '⚔️' : r.why === 'early' ? '💦' : '🩸')).join('');
   const text = s.allWin
-    ? `居合斬りで3人抜き！称号「${s.title}」⚔️\n平均 ${s.avg}ms${s.pct ? `（全国上位${s.pct}%）` : ''}\n${line}\n\nあなたの反射神経は？`
+    ? `居合斬りで3人抜き！称号「${s.title}」⚔️\n平均 ${s.avg}ms${s.rank ? `｜全国${s.rank}位（${s.total}人中）` : ''}\n${line}\n\nあなたの反射神経は？`
     : `居合斬りで「${s.title}」でした…\n${line}\n\n剣聖（250ms）を斬れる人いる？`;
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);
@@ -474,9 +545,9 @@ async function resultImage() {
   g.fillStyle = '#f6ece0'; g.font = `150px ${G}`;
   g.fillText(s.allWin ? `${s.avg}` : '—', W / 2, 720);
   g.font = `48px ${G}`; g.fillStyle = '#a8988a'; g.fillText('ミリ秒（平均）', W / 2, 800);
-  if (s.pct) {
-    g.fillStyle = '#e3342a'; g.beginPath(); g.roundRect(W / 2 - 300, 850, 600, 90, 45); g.fill();
-    g.fillStyle = '#fff'; g.font = `800 46px ${F}`; g.fillText(`全国上位 ${s.pct}%`, W / 2, 912);
+  if (s.rank) {
+    g.fillStyle = '#e3342a'; g.beginPath(); g.roundRect(W / 2 - 360, 850, 720, 90, 45); g.fill();
+    g.fillStyle = '#fff'; g.font = `800 46px ${F}`; g.fillText(`全国 ${s.rank}位 / ${s.total}人中（上位${s.pct}%）`, W / 2, 912);
   }
   FOES.forEach((f, i) => {
     const r = s.results[i];
@@ -519,8 +590,11 @@ $('startBtn').onclick = startGame;
 $('againBtn').onclick = startGame;
 $('shareBtn').onclick = share;
 $('imgBtn').onclick = saveImage;
+$('nameBtn').onclick = submitName;
+$('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName(); });
 renderTitle();
 loadStats();
+loadBoard($('boardTitle'));
 </script>
 </body>
 </html>

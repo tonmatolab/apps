@@ -208,7 +208,7 @@
       <p class="kicker">1問ミスで即死!?</p>
       <h1 class="display">織田信長の<br><span class="hl">一生クイズ</span></h1>
       <p class="lead">あなたは織田信長。史実どおりに選んで、本能寺まで生き残れ！ まちがえたら…その場で即死です。</p>
-      <div class="tags"><span>⏱ 約2分</span><span>📝 全10問</span><span>💀 死因は20種類</span></div>
+      <div class="tags"><span>⏱ 約2分</span><span>📝 全16問</span><span>💀 死因は32種類</span></div>
       <div class="stats">
         <div class="stat"><b id="sPlay">…</b><span>挑戦した人</span></div>
         <div class="stat"><b id="sClear">…</b><span>完走した人</span></div>
@@ -291,7 +291,6 @@
 const APP_TITLE = '織田信長の一生クイズ';
 const HASHTAGS = ['信長の一生クイズ'];
 const SITE = 'tonmatolab.github.io/apps';
-const SECRET_NEED = 10; // 隠しエンドの解放に必要な死因の数
 
 // ===== 全員のカウント（counter-api。失敗しても遊べる） =====
 const COUNTER = {
@@ -327,8 +326,19 @@ const store = {
 // a: [選択肢, 正解?, 死因, 死に様の説明]
 const STAGES = [
   {
-    year: '1534年', age: '0歳', title: '尾張に生まれる', scene: 'birth',
-    narr: '尾張の戦国大名・織田信秀の嫡男として、元気な男の子が誕生した。のちの織田信長である。',
+    id: 'born', year: '1534年', age: '0歳', title: '尾張に生まれる', scene: 'birth',
+    narr: '尾張（いまの愛知県西部）の戦国大名の家に、元気な男の子が誕生した。のちに天下を揺るがす、あの男である。',
+    q: 'この赤子の名字は？',
+    ok: '尾張の織田家に生まれた。ここから怒涛の人生が始まる！',
+    a: [
+      ['織田', true],
+      ['徳川', false, '生まれる家まちがい', '徳川家康が生まれるのは9年後である。9年早く来てしまった赤子は、誰にも気づかれないまま三河の空き部屋で待ちぼうけ。そのまま歴史に間に合わなかった。'],
+      ['豊臣', false, '名字の先取り', '豊臣の名字ができるのは約50年後。存在しない名字で出生届を出そうとして役所（のようなところ）で門前払いされ、名無しのまま放浪の旅へ消えた。'],
+    ],
+  },
+  {
+    id: 'birth', year: '1534年', age: '0歳', title: '名前をつける', scene: 'name',
+    narr: '父は尾張の戦国大名・織田信秀。生まれた嫡男に、さっそく幼名がつけられることになった。',
     q: 'この赤子につけられた幼名は？',
     ok: '「吉法師（きっぽうし）」としてすくすく育つ。',
     a: [
@@ -338,7 +348,7 @@ const STAGES = [
     ],
   },
   {
-    year: '1540年代', age: '少年期', title: '尾張の大うつけ', scene: 'utsuke',
+    id: 'utsuke', year: '1540年代', age: '少年期', title: '尾張の大うつけ', scene: 'utsuke',
     narr: '若き吉法師は城下を遊び歩き、家臣たちから「大うつけ（大バカ者）」と呼ばれていた。',
     q: '町を歩くときの、あなたの格好は？',
     ok: '奇抜な格好で町を練り歩き、立派に「大うつけ」の評判を獲得した。',
@@ -349,7 +359,18 @@ const STAGES = [
     ],
   },
   {
-    year: '1552年', age: '18歳', title: '父の葬儀', scene: 'funeral',
+    id: 'wedding', year: '1549年', age: '15歳', title: '政略結婚', scene: 'wedding',
+    narr: '隣の国・美濃から、帰蝶（濃姫）という姫が嫁いでくることになった。戦をやめて手を結ぶための結婚である。',
+    q: '濃姫の父は、あの「美濃のマムシ」。その名は？',
+    ok: '濃姫の父は斎藤道三。とんでもない義父ができた。',
+    a: [
+      ['斎藤道三', true],
+      ['武田信玄', false, '甲斐ちがい', '信玄は甲斐（山梨）の人で、美濃とは関係がない。甲斐までのこのこ挨拶に行ったら「誰じゃ？」と門前払いされ、帰り道の雪山で遭難した。'],
+      ['今川義元', false, '敵の婿養子', '義元を義父と思いこみ、駿河へ婿入りのあいさつに。そのまま今川家の婿として取りこまれ、尾張は戦わずして今川のものになった。'],
+    ],
+  },
+  {
+    id: 'funeral', year: '1552年', age: '18歳', title: '父の葬儀', scene: 'funeral',
     narr: '父・信秀が急死。盛大な葬儀が営まれ、いよいよ喪主の焼香の番がやってきた。',
     q: 'どうする？',
     ok: '抹香をわしづかみにして位牌へ投げつけた。参列者はドン引きしたが、これぞ信長。',
@@ -360,7 +381,7 @@ const STAGES = [
     ],
   },
   {
-    year: '1553年', age: '19歳', title: '「マムシ」との対面', scene: 'mamushi',
+    id: 'mamushi', year: '1553年', age: '19歳', title: '「マムシ」との対面', scene: 'mamushi',
     narr: '妻・濃姫の父であり、「美濃のマムシ」と恐れられる斎藤道三が、正徳寺で会いたいと言ってきた。道三は物陰から、あなたの様子をこっそり見ているらしい。',
     q: 'どうやって会う？',
     ok: '道中はうつけ姿、会見では見事な正装。道三は「わが息子たちは、あのうつけの門前に馬をつなぐことになろう」とつぶやいた。',
@@ -371,7 +392,7 @@ const STAGES = [
     ],
   },
   {
-    year: '1560年', age: '26歳', title: '桶狭間の戦い', scene: 'okehazama',
+    id: 'okehazama', year: '1560年', age: '26歳', title: '桶狭間の戦い', scene: 'okehazama',
     narr: '駿河の今川義元が、約2万5千の大軍で尾張へ攻め込んできた。織田軍はわずか数千。家臣たちは真っ青だ。',
     q: 'どうする？',
     ok: '「人間五十年…」と敦盛を舞って出陣。豪雨にまぎれて本陣を急襲し、義元を討ち取った！',
@@ -382,7 +403,18 @@ const STAGES = [
     ],
   },
   {
-    year: '1567年', age: '33歳', title: '美濃を手に入れる', scene: 'seal',
+    id: 'alliance', year: '1562年', age: '28歳', title: '三河の若殿', scene: 'alliance',
+    narr: '義元が討たれ、今川家から独立した三河の松平元康（のちの徳川家康）。幼いころ織田家の人質だったこともあり、顔なじみだったという話もある。',
+    q: '元康とどう付き合う？',
+    ok: '清洲同盟を結んだ。東を家康に任せ、あなたは西へ向かえるようになった。この同盟は20年続く。',
+    a: [
+      ['同盟を結び、背中を預け合う', true],
+      ['弱っているうちに三河を攻め取る', false, '我慢強さに完敗', '相手は「鳴くまで待とう」の男だった。のらりくらりと粘られて戦は何年も長引き、美濃攻めに使うはずの時間も兵もすべて三河で溶けた。'],
+      ['昔のように人質にして、尾張に連れ戻す', false, '昔の仲でも限度がある', '「元康どの、うちに泊まっていかぬか」と誘ったが、相手はもう一国の主。怒った三河武士が総出で清洲に押し寄せ、尾張は東から崩れた。'],
+    ],
+  },
+  {
+    id: 'seal', year: '1567年', age: '33歳', title: '美濃を手に入れる', scene: 'seal',
     narr: '美濃を攻め取り、稲葉山城を「岐阜城」と改名。この頃から、ある四文字を刻んだハンコを使い始めた。',
     q: 'ハンコに刻んだ言葉は？',
     ok: '「天下布武」の印を掲げ、天下取りへの道を歩み始めた。',
@@ -393,7 +425,18 @@ const STAGES = [
     ],
   },
   {
-    year: '1570年', age: '36歳', title: '金ヶ崎の退き口', scene: 'kanegasaki',
+    id: 'kyoto', year: '1568年', age: '34歳', title: '将軍と上洛', scene: 'kyoto',
+    narr: '足利義昭を奉じて京へのぼり、15代将軍にしてやった。大喜びの義昭が「お礼に副将軍にしてあげる」と言ってきた。',
+    q: 'どうする？',
+    ok: '副将軍の座はあっさり断り、かわりに商業の町・堺や大津、草津を押さえた。肩書きより、お金の流れである。',
+    a: [
+      ['肩書きは断り、かわりに堺・大津・草津をもらう', true],
+      ['ありがたく副将軍になる', false, '将軍の家来', '副将軍とはつまり、将軍の部下。義昭の使い走りとして全国の大名に手紙を届けて回るうち、天下取りのことはすっかり忘れてしまった。'],
+      ['「いっそ自分が将軍になる」と言い出す', false, '家柄の壁', '将軍は源氏の名門の家柄でないとなれないのが当時のお約束。全国の大名が「成り上がりめ」と一斉に京へ攻めのぼり、上洛からわずか3日で都を追われた。'],
+    ],
+  },
+  {
+    id: 'kanegasaki', year: '1570年', age: '36歳', title: '金ヶ崎の退き口', scene: 'kanegasaki',
     narr: '越前の朝倉を攻めていたところ、陣中に妹・お市から「両端をしばった小豆の袋」が届いた。どうやら、お市の夫・浅井長政が裏切ったらしい。',
     q: 'どうする？',
     ok: '「袋のネズミ」の意味を悟り、全軍を置いて即撤退。わずかな供回りで京へ逃げ帰った。',
@@ -404,7 +447,7 @@ const STAGES = [
     ],
   },
   {
-    year: '1575年', age: '41歳', title: '長篠の戦い', scene: 'nagashino',
+    id: 'nagashino', year: '1575年', age: '41歳', title: '長篠の戦い', scene: 'nagashino',
     narr: '戦国最強と名高い武田の騎馬隊が攻めてくる。徳川家康とともに、設楽原で迎え撃つことになった。',
     q: 'どう戦う？',
     ok: '馬防柵を築き、大量の鉄砲で迎え撃って武田軍に大勝した。',
@@ -415,7 +458,7 @@ const STAGES = [
     ],
   },
   {
-    year: '1576年', age: '42歳', title: '安土城を築く', scene: 'azuchi',
+    id: 'azuchi', year: '1576年', age: '42歳', title: '安土城を築く', scene: 'azuchi',
     narr: '琵琶湖のほとりに、天下に力を見せつける新しい城を築くことにした。',
     q: 'この城の目玉は？',
     ok: '金や朱に彩られた、高くそびえる豪華な天主（天守）が完成。宣教師たちも驚いた。',
@@ -426,7 +469,29 @@ const STAGES = [
     ],
   },
   {
-    year: '1582年', age: '48歳', title: '本能寺の変', scene: 'honnoji',
+    id: 'rakuichi', year: '1577年', age: '43歳', title: '安土の城下町', scene: 'rakuichi',
+    narr: '安土城の下に町をつくった。人とお金を集めて、日本一にぎやかな町にしたい。',
+    q: 'どんな決まりをつくる？',
+    ok: '「楽市楽座」で、誰でも自由に商売できる町に。安土は商人であふれかえった。',
+    a: [
+      ['古い特権をなくし、誰でも自由に商売していい町にする', true],
+      ['城下で商売するには、高い許可料を払わせる', false, '閑古鳥', '許可料が高すぎて商人は一人も来なかった。がらんとした城下で、自分で団子屋を開いて客を待ち続けたが、客も来なかった。'],
+      ['天下人の城下なので、町人は立ち入り禁止にする', false, '兵糧ぜめ（自分に）', '町人がいなくなり、米も味噌も手に入らなくなった。豪華な天主のてっぺんで、天下人はひとり腹を空かせて倒れた。'],
+    ],
+  },
+  {
+    id: 'yasuke', year: '1581年', age: '47歳', title: '南蛮からの客人', scene: 'nanban',
+    narr: '宣教師ヴァリニャーノが、アフリカ出身の大柄な男を連れて安土にやってきた。見たことのない肌の色に、京の町は大騒ぎである。',
+    q: 'あなたはどうする？',
+    ok: '「墨を塗っているのでは」と体を洗わせたが本物。すっかり気に入り、「弥助」と名づけて家来にした。',
+    a: [
+      ['本物か体を洗って確かめ、気に入って家来にする', true],
+      ['不吉だと言って、追い返す', false, '南蛮ルート閉鎖', '話を聞いた宣教師たちは「信長は話のわからない人」と本国に報告。鉄砲の火薬が手に入らなくなり、次の戦で鉄砲がすべて空砲になった。'],
+      ['興味がないので、会わずに寝る', false, '好奇心の死', '新しいもの好きこそ信長の武器。好奇心を失った瞬間、なぜか体から力が抜け、そのまま隠居して盆栽に一生をささげた。'],
+    ],
+  },
+  {
+    id: 'honnoji', year: '1582年', age: '48歳', title: '本能寺の変', scene: 'honnoji',
     narr: '6月2日の早朝、京の本能寺。外が騒がしい。家臣が駆けこんできた。「明智光秀さまの謀反でございます！」',
     q: 'あなたのひとことは？',
     a: [
@@ -438,16 +503,40 @@ const STAGES = [
   },
 ];
 
+// 死因IDは「ステージid-選択肢番号」。問題を増やしても記録がずれないようにする
 const DEATHS = [];
 STAGES.forEach((s, si) => s.a.forEach((o, ai) => {
-  if (!o[1]) DEATHS.push({ id: `${si}-${ai}`, si, cause: o[2], text: o[3] });
+  if (!o[1]) DEATHS.push({ id: `${s.id}-${ai}`, si, cause: o[2], text: o[3] });
 }));
+const DEATH_IDS = new Set(DEATHS.map((d) => d.id));
+const SECRET_NEED = Math.ceil(DEATHS.length / 2); // 隠しエンドの解放に必要な死因の数（図鑑の半分）
+const stageIndex = (id) => STAGES.findIndex((s) => s.id === id);
+
+// 旧版（全10問・番号ID）の記録を新しいIDに移しかえる
+(function migrate() {
+  if (store.get('v') === '2') return;
+  const OLD = ['birth', 'utsuke', 'funeral', 'mamushi', 'okehazama', 'seal', 'kanegasaki', 'nagashino', 'azuchi', 'honnoji'];
+  try {
+    const z = JSON.parse(store.get('zukan') || '[]');
+    const fixed = z.map((id) => { const m = /^(\d+)-(\d+)$/.exec(id); return m && OLD[m[1]] ? `${OLD[m[1]]}-${m[2]}` : id; });
+    store.set('zukan', JSON.stringify(fixed));
+  } catch {}
+  const p = store.get('progress');
+  if (p !== null && /^\d+$/.test(p)) { if (OLD[p]) store.set('progress', OLD[p]); else store.del('progress'); }
+  store.set('v', '2');
+})();
 
 // ===== 絵（SVG） =====
 const SKY = {
   title: ['#14121f', '#3b2340', '#2a1c22', '#0d0b10'],
   birth: ['#fbe3b4', '#f0a56f', '#c47d52', '#5a3624'],
+  name: ['#fdecc8', '#f6d6a0', '#c99a62', '#6a4528'],
   utsuke: ['#cfe4ea', '#f3ead6', '#9bb3a0', '#4f6650'],
+  wedding: ['#fbd3d9', '#fdeee6', '#d9a3a8', '#7a4a52'],
+  alliance: ['#bcd8ef', '#eef4f6', '#8ea7b8', '#3f5566'],
+  kyoto: ['#e9c7a0', '#f7ead2', '#b89270', '#5a4030'],
+  rakuichi: ['#ffe2a8', '#fff3d6', '#d6ad66', '#6f4f22'],
+  nanban: ['#a9d6e6', '#eaf6f2', '#5f9bb0', '#244a58'],
   funeral: ['#bdb8af', '#e6dfd2', '#8e877c', '#4a443d'],
   mamushi: ['#efd9ab', '#f6ecd3', '#b59a6b', '#5c4a30'],
   okehazama: ['#3e4954', '#7a858f', '#3a434b', '#1c2126'],
@@ -484,6 +573,36 @@ function sceneSVG(kind) {
     case 'birth':
       m = burst(200, 150, 36, '#ffffff', .3) + `<circle cx="200" cy="150" r="58" fill="#fff4d6" opacity=".9"/>` + mountains + ground
         + crest(200, 150, 34, '#b3261e', '#fff4d6') + sfx('オギャア!!', 200, 58, 34, -4, '#e63b2e');
+      break;
+    case 'name':
+      m = burst(200, 120, 32, '#ffffff', .25) + mountains + ground
+        + `<g transform="rotate(-4 200 112)"><rect x="150" y="40" width="100" height="150" rx="4" fill="#fbf3dc" stroke="#1a1210" stroke-width="3"/>
+           <rect x="144" y="34" width="112" height="12" rx="6" fill="#8a5a2b"/><rect x="144" y="184" width="112" height="12" rx="6" fill="#8a5a2b"/>
+           <text x="200" y="104" text-anchor="middle" font-family="Shippori Mincho, serif" font-weight="800" font-size="40" fill="#1a1210">命</text>
+           <text x="200" y="152" text-anchor="middle" font-family="Shippori Mincho, serif" font-weight="800" font-size="40" fill="#1a1210">名</text></g>`
+        + crest(66, 70, 26, '#b3261e', '#fdecc8') + sfx('ジャン!!', 324, 64, 30, 8, '#e63b2e');
+      break;
+    case 'wedding':
+      m = mountains + ground + houses(ink) + sparkle(120, 50, 9) + sparkle(84, 86, 6) + sparkle(160, 92, 5)
+        + `<path d="M110 120 c-14 -18 -40 -4 -26 18 l26 26 l26 -26 c14 -22 -12 -36 -26 -18 Z" fill="#ff6b8a" stroke="#1a1210" stroke-width="3"/>`
+        + nobu(292, 222, .8, { sweat: true }) + sfx('ドキッ!!', 150, 48, 28, -8, '#ff6b8a');
+      break;
+    case 'alliance':
+      m = burst(200, 110, 36, '#ffffff', .2) + mountains + castle(110, 196, ink, '#d4a94e') + ground
+        + nobu(292, 222, .8) + sfx('ガシッ!!', 200, 52, 34, -6, '#ffb703');
+      break;
+    case 'kyoto':
+      m = mountains + ground + temple(110, 192, ink, .75) + houses(ink)
+        + nobu(296, 222, .8) + sfx('いざ京へ!!', 130, 48, 26, -6, '#e63b2e');
+      break;
+    case 'rakuichi':
+      m = mountains + ground + houses(ink) + shift(10, 50, .55, bag(200, 120))
+        + `<g fill="#ffd34d" stroke="#1a1210" stroke-width="2"><ellipse cx="96" cy="66" rx="12" ry="8"/><ellipse cx="150" cy="46" rx="10" ry="7"/><ellipse cx="190" cy="80" rx="11" ry="7"/></g>`
+        + nobu(300, 222, .8) + sfx('ワイワイ', 190, 40, 24, 6, '#ffb703');
+      break;
+    case 'nanban':
+      m = `<rect y="150" width="400" height="70" fill="${far}"/>` + ship(120, 166, near) + waves()
+        + nobu(300, 222, .8, { sweat: true }) + sfx('なんと!?', 200, 44, 28, -6, '#e63b2e');
       break;
     case 'utsuke':
       m = mountains + ground + houses(ink) + gourd(110, 128, '#6d4a22') + nobu(292, 222, .8) + sfx('ドン!', 56, 56, 30, -10, '#ffb703');
@@ -743,11 +862,13 @@ function show(id) {
 const deaths = () => Number(store.get('deaths') || 0);
 function zukan() { try { return new Set(JSON.parse(store.get('zukan') || '[]')); } catch { return new Set(); } }
 function addZukan(id) { const z = zukan(); const isNew = !z.has(id); z.add(id); store.set('zukan', JSON.stringify([...z])); return isNew; }
-const zCount = () => [...zukan()].filter((id) => id !== 'secret').length;
+const zCount = () => [...zukan()].filter((id) => DEATH_IDS.has(id)).length;
+// 旧版で隠しエンドに到達済みの人は、解放条件が上がっても選択肢を出し続ける
+const secretOpen = () => zCount() >= SECRET_NEED || zukan().has('secret');
 
 function renderTitle() {
   const p = store.get('progress');
-  const pi = p === null ? -1 : Number(p);
+  const pi = p === null ? -1 : stageIndex(p);
   if (pi > 0 && pi < STAGES.length) {
     $('resumeBtn').textContent = `▶ 続きから（${STAGES[pi].title}）`;
     $('resumeBtn').classList.remove('hidden');
@@ -790,7 +911,7 @@ function shuffle(arr) {
 
 function renderStage() {
   const s = STAGES[idx];
-  store.set('progress', String(idx));
+  store.set('progress', s.id);
   $('stScene').innerHTML = scene(s.scene);
   $('tl').innerHTML = STAGES.map((_, i) => `<i class="${i < idx ? 'done' : i === idx ? 'now' : ''}"></i>`).join('');
   $('stNo').textContent = `第${idx + 1}問`;
@@ -800,7 +921,7 @@ function renderStage() {
   $('stNarr').textContent = s.narr;
   $('stQ').textContent = s.q;
   const opts = shuffle(s.a.map((o, ai) => ({ o, ai })));
-  if (s.secret && zCount() >= SECRET_NEED) opts.push({ o: s.secret, ai: 'secret' });
+  if (s.secret && secretOpen()) opts.push({ o: s.secret, ai: 'secret' });
   const box = $('opts');
   box.innerHTML = '';
   opts.forEach(({ o, ai }, n) => {
@@ -818,7 +939,7 @@ function renderStage() {
 function choose(o, ai) {
   const s = STAGES[idx];
   if (o[1] === 'secret') return finish('secret');
-  if (!o[1]) return die(s, `${idx}-${ai}`, o[2], o[3]);
+  if (!o[1]) return die(s, `${s.id}-${ai}`, o[2], o[3]);
   idx++;
   if (idx >= STAGES.length) return finish('clear');
   $('okMsg').textContent = `正解！ ${s.ok}`;
@@ -835,7 +956,7 @@ function die(s, id, cause, text) {
   $('dCause').textContent = cause;
   $('dNew').classList.toggle('hidden', !isNew);
   $('dText').textContent = text;
-  const unlock = zCount() >= SECRET_NEED && isNew && zCount() === SECRET_NEED ? '\n✦ 図鑑が半分埋まった。本能寺で何かが起きるかもしれない…' : '';
+  const unlock = isNew && zCount() === SECRET_NEED && !zukan().has('secret') ? '\n✦ 図鑑が半分埋まった。本能寺で何かが起きるかもしれない…' : '';
   $('dMeta').textContent = `到達 ${idx + 1} / ${STAGES.length}　｜　死亡 ${deaths()}回　｜　図鑑 ${zCount()} / ${DEATHS.length}${unlock}`;
   $('dMeta').style.whiteSpace = 'pre-line';
   const f = $('flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
@@ -1052,7 +1173,7 @@ function tweet(text) {
 
 // ===== イベント =====
 $('startBtn').onclick = () => start(0);
-$('resumeBtn').onclick = () => start(Number(store.get('progress') || 0));
+$('resumeBtn').onclick = () => start(Math.max(0, stageIndex(store.get('progress'))));
 $('retryBtn').onclick = () => start(0);
 $('againBtn').onclick = () => start(0);
 ['zukanBtn', 'zukanBtn2', 'zukanBtn3'].forEach((id) => ($(id).onclick = renderZukan));

@@ -2,3 +2,13 @@ CREATE TABLE IF NOT EXISTS counters (
   key TEXT PRIMARY KEY,
   value INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS scores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  game TEXT NOT NULL,
+  ms INTEGER NOT NULL,
+  name TEXT,
+  token TEXT NOT NULL,
+  created INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_scores_game_ms ON scores (game, ms, id);

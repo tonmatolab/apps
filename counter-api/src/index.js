@@ -24,6 +24,13 @@ const GAMES = {
   chikoku: { min: 60000, max: 800000 }, // 8:57からの経過ミリ秒（ゲーム内時間・遅刻も含む）
 };
 const TOP_N = 10;
+// 日替わりランキング：'chikoku-d20261118' のように、元のゲーム名＋日付で受け付ける
+function gameRule(game) {
+  if (typeof game !== 'string') return null;
+  if (GAMES[game]) return GAMES[game];
+  const m = game.match(/^([a-z]+)-d(\d{8})$/);
+  return m && GAMES[m[1]] ? GAMES[m[1]] : null;
+}
 const NG_WORDS = ['死ね', 'しね', '殺す', 'ころす', 'fuck', 'shit', 'ちんこ', 'まんこ', 'ちんぽ', 'sex'];
 const DEFAULT_NAME = '名無しの侍';
 // 名将ガチャ：登録者が少ないうちの対戦相手
@@ -95,7 +102,7 @@ export default {
 
     if (req.method === 'POST' && url.pathname === '/score') {
       const b = await body(req);
-      const g = GAMES[b.game];
+      const g = gameRule(b.game);
       const ms = Math.round(Number(b.ms));
       if (!g || !Number.isFinite(ms) || ms < g.min || ms > g.max) return json(req, { error: 'invalid' }, 400);
       const token = crypto.randomUUID();
@@ -108,7 +115,7 @@ export default {
 
     if (req.method === 'POST' && url.pathname === '/name') {
       const b = await body(req);
-      if (!GAMES[b.game]) return json(req, { error: 'invalid' }, 400);
+      if (!gameRule(b.game)) return json(req, { error: 'invalid' }, 400);
       const name = cleanName(b.name);
       if (!name) return json(req, { error: 'bad_name' }, 400);
       const s = await env.DB.prepare('SELECT id, ms, token, name FROM scores WHERE id = ? AND game = ?').bind(Number(b.id), b.game).first();
@@ -122,7 +129,7 @@ export default {
 
     if (req.method === 'GET' && url.pathname === '/board') {
       const game = url.searchParams.get('game');
-      if (!GAMES[game]) return json(req, { error: 'invalid' }, 400);
+      if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
       const rows = await env.DB.prepare('SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ASC, id ASC LIMIT ?').bind(game, TOP_N).all();
       const total = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?').bind(game).first()).n;
       return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || DEFAULT_NAME, ms: r.ms })) });

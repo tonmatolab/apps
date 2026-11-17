@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>名将ガチャ｜名前で生まれる戦国武将バトル</title>
+<meta name="description" content="名前を入れると、その名前だけの戦国武将が生まれる。能力・スキル・兜・家紋まですべて名前で決まる。友達の名前と合戦させよう。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="名将ガチャ⚔️ 名前で生まれる戦国武将バトル">
+<meta property="og:description" content="あなたの名前は何者？ 友達の名前と合戦させよう">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/bushou/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/bushou/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Shippori+Mincho:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14100d; --bg2: #241a12; --paper: #1e1814; --ink: #f6ecdc; --sub: #b6a48e;
+    --gold: #e8c14a; --gold-d: #a8841e; --red: #d93a2a; --red-d: #8f1f14; --blue: #2f6fd8;
+    --line: #3a2e24; --chip: #2a211a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink); line-height: 1.7;
+    background: radial-gradient(circle at 50% -10%, #3a2414, var(--bg) 60%) fixed, var(--bg);
+    font-family: "M PLUS Rounded 1c", system-ui, sans-serif; -webkit-tap-highlight-color: transparent;
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 14px 14px 40px; }
+  .hidden { display: none !important; }
+  .mincho { font-family: "Shippori Mincho", serif; font-weight: 800; }
+  .num { font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
+  button {
+    display: block; width: 100%; font: inherit; font-weight: 800; font-size: 1.05rem; cursor: pointer;
+    border: none; border-radius: 14px; padding: 14px 16px; margin-top: 10px; transition: transform .06s, box-shadow .06s;
+  }
+  .primary { background: linear-gradient(#e2483a, #b42a1d); color: #fff; box-shadow: 0 5px 0 var(--red-d); }
+  .primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--red-d); }
+  .gold { background: linear-gradient(#f3d36a, #c99b22); color: #2a1a06; box-shadow: 0 5px 0 #7d5c0e; }
+  .gold:active { transform: translateY(4px); box-shadow: 0 1px 0 #7d5c0e; }
+  .ghost { background: var(--chip); color: var(--ink); border: 1.5px solid var(--line); box-shadow: 0 4px 0 #000; }
+  .ghost:active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
+  .x { background: #fff; color: #000; box-shadow: 0 5px 0 #777; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row button { margin-top: 10px; }
+  input[type=text] {
+    width: 100%; font: inherit; font-size: 18px; font-weight: 800; padding: 13px 14px; border-radius: 12px;
+    border: 2px solid var(--line); background: #0f0c0a; color: var(--ink); text-align: center;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--gold); }
+  .panel { background: linear-gradient(var(--paper), #17120f); border: 1.5px solid var(--line); border-radius: 18px; padding: 16px; margin-top: 14px; box-shadow: 0 8px 24px -14px #000; }
+  .panel h2 { margin: 0 0 10px; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+  .panel h2 small { color: var(--sub); font-size: .75rem; font-weight: 700; }
+  .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+  .vs span { font-family: "Dela Gothic One"; color: var(--red); font-size: 1.3rem; }
+  .note { color: var(--sub); font-size: .8rem; margin: 8px 0 0; text-align: center; }
+
+  /* タイトル */
+  .hero { text-align: center; padding: 6px 0 0; position: relative; }
+  .hero .kicker { display: inline-block; border: 1.5px solid var(--gold); color: var(--gold); font-weight: 800; font-size: .8rem; padding: 1px 12px; border-radius: 99px; }
+  .logo { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 3.6rem; line-height: 1.05; margin: 8px 0 0; letter-spacing: .06em;
+    background: linear-gradient(#fff6d0, #e8c14a 55%, #a8741e); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 0 #000) drop-shadow(0 0 18px rgba(232,193,74,.35)); }
+  .logo small { display: block; font-size: 1.05rem; letter-spacing: .3em; -webkit-text-fill-color: var(--ink); color: var(--ink); filter: none; margin-top: 4px; }
+  .fan { position: relative; height: 230px; margin: 14px 0 4px; }
+  .fan .mini { position: absolute; left: 50%; top: 6px; width: 150px; border-radius: 12px; overflow: hidden; border: 3px solid var(--gold); box-shadow: 0 10px 24px -8px #000; background: #000; transition: transform .4s; }
+  .fan .mini svg { display: block; width: 100%; }
+  .fan .mini b { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.85)); color: #fff; font-size: .75rem; padding: 14px 6px 6px; text-align: center; }
+  .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0 0; }
+  .stats3 div { background: var(--chip); border-radius: 12px; padding: 8px 4px; text-align: center; line-height: 1.3; }
+  .stats3 b { display: block; font-family: "Dela Gothic One"; font-size: 1.15rem; }
+  .stats3 span { font-size: .68rem; color: var(--sub); font-weight: 700; }
+  .rar { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .rar span { font-size: .7rem; font-weight: 800; padding: 1px 8px; border-radius: 99px; color: #fff; }
+
+  /* 召喚演出 */
+  #summon { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #summon canvas { width: 100%; height: 100%; display: block; }
+  #summon .skip { position: absolute; right: 14px; bottom: 18px; width: auto; padding: 8px 16px; font-size: .85rem; background: rgba(255,255,255,.12); color: #fff; box-shadow: none; }
+
+  /* 武将カード */
+  .card { position: relative; border-radius: 20px; overflow: hidden; border: 4px solid var(--rc, #888); background: #120e0b; box-shadow: 0 0 0 2px #000, 0 14px 40px -12px var(--rc, #000); margin-top: 6px; }
+  .card.den { border-color: transparent; }
+  .card.den::after { content: ""; position: absolute; inset: -4px; border-radius: 20px; padding: 4px; pointer-events: none; z-index: 3;
+    background: linear-gradient(135deg, #ff5a4b, #ffd36b, #5bd1ff, #c88bff, #ff5a4b); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: shine 3s linear infinite; }
+  @keyframes shine { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+  .card .pic svg { display: block; width: 100%; }
+  .card .rbadge { position: absolute; left: 12px; top: 12px; z-index: 2; font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 1.05rem; color: #fff; background: var(--rc); padding: 2px 14px; border-radius: 8px; box-shadow: 0 3px 0 #000; }
+  .card .pw { position: absolute; right: 12px; top: 10px; z-index: 2; text-align: right; line-height: 1; text-shadow: 0 2px 0 #000, 0 0 8px #000; }
+  .card .pw small { display: block; font-size: .7rem; font-weight: 800; color: var(--sub); }
+  .card .pw b { font-family: "Dela Gothic One"; font-size: 2rem; color: #fff; }
+  .card .namebox { padding: 10px 14px 4px; text-align: center; background: linear-gradient(#120e0b, #1c1511); }
+  .card .nick { color: var(--gold); font-weight: 800; font-size: .95rem; }
+  .card .nm { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 2rem; line-height: 1.2; word-break: break-all; }
+  .card .troop { display: inline-block; margin-top: 2px; background: var(--chip); border-radius: 99px; padding: 0 12px; font-size: .85rem; font-weight: 800; }
+  .card .body { display: grid; grid-template-columns: 130px 1fr; gap: 8px; padding: 8px 12px 12px; background: #1c1511; color: var(--ink); }
+  .card .radar svg { width: 100%; display: block; color: var(--ink); }
+  .bars { display: grid; gap: 4px; align-content: center; }
+  .bar { display: grid; grid-template-columns: 34px 1fr 30px; align-items: center; gap: 6px; font-size: .78rem; font-weight: 800; }
+  .bar i { display: block; height: 9px; border-radius: 5px; background: #000; overflow: hidden; }
+  .bar i em { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--rc), #ffd36b); }
+  .bar b { font-family: "Dela Gothic One"; font-weight: 400; text-align: right; }
+  .skills { padding: 0 12px 14px; background: #1c1511; display: grid; gap: 6px; }
+  .skill { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: .82rem; }
+  .skill b { color: var(--gold); margin-right: 6px; }
+  .skill.bad b { color: #ff8a7a; }
+  .skill.odd b { color: #8ad6ff; }
+
+  /* 合戦 */
+  .bt-head { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-top: 4px; }
+  .fighter { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .fighter.r { flex-direction: row-reverse; text-align: right; }
+  .fighter .face { width: 50px; height: 60px; border-radius: 8px; overflow: hidden; border: 2px solid var(--line); flex: none; background: #000; }
+  .fighter .face svg { width: 100%; height: 100%; display: block; }
+  .fighter .who { min-width: 0; }
+  .fighter .who b { display: block; font-family: "Shippori Mincho"; font-weight: 800; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fighter .who small { color: var(--sub); font-size: .72rem; font-weight: 700; }
+  .hp { height: 12px; background: #000; border-radius: 6px; overflow: hidden; margin-top: 6px; border: 1px solid var(--line); }
+  .hp i { display: block; height: 100%; transition: width .35s; }
+  .hp.l i { background: linear-gradient(90deg, #2f6fd8, #6fb2ff); }
+  .hp.r i { background: linear-gradient(90deg, #ff7a5c, #d93a2a); margin-left: auto; }
+  .hpn { font-family: "Dela Gothic One"; font-size: .8rem; color: var(--sub); }
+  .bt-vs { font-family: "Dela Gothic One"; color: var(--gold); font-size: 1.3rem; }
+  #btCv { display: block; width: 100%; border-radius: 14px; margin-top: 10px; background: #000; touch-action: manipulation; }
+  .log { height: 132px; overflow: hidden; background: #0e0b09; border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; margin-top: 8px; font-size: .85rem; display: flex; flex-direction: column; justify-content: flex-end; }
+  .log p { margin: 0 0 3px; animation: fadein .3s; }
+  .log p.cut { color: var(--gold); font-weight: 800; }
+  .log p.round { color: #8ad6ff; font-weight: 800; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .result { text-align: center; margin-top: 12px; }
+  .result .kachi { font-family: "Shippori Mincho"; font-weight: 800; font-size: 2.4rem; color: var(--gold); text-shadow: 0 4px 0 #000; line-height: 1.2; }
+  .result .rout { color: var(--sub); font-size: .9rem; }
+
+  .rec a { display: block; padding: 11px 14px; margin-top: 6px; border: 1.5px solid var(--line); border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: .9rem; background: var(--chip); }
+  .pr { font-size: .72rem; color: var(--sub); margin: 6px 0 0; }
+  footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <!-- ホーム -->
+  <section id="home">
+    <div class="hero">
+      <span class="kicker">名前で生まれる戦国武将バトル</span>
+      <h1 class="logo">名将ガチャ<small>あなたの名前は何者か</small></h1>
+      <div class="fan" id="fan"></div>
+    </div>
+    <div class="panel">
+      <h2>⚔️ 武将を生む <small>同じ名前なら、何度でも同じ武将</small></h2>
+      <input type="text" id="nameIn" maxlength="12" placeholder="名前を入力（例：山田太郎）" autocomplete="off">
+      <button class="gold" id="summonBtn">召喚する</button>
+      <div class="rar" id="rarList"></div>
+    </div>
+    <div class="panel">
+      <h2>🏯 一騎打ち <small>2つの名前を合戦させる</small></h2>
+      <div class="vs"><input type="text" id="aIn" maxlength="12" placeholder="名前A"><span>VS</span><input type="text" id="bIn" maxlength="12" placeholder="名前B"></div>
+      <button class="primary" id="duelBtn">合戦開始！</button>
+      <p class="note">結果は友達にURLで送れます。実力が近いほど、運で結果が変わることも。</p>
+    </div>
+    <div class="stats3">
+      <div><b id="sPlay">…</b><span>召喚した人</span></div>
+      <div><b id="sMine">0</b><span>あなたの召喚数</span></div>
+      <div><b id="sBest">-</b><span>あなたの最高レア</span></div>
+    </div>
+  </section>
+
+  <!-- 武将カード -->
+  <section id="cardView" class="hidden">
+    <div id="cardBox"></div>
+    <div class="row">
+      <button class="x" id="cardShare">𝕏 でシェア</button>
+      <button class="ghost" id="cardImg">カード画像</button>
+    </div>
+    <div class="panel">
+      <h2>🏯 この武将で合戦</h2>
+      <input type="text" id="vsIn" maxlength="12" placeholder="対戦相手の名前">
+      <button class="primary" id="vsBtn">合戦開始！</button>
+    </div>
+    <button class="ghost" id="againBtn">別の名前で召喚する</button>
+    <div class="panel rec"><h2>🎁 名前にちなんだ逸品</h2><div id="recList"></div><p class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</p></div>
+  </section>
+
+  <!-- 合戦 -->
+  <section id="battleView" class="hidden">
+    <div class="bt-head">
+      <div class="fighter" id="fL"></div>
+      <div class="bt-vs">VS</div>
+      <div class="fighter r" id="fR"></div>
+    </div>
+    <div class="row" style="margin-top:6px;gap:12px">
+      <div><div class="hp l"><i id="hpL" style="width:100%"></i></div><div class="hpn" id="hpnL"></div></div>
+      <div style="text-align:right"><div class="hp r"><i id="hpR" style="width:100%"></i></div><div class="hpn" id="hpnR"></div></div>
+    </div>
+    <canvas id="btCv"></canvas>
+    <div class="log" id="log"></div>
+    <button class="ghost hidden" id="skipBtn">結果まで飛ばす ≫</button>
+    <div class="result hidden" id="resultBox">
+      <div class="kachi" id="kachi"></div>
+      <div class="rout" id="rout"></div>
+      <div class="row">
+        <button class="x" id="btShare">𝕏 でシェア</button>
+        <button class="ghost" id="btImg">結果画像</button>
+      </div>
+      <button class="primary" id="rematch">もう一戦（運が変わるかも）</button>
+      <div class="row">
+        <button class="ghost" id="seeA"></button>
+        <button class="ghost" id="seeB"></button>
+      </div>
+      <button class="ghost" id="homeBtn">トップへ戻る</button>
+    </div>
+  </section>
+
+  <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
+</main>
+
+<div id="summon" class="hidden"><canvas id="smCv"></canvas><button class="skip" id="smSkip">スキップ ≫</button></div>
+
+<script src="gen.js"></script>
+<script src="art.js"></script>
+<script src="battle.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

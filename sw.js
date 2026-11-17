@@ -2,7 +2,7 @@
 // ・ページとスクリプトは「ネット優先」（更新がすぐ反映される。圏外のときだけ保存済みを使う）
 // ・画像とフォントは「保存済み優先」（速く表示する）
 // ・カウンターAPIなど別ドメインへの通信には手を出さない
-const CACHE = 'tonmato-v1';
+const CACHE = 'tonmato-v2'; // 画像を差し替えたら番号を上げる（古い保存分を消すため）
 
 self.addEventListener('install', (e) => { self.skipWaiting(); });
 self.addEventListener('activate', (e) => {

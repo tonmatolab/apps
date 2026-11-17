@@ -241,7 +241,7 @@ function shareTenka() {
   const text = d.unified
     ? `【天下統一】「${b.name}」（${b.rarity.name}・${b.nick}）が全国の武将を10人抜きして天下統一！🏯\n全国${d.rank}位`
     : `「${b.name}」（${b.rarity.name}・${b.nick}）で天下統一に挑み、${d.streak}連勝で散った…⚔️\n自己ベスト${d.best}連勝・全国${d.rank}位`;
-  shareRich(text + '\n\nあなたの名前は何連勝できる？', `${pageUrl()}?n=${encodeURIComponent(b.name)}`, 'tenka:' + T.id, tenkaImage, 'bushou-tenka.png',
+  shareRich(text + '\n\nあなたの名前は何連勝できる？', pageUrl(), 'tenka:' + T.id, tenkaImage, 'bushou-tenka.png',
     [{ key: 'card:' + b.key, make: () => cardImage(b), filename: `bushou-${b.name}.png` }]);
 }
 
@@ -522,11 +522,11 @@ function tweet(text, url) {
 }
 function shareCard() {
   const b = curB, top = STAT_KEYS.slice().sort((x, y) => b.stats[y] - b.stats[x])[0];
-  shareRich(`私の名前「${b.name}」は【${b.rarity.name}】${b.nick}でした⚔️\n${STAT_NAMES[top]}${b.stats[top]}・総合戦闘力${b.power}・スキル「${b.skills.map((s) => s.name).join('」「')}」\n\nあなたの名前は何者？`, `${pageUrl()}?n=${encodeURIComponent(b.name)}`, 'card:' + b.key, () => cardImage(b), `bushou-${b.name}.png`);
+  shareRich(`私の名前「${b.name}」は【${b.rarity.name}】${b.nick}でした⚔️\n${STAT_NAMES[top]}${b.stats[top]}・総合戦闘力${b.power}・スキル「${b.skills.map((s) => s.name).join('」「')}」\n\nあなたの名前は何者？`, pageUrl(), 'card:' + b.key, () => cardImage(b), `bushou-${b.name}.png`);
 }
 function shareBattle() {
   const S = BT, w = S.res.winner === 0 ? S.A : S.B, l = S.res.winner === 0 ? S.B : S.A;
-  shareRich(`【合戦】${S.A.name} vs ${S.B.name}\n勝者は… ${w.name}（${w.rarity.name}・${w.nick}）！\n${l.name}は${S.rout}\n\nこの2人、もう一度戦ったら結果は変わる？`, `${pageUrl()}?a=${encodeURIComponent(S.A.name)}&b=${encodeURIComponent(S.B.name)}`, 'battle:' + S.id, battleImage, 'bushou-battle.png',
+  shareRich(`【合戦】${S.A.name} vs ${S.B.name}\n勝者は… ${w.name}（${w.rarity.name}・${w.nick}）！\n${l.name}は${S.rout}\n\nあなたの名前は何者？ 召喚して確かめよう`, pageUrl(), 'battle:' + S.id, battleImage, 'bushou-battle.png',
     [S.A, S.B].map((b) => ({ key: 'card:' + b.key, make: () => cardImage(b), filename: `bushou-${b.name}.png` })));
 }
 

@@ -67,6 +67,7 @@ function renderHome() {
   $('sMine').textContent = store.get('count') || '0';
   const best = store.get('best');
   $('sBest').textContent = best ? RARITIES.find((r) => r.id === best).name : '-';
+  loadTop();
   api('/get?keys=bushou-play').then((j) => { $('sPlay').textContent = j ? (j['bushou-play'] || 0).toLocaleString() : '-'; });
 }
 
@@ -160,12 +161,108 @@ function cardHTML(b) {
   </div>`;
 }
 function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
-function openCard(b, fromSummon) {
+function openCard(b, from) {
   curB = b;
   $('cardBox').innerHTML = cardHTML(b);
   $('vsIn').value = '';
+  $('backBattle').classList.toggle('hidden', from !== 'battle');
+  $('backBattle').textContent = BT && BT.tenka ? '← 天下統一の結果に戻る' : '← 合戦の結果に戻る';
   show('cardView');
-  history.replaceState(null, '', `?n=${encodeURIComponent(b.name)}`);
+  if (from !== 'battle') history.replaceState(null, '', `?n=${encodeURIComponent(b.name)}`);
+}
+function backToBattle() {
+  if (!BT) return;
+  show('battleView');
+  if (!BT.tenka) history.replaceState(null, '', `?a=${encodeURIComponent(BT.A.name)}&b=${encodeURIComponent(BT.B.name)}`);
+  btDraw();
+}
+
+// ===== 天下統一 =====
+let TENKA = null;
+async function startTenka(name) {
+  const btn = $('tenkaBtn'); btn.disabled = true; btn.textContent = '全国の武将を集めています…';
+  audio();
+  const r = await fetch(API + '/bushou/tenka', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
+    .then((x) => x.json()).catch(() => null);
+  btn.disabled = false; btn.textContent = '出陣する';
+  if (!r || r.error) { alert(r && r.error === 'bad_name' ? 'その名前では出陣できません。別の名前にしてください。' : '通信に失敗しました。時間をおいてもう一度お試しください。'); return; }
+  TENKA = { me: makeBushou(name), data: r, idx: 0, fast: false };
+  playTenka();
+}
+function renderTenkaBar() {
+  const T = TENKA, n = 10;
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const m = T.data.matches[i];
+    const boss = i === n - 1;
+    let cls = boss ? 'boss' : '';
+    if (i < T.idx || (i === T.idx && BT && BT.done)) cls += m && m.win ? ' won' : m ? ' lost' : '';
+    else if (i === T.idx) cls += ' now';
+    s += `<span class="${cls}">${boss ? '🏯' : '⛩️'}<small>${boss ? '最強' : i + 1}</small></span>`;
+  }
+  $('tenkaBar').innerHTML = s;
+}
+function playTenka() {
+  const T = TENKA, m = T.data.matches[T.idx];
+  startBattle(T.me.name, m.name, { seed: m.seed, tenka: true });
+  if ((BT.res.winner === 0) !== m.win) console.warn('replay mismatch', m);
+  renderTenkaBar();
+  logLine(`天下統一 ${m.boss ? '最終戦（全国最強）' : `第${T.idx + 1}戦`}：${m.name}の城を攻める！`, 'round');
+}
+function tenkaAfterBattle(rout) {
+  const T = TENKA, m = T.data.matches[T.idx], d = T.data;
+  renderTenkaBar();
+  const box = $('tenkaBox');
+  box.classList.remove('hidden');
+  $('tkRank').classList.add('hidden'); $('nextBtn').classList.add('hidden'); $('tkFinal').classList.add('hidden');
+  const more = m.win && T.idx + 1 < d.matches.length;
+  if (more) {
+    $('tkTitle').textContent = `${T.idx + 1}連勝！`;
+    $('tkSub').textContent = `${m.name}は${rout}`;
+    $('nextBtn').textContent = T.data.matches[T.idx + 1].boss ? '最後の城へ（全国最強）▶' : '次の城へ ▶';
+    $('nextBtn').classList.remove('hidden');
+    if (T.fast) setTimeout(() => { if (TENKA === T && !$('nextBtn').classList.contains('hidden')) nextTenka(); }, 700);
+    return;
+  }
+  // 終了
+  sfx.win();
+  $('tkTitle').textContent = d.unified ? '天下統一！' : `${d.streak}連勝で散った…`;
+  $('tkSub').textContent = d.unified ? `全国最強の${m.name}をも打ち破り、天下を手にした！` : `${m.name}に敗れた。${T.me.name}は${rout}`;
+  $('tkRank').textContent = `自己ベスト ${d.best}連勝｜全国 ${d.rank}位 / ${d.total}武将`;
+  $('tkRank').classList.remove('hidden');
+  $('tkFinal').classList.remove('hidden');
+  loadTop();
+}
+function nextTenka() { TENKA.idx++; $('tenkaBox').classList.add('hidden'); playTenka(); }
+function shareTenka() {
+  const T = TENKA, d = T.data, b = T.me;
+  const text = d.unified
+    ? `【天下統一】「${b.name}」（${b.rarity.name}・${b.nick}）が全国の武将を10人抜きして天下統一！🏯\n全国${d.rank}位`
+    : `「${b.name}」（${b.rarity.name}・${b.nick}）で天下統一に挑み、${d.streak}連勝で散った…⚔️\n自己ベスト${d.best}連勝・全国${d.rank}位`;
+  tweet(text + '\n\nあなたの名前は何連勝できる？', `${pageUrl()}?n=${encodeURIComponent(b.name)}`);
+}
+
+// ===== 全国番付 =====
+let TOP = null, topTab = 'streak';
+async function loadTop() {
+  const j = await api('/bushou/top');
+  TOP = j; renderTop();
+}
+function renderTop() {
+  const el = $('topList');
+  if (!TOP) { el.innerHTML = '<li class="empty">読み込めませんでした</li>'; return; }
+  $('topTotal').textContent = `登録 ${TOP.total.toLocaleString()}武将`;
+  const rows = TOP[topTab];
+  if (!rows.length) { el.innerHTML = `<li class="empty">${topTab === 'streak' ? 'まだ誰も連勝していません。一番乗りを狙え！' : 'まだ登録された武将がいません'}</li>`; return; }
+  el.innerHTML = '';
+  rows.forEach((r, i) => {
+    const b = makeBushou(r.name);
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="no">${i + 1}</span><span class="face">${portraitSVG(b)}</span><span class="nm"></span><span class="v">${r.v}<small>${topTab === 'streak' ? '連勝' : ''}</small></span>`;
+    li.querySelector('.nm').innerHTML = `${esc(r.name)}<small style="color:${b.rarity.color}">${b.rarity.name}・${esc(b.nick)}</small>`;
+    li.onclick = () => openCard(b);
+    el.appendChild(li);
+  });
 }
 
 // ===== 合戦 =====
@@ -175,14 +272,15 @@ let BT = null;
 function fighterHTML(b, side) {
   return `<div class="face">${portraitSVG(b)}</div><div class="who"><b>${esc(b.name)}</b><small>${b.rarity.name}・${b.troop.icon}${b.troop.name}・${b.power}</small></div>`;
 }
-function startBattle(nameA, nameB) {
+function startBattle(nameA, nameB, opt = {}) {
   audio();
   if (!store.get('played')) { store.set('played', '1'); api('/hit/bushou-play', 'POST'); }
   const A = makeBushou(nameA), B = makeBushou(nameB);
-  const res = simulateBattle(A, B);
-  history.replaceState(null, '', `?a=${encodeURIComponent(A.name)}&b=${encodeURIComponent(B.name)}`);
+  const res = simulateBattle(A, B, opt.seed ? seeded('battle:' + opt.seed) : Math.random);
+  if (!opt.tenka) history.replaceState(null, '', `?a=${encodeURIComponent(A.name)}&b=${encodeURIComponent(B.name)}`);
   $('fL').innerHTML = fighterHTML(A, 0); $('fR').innerHTML = fighterHTML(B, 1);
-  $('log').innerHTML = ''; $('resultBox').classList.add('hidden'); $('skipBtn').classList.remove('hidden');
+  $('log').innerHTML = ''; $('resultBox').classList.add('hidden'); $('tenkaBox').classList.add('hidden'); $('skipBtn').classList.remove('hidden');
+  $('tenkaBar').classList.toggle('hidden', !opt.tenka); $('skipAllBtn').classList.toggle('hidden', !opt.tenka || (TENKA && TENKA.fast));
   show('battleView');
   const dpr = Math.min(devicePixelRatio || 1, 2);
   bcv.width = BW * dpr; bcv.height = BH * dpr; bg.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -190,8 +288,9 @@ function startBattle(nameA, nameB) {
   BT = {
     A, B, res, imgs: [mk(A), mk(B)], troops: [res.max[0], res.max[1]], max: res.max,
     i: 0, stepT: 0, stepDur: 0, cur: null, t: 0, charge: 0, dust: [], floaters: [], cutIn: null, fallen: [[], []], done: false, skip: false,
-    soldiers: [makeArmy(0), makeArmy(1)],
+    soldiers: [makeArmy(0), makeArmy(1)], tenka: !!opt.tenka,
   };
+  if (opt.tenka && TENKA && TENKA.fast) BT.skip = true;
   setHP();
   sfx.horn();
   cancelAnimationFrame(BT.raf);
@@ -261,10 +360,11 @@ function btUpdate(dt) {
 function finishBattle() {
   const S = BT; if (S.done) return; S.done = true;
   const w = S.res.winner, W = w === 0 ? S.A : S.B, L = w === 0 ? S.B : S.A;
-  $('skipBtn').classList.add('hidden');
+  $('skipBtn').classList.add('hidden'); $('skipAllBtn').classList.add('hidden');
   btDraw();
   sfx.win();
   const rout = ROUT_LINES[Math.floor(Math.random() * ROUT_LINES.length)];
+  if (S.tenka) { BT.rout = rout; BT.winT = 0; const lp = () => { BT.winT += 1 / 60; btDraw(); if (BT.winT < 2) requestAnimationFrame(lp); }; requestAnimationFrame(lp); tenkaAfterBattle(rout); return; }
   $('kachi').textContent = `勝ち鬨！ ${W.name}の勝利`;
   $('rout').textContent = `${S.res.reason === 'judge' ? '判定勝ち。' : ''}${L.name}は${rout}`;
   $('seeA').textContent = `${S.A.name}のカード`; $('seeB').textContent = `${S.B.name}のカード`;
@@ -439,6 +539,31 @@ async function battleImage() {
   g.fillStyle = '#7d6d5a'; g.font = '800 28px "M PLUS Rounded 1c"'; g.fillText(`名将ガチャ｜${SITE}`, 540, 1300);
   return c;
 }
+async function tenkaImage() {
+  await fontsReady();
+  const T = TENKA, d = T.data, b = T.me;
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const g = c.getContext('2d');
+  const bgr = g.createLinearGradient(0, 0, 0, 1350); bgr.addColorStop(0, '#3a2410'); bgr.addColorStop(1, '#0e0b09');
+  g.fillStyle = bgr; g.fillRect(0, 0, 1080, 1350);
+  g.strokeStyle = '#e8c14a'; g.lineWidth = 14; g.strokeRect(24, 24, 1032, 1302);
+  g.textAlign = 'center'; g.fillStyle = '#e8c14a'; g.font = '800 64px "Shippori Mincho"'; g.fillText('天下統一への道', 540, 130);
+  const img = await svgImg(portraitSVG(b));
+  g.drawImage(img, 300, 170, 480, 576);
+  g.fillStyle = '#fff'; g.font = '800 70px "Shippori Mincho"'; g.fillText(b.name, 540, 830);
+  g.fillStyle = b.rarity.color; g.font = '800 34px "M PLUS Rounded 1c"'; g.fillText(`【${b.rarity.name}】${b.nick}`, 540, 880);
+  // 城の列
+  for (let i = 0; i < 10; i++) {
+    const m = d.matches[i], x = 120 + i * 93, y = 980;
+    g.fillStyle = m ? (m.win ? '#e8c14a' : '#d93a2a') : '#3a2e24';
+    g.beginPath(); g.arc(x, y, 34, 0, 7); g.fill();
+    g.fillStyle = '#120e0b'; g.font = '30px "Dela Gothic One"'; g.fillText(m ? (m.win ? '勝' : '負') : '・', x, y + 11);
+  }
+  g.fillStyle = d.unified ? '#e8c14a' : '#fff'; g.font = '800 92px "Shippori Mincho"';
+  g.fillText(d.unified ? '天下統一！' : `${d.streak}連勝`, 540, 1140);
+  g.fillStyle = '#b6a48e'; g.font = '800 36px "M PLUS Rounded 1c"'; g.fillText(`全国 ${d.rank}位 / ${d.total}武将`, 540, 1200);
+  g.fillStyle = '#7d6d5a'; g.font = '800 28px "M PLUS Rounded 1c"'; g.fillText(`名将ガチャ｜${SITE}`, 540, 1300);
+  return c;
+}
 async function saveCanvas(c, name) {
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
   const file = new File([blob], name, { type: 'image/png' });
@@ -473,8 +598,21 @@ $('skipBtn').onclick = () => { if (BT) BT.skip = true; };
 $('btShare').onclick = shareBattle;
 $('btImg').onclick = async () => saveCanvas(await battleImage(), 'bushou-battle.png');
 $('rematch').onclick = () => startBattle(BT.A.name, BT.B.name);
-$('seeA').onclick = () => openCard(BT.A);
-$('seeB').onclick = () => openCard(BT.B);
+$('seeA').onclick = () => openCard(BT.A, 'battle');
+$('seeB').onclick = () => openCard(BT.B, 'battle');
+$('backBattle').onclick = backToBattle;
+$('tenkaBtn').onclick = () => startTenka(curB.name);
+$('nextBtn').onclick = nextTenka;
+$('skipAllBtn').onclick = () => { if (TENKA) { TENKA.fast = true; if (BT) BT.skip = true; $('skipAllBtn').classList.add('hidden'); } };
+$('tkShare').onclick = shareTenka;
+$('tkImg').onclick = async () => saveCanvas(await tenkaImage(), 'bushou-tenka.png');
+$('tkRetry').onclick = () => startTenka(TENKA.me.name);
+$('tkCard').onclick = () => openCard(TENKA.me);
+$('tkHome').onclick = () => { history.replaceState(null, '', pageUrl()); renderHome(); show('home'); };
+document.querySelectorAll('.tab').forEach((t) => (t.onclick = () => {
+  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === t));
+  topTab = t.dataset.tab; renderTop();
+}));
 $('homeBtn').onclick = () => { history.replaceState(null, '', pageUrl()); renderHome(); show('home'); };
 
 // ===== URLから開く =====

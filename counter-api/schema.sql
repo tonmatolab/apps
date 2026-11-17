@@ -12,3 +12,17 @@ CREATE TABLE IF NOT EXISTS scores (
   created INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_scores_game_ms ON scores (game, ms, id);
+
+CREATE TABLE IF NOT EXISTS bushou (
+  key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  power INTEGER NOT NULL,
+  rarity TEXT NOT NULL,
+  runs INTEGER NOT NULL DEFAULT 0,
+  wins INTEGER NOT NULL DEFAULT 0,
+  best_streak INTEGER NOT NULL DEFAULT 0,
+  hidden INTEGER NOT NULL DEFAULT 0,
+  created INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bushou_streak ON bushou (hidden, best_streak DESC);
+CREATE INDEX IF NOT EXISTS idx_bushou_power ON bushou (hidden, power DESC);

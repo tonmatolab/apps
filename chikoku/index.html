@@ -75,7 +75,7 @@
 
   /* ゲーム画面 */
   #game { position: fixed; inset: 0; z-index: 20; background: #000; touch-action: none; display: flex; align-items: center; justify-content: center; }
-  #cv { height: 100%; max-width: 100%; aspect-ratio: 9 / 16; display: block; touch-action: none; }
+  #cv { display: block; touch-action: none; }
 
   /* 結果 */
   .res-time { text-align: center; margin: 4px 0 0; }
@@ -200,7 +200,7 @@ const EXCUSES = [
 // ===== 時間の設定 =====
 const START_SEC = 8 * 3600 + 57 * 60; // 8:57:00
 const LIMIT = 180;                     // 9:00:00 まで180秒（ゲーム内）
-const CLOCK_RATE = 3.5;                // 現実1秒 = ゲーム内3.5秒
+const CLOCK_RATE = 5.7;                // 現実1秒 = ゲーム内5.7秒
 
 // ===== コース（単位：メートル） =====
 const COURSE = {
@@ -221,7 +221,7 @@ function buildCourse() {
   const obs = [];
   const lane = () => Math.floor(R() * 3);
   // 階段：降りてくる人
-  for (let d = 10; d < COURSE.stairsEnd - 4; d += 4 + R() * 3) obs.push({ type: 'down', d, lane: lane(), v: -1.6 });
+  for (let d = 10; d < COURSE.stairsEnd - 4; d += 4 + R() * 3) obs.push({ type: 'down', d, lane: lane(), v: -2.6 });
   // 改札：1〜2か所がバツ
   const closed = new Set([lane()]); if (R() < .5) closed.add(lane());
   for (let l = 0; l < 3; l++) obs.push({ type: 'gate', d: COURSE.gate, lane: l, closed: closed.has(l) || closed.size === 3 && l === 0 });
@@ -229,11 +229,11 @@ function buildCourse() {
   for (let d = 64; d < COURSE.walkEnd - 4; d += 5 + R() * 5) {
     const r = R();
     const type = r < .42 ? 'phone' : r < .7 ? 'pigeon' : r < .9 ? 'tissue' : 'coffee';
-    obs.push({ type, d, lane: lane(), v: type === 'phone' ? 1.3 : 0, drift: type === 'phone' ? 1.5 + R() * 2 : 0 });
+    obs.push({ type, d, lane: lane(), v: type === 'phone' ? 2.1 : 0, drift: type === 'phone' ? 1.5 + R() * 2 : 0 });
   }
   // オフィス街
   for (let d = COURSE.crossEnd + 6; d < COURSE.lobby - 4; d += 6 + R() * 4) {
-    const r = R(); obs.push({ type: r < .5 ? 'phone' : r < .8 ? 'pigeon' : 'coffee', d, lane: lane(), v: r < .5 ? 1.3 : 0, drift: 2 });
+    const r = R(); obs.push({ type: r < .5 ? 'phone' : r < .8 ? 'pigeon' : 'coffee', d, lane: lane(), v: r < .5 ? 2.1 : 0, drift: 2 });
   }
   // ロビー：警備員さん
   obs.push({ type: 'guard', d: COURSE.lobby + 8, lane: lane() });
@@ -253,7 +253,8 @@ const HIT = {
 // ===== 状態 =====
 const $ = (id) => document.getElementById(id);
 const cv = $('cv'), g = cv.getContext('2d');
-const W = 360, H = 640, LANE_X = [80, 180, 280], PY = 520, SCALE = 13;
+const W = 360, LANE_X = [80, 180, 280];
+let H = 640; // 画面の縦横比に合わせて変える
 let S = null, raf = 0, last = 0;
 
 function newState() {
@@ -266,6 +267,10 @@ function newState() {
 
 function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  H = Math.max(560, Math.min(780, Math.round(W * innerHeight / innerWidth)));
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px';
+  HY = Math.round(H * .3); FOC = FOC_BASE = 340 * H / 640;
   cv.width = W * dpr; cv.height = H * dpr;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
@@ -321,8 +326,8 @@ function update(dt) {
   if (S.phase === 'punch') return;
 
   // 速度
-  let target = 5.2;
-  if (S.sprint && S.stamina > 0) { target = 7.6; S.stamina = Math.max(0, S.stamina - 30 * dt); }
+  let target = 8.5;
+  if (S.sprint && S.stamina > 0) { target = 12.5; S.stamina = Math.max(0, S.stamina - 30 * dt); }
   else S.stamina = Math.min(100, S.stamina + 16 * dt);
   if (S.boost > 0) { S.boost -= dt; target *= 1.35; }
   if (S.slow > 0) { S.slow -= dt; target *= .6; }
@@ -381,124 +386,361 @@ function punch() {
   if (S.taps >= 8) finish(true);
 }
 
-// ===== 描画 =====
-function bgColor(d) {
-  if (d < COURSE.stairsEnd) return ['#c9c3b8', '#b7b0a3'];
-  if (d < 58) return ['#d9d4cb', '#cbc5ba'];
-  if (d < COURSE.signal - 2) return ['#cfd8de', '#bfc9d0'];
-  if (d < COURSE.crossEnd) return ['#4a4f57', '#3e434a'];
-  if (d < COURSE.lobby) return ['#cfd8de', '#bfc9d0'];
-  return ['#e9e4da', '#ddd6c9'];
+// ===== 描画（疑似3D：プレイヤーの後ろ上からの視点） =====
+let HY = 196;            // 地平線のy（画面の高さで変わる）
+const CAMH = 2.4;        // カメラの高さ(m)
+const PZ = 3.6;          // カメラからプレイヤーまでの距離(m)
+const LANE_M = 1.15;     // レーン間隔(m)
+const WALL_M = 2.9;      // 道の端（壁・ビル）までの距離(m)
+let FOC = 340, FOC_BASE = 340; // 焦点距離（ダッシュ中は少し広角にしてスピード感を出す）
+const EF = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const pxToM = (px) => ((px - 180) / 100) * LANE_M;
+const camD = () => S.d - PZ;
+
+function proj(z, xm, hm = 0) {
+  if (z < 0.4) return null;
+  const s = FOC / z;
+  return { x: W / 2 + xm * s, y: HY + (CAMH - hm) * s, s };
 }
-const sy = (d) => PY - (d - S.d) * SCALE;
+function zone(d) {
+  if (d < COURSE.stairsEnd) return 'stairs';
+  if (d < 58) return 'station';
+  if (d < COURSE.lobby) return 'street';
+  return 'lobby';
+}
+// 地面の色（区間ごと、1mごとに濃淡を交互にしてスピード感を出す）
+function groundColor(d, alt) {
+  const z = zone(d);
+  if (z === 'stairs') return alt ? '#b9b2a6' : '#d2ccc1';
+  if (z === 'station') return alt ? '#cfcac0' : '#dcd7cd';
+  if (d >= COURSE.signal - 1 && d < COURSE.crossEnd) return alt ? '#3b3f46' : '#43474f';
+  if (z === 'lobby') return alt ? '#e8e2d6' : '#f2ede3';
+  return alt ? '#c3ccd3' : '#ced6dc';
+}
+function quad(a, b, c, d, fill) {
+  if (!a || !b || !c || !d) return;
+  g.fillStyle = fill; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.lineTo(c.x, c.y); g.lineTo(d.x, d.y); g.closePath(); g.fill();
+}
+// 決まった乱数（ビルの色・高さを距離から決める）
+const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+function drawSky() {
+  const z = zone(S.d + 20);
+  if (z === 'station' || z === 'stairs' || z === 'lobby') {
+    const gr = g.createLinearGradient(0, 0, 0, HY + 10);
+    gr.addColorStop(0, z === 'lobby' ? '#d9d2c4' : '#b8b4ad'); gr.addColorStop(1, z === 'lobby' ? '#f4efe4' : '#e6e2da');
+    g.fillStyle = gr; g.fillRect(0, 0, W, HY + 2);
+    return;
+  }
+  const gr = g.createLinearGradient(0, 0, 0, HY);
+  gr.addColorStop(0, '#7fb4f0'); gr.addColorStop(.7, '#cfe3f7'); gr.addColorStop(1, '#ffe2b8');
+  g.fillStyle = gr; g.fillRect(0, 0, W, HY + 2);
+  // 朝日
+  const sun = g.createRadialGradient(250, HY - 30, 4, 250, HY - 30, 80);
+  sun.addColorStop(0, 'rgba(255,250,220,1)'); sun.addColorStop(.25, 'rgba(255,230,160,.9)'); sun.addColorStop(1, 'rgba(255,220,150,0)');
+  g.fillStyle = sun; g.fillRect(150, HY - 130, 200, 130);
+  // 遠くのビル群
+  g.fillStyle = '#a9bdd4';
+  for (let i = 0; i < 14; i++) { const w = 18 + hash(i) * 22, h = 20 + hash(i + 50) * 60; g.fillRect(i * 27 - 6, HY - h, w, h); }
+}
+
+function drawGround() {
+  const cd = camD();
+  for (let y = HY; y < H; y += 2) {
+    const z = CAMH * FOC / (y - HY + 1);
+    const d = cd + z;
+    g.fillStyle = groundColor(d, Math.floor(d) % 2 === 0);
+    g.fillRect(0, y, W, 2);
+  }
+  // 遠くをかすませる
+  const fog = g.createLinearGradient(0, HY, 0, HY + 60);
+  fog.addColorStop(0, 'rgba(230,236,242,.85)'); fog.addColorStop(1, 'rgba(230,236,242,0)');
+  g.fillStyle = fog; g.fillRect(0, HY, W, 60);
+}
+
+function drawLanesAndMarks() {
+  const cd = camD();
+  // レーンの区切り（点線）
+  g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 2;
+  for (const xm of [-LANE_M / 2, LANE_M / 2]) {
+    for (let d = Math.floor(cd) + 1; d < cd + 60; d += 2) {
+      const a = proj(d - cd, xm), b = proj(d + 1 - cd, xm);
+      if (!a || !b) continue;
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+    }
+  }
+  // 階段の段鼻
+  for (let d = Math.ceil(cd); d < Math.min(COURSE.stairsEnd, cd + 60); d++) {
+    const a = proj(d - cd, -WALL_M), b = proj(d - cd, WALL_M);
+    if (!a || !b) continue;
+    g.strokeStyle = 'rgba(80,70,60,.45)'; g.lineWidth = Math.max(1, a.s / 30);
+    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+  }
+  // 点字ブロック（駅〜歩道の左端）
+  // 横断歩道（白い縞）と停止線
+  const z0 = COURSE.signal - cd, z1 = COURSE.crossEnd - cd;
+  if (z1 > 0.4 && z0 < 70) {
+    for (let k = -5; k <= 5; k++) {
+      const x0 = k * 0.55 - 0.2, x1 = x0 + 0.38;
+      quad(proj(Math.max(.5, z0 + .8), x0), proj(Math.max(.5, z0 + .8), x1), proj(Math.max(.6, z1 - .8), x1), proj(Math.max(.6, z1 - .8), x0), '#f3f3f3');
+    }
+    quad(proj(Math.max(.5, z0 - .3), -WALL_M), proj(Math.max(.5, z0 - .3), WALL_M), proj(Math.max(.5, z0), WALL_M), proj(Math.max(.5, z0), -WALL_M), '#ffffff');
+  }
+}
+
+// 道の両側（駅の壁・柱／ビル／ロビーの壁）を遠い順に描く
+function drawSides() {
+  const cd = camD();
+  const seg = 3;
+  const start = Math.floor(cd / seg) * seg;
+  for (let d = start + 66; d >= start; d -= seg) {
+    const z0 = d - cd, z1 = d + seg - cd;
+    if (z1 < 0.5) continue;
+    const zz0 = Math.max(0.5, z0);
+    const zn = zone(d + 1);
+    for (const side of [-1, 1]) {
+      const x = WALL_M * side;
+      let hgt, col;
+      if (zn === 'street') {
+        const n = Math.floor(d / 9) * 2 + (side > 0 ? 1 : 0);
+        hgt = 7 + hash(n) * 14;
+        const palette = ['#d9cfc2', '#c8d2dc', '#e3d6c8', '#b9c6d3', '#d6c2b0', '#cfd9cf'];
+        col = palette[Math.floor(hash(n + 9) * palette.length)];
+      } else if (zn === 'lobby') { hgt = 4; col = '#efe8da'; }
+      else { hgt = 3.4; col = zn === 'stairs' ? '#d8d2c6' : '#e7e3dc'; }
+      const a = proj(zz0, x, 0), b = proj(z1, x, 0), c = proj(z1, x, hgt), e = proj(zz0, x, hgt);
+      quad(a, b, c, e, col);
+      if (!a || !b || !c || !e) continue;
+      // 窓・タイルの模様
+      if (zn === 'street') {
+        g.fillStyle = 'rgba(70,100,140,.55)';
+        for (let fl = 1.2; fl < hgt - .8; fl += 1.6) {
+          for (let w = 0.3; w < seg - .3; w += 1) {
+            const p1 = proj(Math.max(.5, z0 + w), x, fl), p2 = proj(Math.max(.5, z0 + w + .6), x, fl + .9);
+            if (p1 && p2) g.fillRect(Math.min(p1.x, p2.x), p2.y, Math.abs(p2.x - p1.x), p1.y - p2.y);
+          }
+        }
+        // 1階の店先（明るい）
+        const s1 = proj(zz0, x, 0), s2 = proj(z1, x, 1.0);
+        if (s1 && s2) { g.fillStyle = hash(Math.floor(d / 3)) > .55 ? 'rgba(255,214,120,.6)' : 'rgba(255,255,255,.35)'; g.fillRect(Math.min(s1.x, s2.x), s2.y, Math.abs(s2.x - s1.x), s1.y - s2.y); }
+      } else if (zn === 'station' || zn === 'stairs') {
+        // 柱と案内板
+        if (Math.floor(d) % 9 === 0) {
+          quad(proj(zz0, x * .97, 0), proj(Math.max(.5, z0 + .5), x * .97, 0), proj(Math.max(.5, z0 + .5), x * .97, 3.4), proj(zz0, x * .97, 3.4), '#b7b0a3');
+        }
+        g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(e.x, e.y); g.stroke();
+      } else {
+        g.strokeStyle = 'rgba(0,0,0,.06)'; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(e.x, e.y); g.stroke();
+      }
+      // 陰影（奥ほど少し暗く）
+      g.fillStyle = `rgba(0,0,0,${Math.min(.25, z0 / 300)})`;
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.lineTo(c.x, c.y); g.lineTo(e.x, e.y); g.closePath(); g.fill();
+    }
+    // 駅・ロビーの天井と照明
+    if (zn !== 'street') {
+      const top = zn === 'lobby' ? 4 : 3.4;
+      quad(proj(zz0, -WALL_M, top), proj(zz0, WALL_M, top), proj(z1, WALL_M, top), proj(z1, -WALL_M, top), zn === 'lobby' ? '#e9e2d4' : '#c9c4bb');
+      if (Math.floor(d) % 6 === 0) quad(proj(zz0, -.5, top - .02), proj(zz0, .5, top - .02), proj(Math.max(.5, z0 + .6), .5, top - .02), proj(Math.max(.5, z0 + .6), -.5, top - .02), '#fffbe8');
+    }
+    // 歩道の街路樹
+    if (zn === 'street' && Math.floor(d) % 12 === 0) {
+      for (const side of [-1, 1]) {
+        const p = proj(Math.max(.5, z0), side * (WALL_M - .35), 0);
+        if (!p || z0 < .5) continue;
+        g.fillStyle = '#6b4a2b'; g.fillRect(p.x - p.s * .06, p.y - p.s * 1.6, p.s * .12, p.s * 1.6);
+        g.fillStyle = '#4f9a5a'; g.beginPath(); g.arc(p.x, p.y - p.s * 2.1, p.s * .7, 0, 7); g.fill();
+        g.fillStyle = '#62b06c'; g.beginPath(); g.arc(p.x - p.s * .2, p.y - p.s * 2.3, p.s * .4, 0, 7); g.fill();
+      }
+    }
+  }
+}
+
+// 奥にある大きな物（改札・信号・エレベーター・タイムカード）
+function drawLandmarks(list) {
+  const cd = camD();
+  // 改札
+  const gz = COURSE.gate - cd;
+  if (gz > PZ - 1.2 && gz < 70) {
+    for (const o of S.obs.filter((o) => o.type === 'gate')) {
+      const xm = pxToM(LANE_X[o.lane]);
+      list.push({ z: gz, draw: () => {
+        const p = proj(gz, xm, 0); if (!p) return;
+        const w = .95 * p.s, h = 1.0 * p.s;
+        // 左右の筐体
+        g.fillStyle = '#9aa4b1'; g.fillRect(p.x - w / 2, p.y - h, w * .16, h); g.fillRect(p.x + w / 2 - w * .16, p.y - h, w * .16, h);
+        g.fillStyle = '#c4ccd6'; g.fillRect(p.x - w / 2, p.y - h, w * .16, h * .12); g.fillRect(p.x + w / 2 - w * .16, p.y - h, w * .16, h * .12);
+        // フラップ
+        g.fillStyle = o.closed ? '#e8432f' : 'rgba(46,190,115,.85)';
+        g.fillRect(p.x - w * .34, p.y - h * .55, w * .68, h * .14);
+        // 表示
+        g.fillStyle = '#111'; g.beginPath(); g.roundRect(p.x - w * .2, p.y - h * 1.3, w * .4, h * .28, 4); g.fill();
+        g.fillStyle = o.closed ? '#ff5b47' : '#3ee08a'; g.font = `800 ${Math.max(8, h * .22)}px "M PLUS Rounded 1c"`; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(o.closed ? '×' : '○', p.x, p.y - h * 1.16); g.textBaseline = 'alphabetic';
+      } });
+    }
+  }
+  // 信号機（右側）
+  const sz = COURSE.signal - cd - .5;
+  if (sz > PZ - 1.5 && sz < 70) list.push({ z: sz, draw: () => {
+    const p = proj(sz, WALL_M - .4, 0), t = proj(sz, WALL_M - .4, 3.2); if (!p || !t) return;
+    g.fillStyle = '#5a6068'; g.fillRect(p.x - p.s * .04, t.y, p.s * .08, p.y - t.y);
+    const st = signalState(S.t), on = st === 'green' || (st === 'blink' && Math.floor(S.t * 6) % 2 === 0);
+    const bw = p.s * .32, bh = p.s * .62;
+    g.fillStyle = '#222'; g.beginPath(); g.roundRect(t.x - bw / 2, t.y, bw, bh, 4); g.fill();
+    g.fillStyle = st === 'red' ? '#ff3b30' : '#4a1a18'; g.beginPath(); g.arc(t.x, t.y + bh * .28, bw * .32, 0, 7); g.fill();
+    g.fillStyle = on ? '#34d27a' : '#163a26'; g.beginPath(); g.arc(t.x, t.y + bh * .72, bw * .32, 0, 7); g.fill();
+  } });
+  // エレベーター
+  const ez = COURSE.elevator - cd;
+  if (ez > .5 && ez < 70 && S.elevator === null) list.push({ z: ez, draw: () => {
+    const open = elevatorOpen(S.t);
+    quad(proj(ez, -WALL_M, 0), proj(ez, WALL_M, 0), proj(ez, WALL_M, 3), proj(ez, -WALL_M, 3), '#cfc6b6');
+    const a = proj(ez, -.9, 0), b = proj(ez, .9, 2.3); if (!a || !b) return;
+    g.fillStyle = open ? '#fff3c4' : '#8c96a3'; g.fillRect(a.x, b.y, b.x - a.x, a.y - b.y);
+    if (!open) { g.strokeStyle = '#59636f'; g.lineWidth = 2; g.beginPath(); g.moveTo((a.x + b.x) / 2, b.y); g.lineTo((a.x + b.x) / 2, a.y); g.stroke(); }
+    g.fillStyle = '#1d2433'; g.font = `800 ${Math.max(9, a.s * .28)}px "M PLUS Rounded 1c"`; g.textAlign = 'center';
+    g.fillText(open ? '▲ 開' : '▲ 閉', (a.x + b.x) / 2, b.y - a.s * .15);
+  } });
+  // タイムカード
+  const tz = COURSE.goal - cd + .6;
+  if (tz > .5 && tz < 70) list.push({ z: tz, draw: () => {
+    quad(proj(tz + .3, -WALL_M, 0), proj(tz + .3, WALL_M, 0), proj(tz + .3, WALL_M, 3), proj(tz + .3, -WALL_M, 3), '#d9d1c1');
+    const a = proj(tz, -.45, .9), b = proj(tz, .45, 1.9); if (!a || !b) return;
+    g.fillStyle = '#2f6fe4'; g.beginPath(); g.roundRect(a.x, b.y, b.x - a.x, a.y - b.y, 6); g.fill();
+    g.fillStyle = '#fff'; g.font = `800 ${Math.max(8, a.s * .16)}px "M PLUS Rounded 1c"`; g.textAlign = 'center';
+    g.fillText('タイムカード', (a.x + b.x) / 2, (a.y + b.y) / 2 + a.s * .05);
+  } });
+}
+
+const SIZE_M = { down: 1.7, phone: 1.7, pigeon: .45, tissue: 1.7, coffee: .45, guard: 1.7 };
+function drawObstacle(o, z) {
+  const xm = pxToM(o.x);
+  const lift = o.type === 'coffee' ? .5 + Math.sin(S.t * 4 + o.d) * .08 : 0;
+  const p = proj(z, xm, lift), ground = proj(z, xm, 0);
+  if (!p) return;
+  const h = SIZE_M[o.type] * p.s;
+  g.globalAlpha = o.hit ? .35 : Math.min(1, (70 - z) / 15);
+  g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(ground.x, ground.y, h * .28, h * .07, 0, 0, 7); g.fill();
+  if (o.type === 'coffee') {
+    const glow = g.createRadialGradient(p.x, p.y - h / 2, 1, p.x, p.y - h / 2, h * 1.2);
+    glow.addColorStop(0, 'rgba(255,220,120,.7)'); glow.addColorStop(1, 'rgba(255,220,120,0)');
+    g.fillStyle = glow; g.fillRect(p.x - h * 1.2, p.y - h * 1.7, h * 2.4, h * 2.4);
+  }
+  g.font = `${h}px ${EF}`; g.textAlign = 'center'; g.textBaseline = 'bottom';
+  g.fillText(EMOJI[o.type], p.x, p.y + h * .06);
+  if (o.type === 'phone') { g.font = `${h * .32}px ${EF}`; g.fillText('📱', p.x + h * .2, p.y - h * .45); }
+  if (o.type === 'tissue') { g.font = `${h * .3}px ${EF}`; g.fillText('🧻', p.x + h * .28, p.y - h * .3); }
+  g.textBaseline = 'alphabetic'; g.globalAlpha = 1;
+}
 
 function draw() {
-  // 地面（1mごとに色を変えて流れを出す）
-  for (let y = 0; y < H; y += 13) {
-    const d = S.d + (PY - y) / SCALE;
-    const [a, b] = bgColor(d);
-    g.fillStyle = Math.floor(d) % 2 ? a : b;
-    g.fillRect(0, y, W, 13);
-  }
-  // 階段の段
-  if (S.d < COURSE.stairsEnd + 30) {
-    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 3;
-    for (let d = Math.floor(S.d - 5); d < COURSE.stairsEnd; d += 1) { const y = sy(d); if (y > -10 && y < H) { g.beginPath(); g.moveTo(20, y); g.lineTo(W - 20, y); g.stroke(); } }
-  }
-  // 横断歩道
-  const cy0 = sy(COURSE.signal), cy1 = sy(COURSE.crossEnd);
-  if (cy1 < H && cy0 > 0) {
-    g.fillStyle = '#f4f4f4';
-    for (let x = 30; x < W - 20; x += 44) g.fillRect(x, cy1 + 10, 26, cy0 - cy1 - 20);
-    g.fillStyle = '#fff'; g.fillRect(0, cy0 - 4, W, 6);
-  }
-  // レーン線
-  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.setLineDash([14, 14]);
-  [130, 230].forEach((x) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); });
-  g.setLineDash([]);
-  // ビル入口・ゴール
-  const ly = sy(COURSE.lobby);
-  if (ly > -20 && ly < H + 20) { g.fillStyle = '#5c6b80'; g.fillRect(0, ly - 6, W, 12); }
-  const ey = sy(COURSE.elevator);
-  if (ey > -60 && ey < H + 20 && S.elevator === null) {
-    const open = elevatorOpen(S.t);
-    g.fillStyle = '#8a95a5'; g.fillRect(40, ey - 40, W - 80, 40);
-    g.fillStyle = open ? '#ffe9a8' : '#59636f';
-    g.fillRect(open ? 60 : W / 2 - 4, ey - 34, open ? W - 120 : 8, 30);
-    g.fillStyle = '#fff'; g.font = '800 14px "M PLUS Rounded 1c"'; g.textAlign = 'center';
-    g.fillText(open ? '▲ エレベーター 開' : '▲ エレベーター 閉', W / 2, ey - 46);
-  }
-  const gy = sy(COURSE.goal);
-  if (gy > -60 && gy < H + 40) {
-    g.fillStyle = '#2f6fe4'; g.fillRect(W / 2 - 70, gy - 52, 140, 50);
-    g.fillStyle = '#fff'; g.font = '800 18px "M PLUS Rounded 1c"'; g.textAlign = 'center';
-    g.fillText('タイムカード', W / 2, gy - 20);
-  }
-
-  // 障害物
+  const sprinting = S.sprint && S.stamina > 0 && S.stun <= 0;
+  const targetF = FOC_BASE * (sprinting || S.boost > 0 ? .88 : 1);
+  FOC += (targetF - FOC) * .12;
+  g.save();
+  if (S.stun > 0) g.translate(Math.sin(S.t * 70) * 4, Math.cos(S.t * 55) * 2);
+  drawSky();
+  drawGround();
+  drawLanesAndMarks();
+  drawSides();
+  // 奥から順に：目印・障害物・プレイヤー
+  const cd = camD(), list = [];
+  drawLandmarks(list);
   for (const o of S.obs) {
-    const y = sy(o.d);
-    if (y < -40 || y > H + 40 || (o.hit && o.type === 'coffee')) continue;
-    if (o.type === 'gate') {
-      g.fillStyle = '#8f9aa8'; g.fillRect(o.x - 44, y - 10, 10, 20); g.fillRect(o.x + 34, y - 10, 10, 20);
-      g.fillStyle = o.closed ? '#e8432f' : '#2bb673';
-      g.fillRect(o.x - 34, y - 4, 68, 8);
-      g.font = '800 20px "M PLUS Rounded 1c"'; g.textAlign = 'center';
-      g.fillText(o.closed ? '×' : '○', o.x, y - 16);
-      continue;
-    }
-    g.globalAlpha = o.hit ? .4 : 1;
-    const EF = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = 'rgba(0,0,0,.15)'; g.beginPath(); g.ellipse(o.x, y + 18, 18, 6, 0, 0, 7); g.fill();
-    g.font = `40px ${EF}`;
-    g.fillText(EMOJI[o.type], o.x, y);
-    // 小物（スマホ・ティッシュ）
-    if (o.type === 'phone') { g.font = `20px ${EF}`; g.fillText('📱', o.x + 14, y - 8); }
-    if (o.type === 'tissue') { g.font = `18px ${EF}`; g.fillText('🧻', o.x + 16, y + 6); }
-    g.globalAlpha = 1; g.textBaseline = 'alphabetic';
+    if (o.type === 'gate' || (o.hit && o.type === 'coffee')) continue;
+    const z = o.d - cd;
+    if (z > PZ - 1.2 && z < 70) list.push({ z, draw: () => drawObstacle(o, z) });
   }
-
-  drawPlayer();
-
-  // 信号
+  list.push({ z: PZ, draw: drawPlayer });
+  list.sort((a, b) => b.z - a.z).forEach((it) => it.draw());
+  if (sprinting || S.boost > 0) drawSpeedLines();
+  g.restore();
+  // 画面の端を少し暗く
+  const vg = g.createRadialGradient(W / 2, H * .55, H * .35, W / 2, H * .55, H * .8);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)');
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  // 信号が近いときは右上にも表示
   if (S.d > COURSE.walkEnd - 25 && S.d < COURSE.crossEnd) {
-    const st = signalState(S.t);
-    const on = st === 'green' || (st === 'blink' && Math.floor(S.t * 6) % 2 === 0);
-    g.fillStyle = '#222'; g.beginPath(); g.roundRect(W - 78, 92, 62, 104, 10); g.fill();
-    g.fillStyle = st === 'red' ? '#ff3b30' : '#4a1a18'; g.beginPath(); g.arc(W - 47, 120, 18, 0, 7); g.fill();
-    g.fillStyle = on ? '#34d27a' : '#163a26'; g.beginPath(); g.arc(W - 47, 168, 18, 0, 7); g.fill();
+    const st = signalState(S.t), on = st === 'green' || (st === 'blink' && Math.floor(S.t * 6) % 2 === 0);
+    g.fillStyle = 'rgba(20,20,20,.85)'; g.beginPath(); g.roundRect(W - 62, 88, 46, 80, 10); g.fill();
+    g.fillStyle = st === 'red' ? '#ff3b30' : '#4a1a18'; g.beginPath(); g.arc(W - 39, 110, 13, 0, 7); g.fill();
+    g.fillStyle = on ? '#34d27a' : '#163a26'; g.beginPath(); g.arc(W - 39, 146, 13, 0, 7); g.fill();
   }
-
   drawHud();
 }
 
+function drawSpeedLines() {
+  g.strokeStyle = S.boost > 0 ? 'rgba(255,220,120,.55)' : 'rgba(255,255,255,.5)';
+  g.lineWidth = 2;
+  for (let i = 0; i < 14; i++) {
+    const a = hash(i * 7.3 + Math.floor(S.t * 20)) * Math.PI * 2;
+    const r0 = 150 + hash(i + Math.floor(S.t * 20)) * 80;
+    const cx = W / 2, cy = HY + 40;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); g.lineTo(cx + Math.cos(a) * (r0 + 120), cy + Math.sin(a) * (r0 + 120)); g.stroke();
+  }
+}
+
+// 後ろ姿のサラリーマン
 function drawPlayer() {
-  const x = S.x, y = PY;
-  const swing = Math.sin(S.step * 2.2) * (S.speed > .5 ? 9 : 0);
+  const xm = pxToM(S.x);
+  const p = proj(PZ, xm, 0);
+  const u = p.s / 100; // 1m = p.s px → u は 1cm
+  const run = S.speed > .5 ? 1 : 0;
+  const ph = S.step * 1.15;
+  const sw = Math.sin(ph) * run;
+  const bob = Math.abs(Math.cos(ph)) * 4 * u * run;
+  const x = p.x, y = p.y - bob;
+  const lean = (LANE_X[S.lane] - S.x) * -.004;
   g.save();
-  if (S.stun > 0) g.translate(Math.sin(S.t * 60) * 3, 0);
+  g.translate(x, y); g.rotate(lean);
   // 影
-  g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(x, y + 26, 22, 8, 0, 0, 7); g.fill();
-  // 脚
-  g.strokeStyle = '#1d2433'; g.lineWidth = 9; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(x - 8, y + 6); g.lineTo(x - 8, y + 22 + swing * .6); g.stroke();
-  g.beginPath(); g.moveTo(x + 8, y + 6); g.lineTo(x + 8, y + 22 - swing * .6); g.stroke();
-  // 腕
-  g.strokeStyle = '#26334f'; g.lineWidth = 8;
-  g.beginPath(); g.moveTo(x - 17, y - 12); g.lineTo(x - 24, y + 4 - swing); g.stroke();
-  g.beginPath(); g.moveTo(x + 17, y - 12); g.lineTo(x + 24, y + 4 + swing); g.stroke();
-  // 体（スーツ）
-  g.fillStyle = '#2b3a5c'; g.beginPath(); g.roundRect(x - 18, y - 20, 36, 30, 10); g.fill();
-  g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x - 6, y - 20); g.lineTo(x + 6, y - 20); g.lineTo(x, y - 8); g.fill();
-  g.fillStyle = '#e8432f'; g.fillRect(x - 2.5, y - 18, 5, 14);
-  // 頭
-  g.fillStyle = '#f2c39a'; g.beginPath(); g.arc(x, y - 32, 14, 0, 7); g.fill();
-  g.fillStyle = '#1d1d1d'; g.beginPath(); g.arc(x, y - 36, 14, Math.PI, 0); g.fill();
-  // カバン
-  g.fillStyle = '#6b4a2b'; g.fillRect(x + 20, y - 2 + swing * .5, 12, 16);
+  g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(0, bob, 34 * u, 9 * u, 0, 0, 7); g.fill();
+  // 脚（ズボン＋靴）
+  const leg = (side, k) => {
+    const lift = Math.max(0, k) * 22 * u;
+    const lx = side * 11 * u;
+    g.strokeStyle = '#1e2638'; g.lineWidth = 15 * u; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(lx, -78 * u); g.lineTo(lx + side * 2 * u, -14 * u - lift); g.stroke();
+    g.fillStyle = '#111'; g.beginPath(); g.ellipse(lx + side * 2 * u, -8 * u - lift, 9 * u, 6 * u, 0, 0, 7); g.fill();
+    g.fillStyle = '#c9c9c9'; g.fillRect(lx - 7 * u, -6 * u - lift, 14 * u, 2.5 * u);
+  };
+  leg(-1, sw); leg(1, -sw);
+  // カバン（揺れる）
+  g.fillStyle = '#5b3b22'; g.beginPath(); g.roundRect(24 * u + sw * 6 * u, -92 * u, 18 * u, 26 * u, 3 * u); g.fill();
+  g.fillStyle = '#7a5232'; g.fillRect(24 * u + sw * 6 * u, -92 * u, 18 * u, 5 * u);
+  // 腕（後ろ）
+  const arm = (side, k) => {
+    g.strokeStyle = '#25304a'; g.lineWidth = 12 * u;
+    g.beginPath(); g.moveTo(side * 21 * u, -138 * u); g.lineTo(side * 26 * u, -104 * u + k * 16 * u); g.stroke();
+    g.fillStyle = '#f0c49c'; g.beginPath(); g.arc(side * 26 * u, -98 * u + k * 16 * u, 6 * u, 0, 7); g.fill();
+  };
+  arm(-1, -sw); arm(1, sw);
+  // 胴体（スーツの背中）
+  const jg = g.createLinearGradient(-26 * u, 0, 26 * u, 0);
+  jg.addColorStop(0, '#26324f'); jg.addColorStop(.5, '#34446a'); jg.addColorStop(1, '#222c45');
+  g.fillStyle = jg;
+  g.beginPath();
+  g.moveTo(-24 * u, -142 * u); g.quadraticCurveTo(0, -150 * u, 24 * u, -142 * u);
+  g.lineTo(21 * u, -80 * u); g.lineTo(-21 * u, -80 * u); g.closePath(); g.fill();
+  // 背中の縫い目とベント
+  g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 1.5 * u;
+  g.beginPath(); g.moveTo(0, -140 * u); g.lineTo(0, -80 * u); g.stroke();
+  // 襟（白シャツ）と首
+  g.fillStyle = '#f2f2f2'; g.fillRect(-8 * u, -150 * u, 16 * u, 6 * u);
+  g.fillStyle = '#e9b893'; g.fillRect(-7 * u, -158 * u, 14 * u, 9 * u);
+  // 頭（後頭部）
+  g.fillStyle = '#e9b893'; g.beginPath(); g.ellipse(-15 * u, -170 * u, 3.5 * u, 6 * u, 0, 0, 7); g.ellipse(15 * u, -170 * u, 3.5 * u, 6 * u, 0, 0, 7); g.fill();
+  const hg = g.createRadialGradient(-4 * u, -182 * u, 2 * u, 0, -172 * u, 18 * u);
+  hg.addColorStop(0, '#3a3a3a'); hg.addColorStop(1, '#141414');
+  g.fillStyle = hg; g.beginPath(); g.ellipse(0, -173 * u, 15 * u, 17 * u, 0, 0, 7); g.fill();
   // 汗
-  if (S.sprint || S.clock > LIMIT - 40) { g.fillStyle = '#8fd3ff'; g.beginPath(); g.arc(x + 18, y - 44, 4, 0, 7); g.fill(); g.beginPath(); g.arc(x - 20, y - 40, 3, 0, 7); g.fill(); }
+  if (S.sprint || S.clock > LIMIT - 40) {
+    g.fillStyle = 'rgba(143,211,255,.95)';
+    const k = (S.t * 3) % 1;
+    g.beginPath(); g.arc(19 * u, -186 * u + k * 20 * u, 3 * u, 0, 7); g.fill();
+    g.beginPath(); g.arc(-21 * u, -180 * u + ((k + .5) % 1) * 20 * u, 2.5 * u, 0, 7); g.fill();
+  }
   g.restore();
 }
 
@@ -597,8 +839,8 @@ const store = {
 };
 
 function titleOf(left) {
-  if (left >= 40) return '朝の覇者';
-  if (left >= 25) return '社畜の鑑';
+  if (left >= 30) return '朝の覇者';
+  if (left >= 20) return '社畜の鑑';
   if (left >= 10) return '定時の申し子';
   if (left >= 1) return 'ギリギリ族';
   return '奇跡の滑り込み';

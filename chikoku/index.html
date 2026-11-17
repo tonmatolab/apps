@@ -444,7 +444,8 @@ function update(dt) {
     }
   }
 
-  if (S.d >= COURSE.goal) { S.d = COURSE.goal; S.phase = 'punch'; S.sprint = false; say('タイムカードを連打で押せ！', 2); }
+  // ゴールに着いたら自動で打刻
+  if (S.d >= COURSE.goal) { S.d = COURSE.goal; S.phase = 'punch'; S.sprint = false; S.dash = 0; sfx.stamp(); if (!S.demo) finish(true); }
 }
 
 function punch() {
@@ -972,6 +973,7 @@ const sfx = {
   bump(gate) { if (gate) { tone(988, .18, 'sine', .25); tone(784, .3, 'sine', .25, .18); } else tone(140, .25, 'square', .15); },
   good() { tone(660, .1, 'triangle', .2); tone(990, .18, 'triangle', .2, .1); },
   tap() { tone(320 + Math.random() * 60, .06, 'square', .12); },
+  stamp() { tone(220, .08, 'square', .2); tone(1320, .12, 'triangle', .18, .06); },
   dash() { [300, 420, 600, 860].forEach((f, i) => tone(f, .08, 'sawtooth', .1, i * .04)); },
   nope() { tone(180, .12, 'square', .1); },
   bell() { tone(2200, .12, 'sine', .15); tone(2200, .12, 'sine', .15, .16); },
@@ -1003,9 +1005,9 @@ const store = {
 };
 
 function titleOf(left) {
-  if (left >= 30) return '朝の覇者';
-  if (left >= 20) return '社畜の鑑';
-  if (left >= 10) return '定時の申し子';
+  if (left >= 40) return '朝の覇者';
+  if (left >= 28) return '社畜の鑑';
+  if (left >= 15) return '定時の申し子';
   if (left >= 1) return 'ギリギリ族';
   return '奇跡の滑り込み';
 }

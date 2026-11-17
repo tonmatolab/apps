@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body { background: linear-gradient(#ffd27a, #ff8f5a); font-family: "M PLUS Rounded 1c", sans-serif; color: #1d2433; position: relative; }
+  .b { position: absolute; bottom: 120px; background: #ffb38a; }
+  .road { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: #6b6f7b; }
+  .road::after { content: ""; position: absolute; left: 0; right: 0; top: 54px; height: 10px; background: repeating-linear-gradient(90deg, #fff 0 70px, transparent 70px 140px); }
+  .txt { position: absolute; left: 70px; top: 70px; }
+  .k { display: inline-block; background: #e8432f; color: #fff; font-size: 34px; padding: 4px 22px; border-radius: 99px; }
+  h1 { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 120px; margin: 14px 0 0; line-height: 1.1; }
+  .t { font-family: "Dela Gothic One", sans-serif; font-size: 80px; margin-top: 6px; }
+  .t span { color: #e8432f; }
+  .run { position: absolute; right: 90px; bottom: 90px; font-size: 300px; line-height: 1; transform: scaleX(-1); }
+  .dash { position: absolute; right: 420px; bottom: 170px; font-size: 120px; transform: scaleX(-1); }
+</style></head><body>
+  <div class="b" style="left:640px;width:120px;height:260px"></div>
+  <div class="b" style="left:790px;width:160px;height:330px"></div>
+  <div class="b" style="left:980px;width:140px;height:220px"></div>
+  <div class="road"></div>
+  <div class="dash">💨</div>
+  <div class="run">🏃</div>
+  <div class="txt">
+    <span class="k">始業まであと3分！</span>
+    <h1>遅刻ダッシュ</h1>
+    <div class="t"><span>8:57</span> → 9:00</div>
+  </div>
+</body></html>

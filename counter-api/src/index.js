@@ -17,6 +17,7 @@ const ALLOWED_ORIGINS = [
 // ゲームごとの記録の有効範囲（ありえない値は受け付けない）
 const GAMES = {
   iai: { min: 100, max: 1000 },
+  chikoku: { min: 60000, max: 180000 }, // 8:57からの経過ミリ秒（ゲーム内時間）
 };
 const TOP_N = 10;
 const NG_WORDS = ['死ね', 'しね', '殺す', 'ころす', 'fuck', 'shit', 'ちんこ', 'まんこ', 'ちんぽ', 'sex'];

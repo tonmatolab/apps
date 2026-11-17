@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>遅刻ダッシュ｜始業まであと3分！</title>
+<meta name="description" content="電車を降りたら8:57。改札、歩きスマホ、赤信号をかわして9:00の始業に間に合え！通勤ダッシュゲーム。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="遅刻ダッシュ🏃 始業まであと3分！">
+<meta property="og:description" content="駅から会社まで、9:00に間に合うか？全国ランキングあり">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/chikoku/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/chikoku/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef4fb;
+    --paper: #ffffff;
+    --ink: #1d2433;
+    --sub: #66708a;
+    --blue: #2f6fe4;
+    --blue-dark: #1c4fb0;
+    --red: #e8432f;
+    --red-dark: #a92c1d;
+    --gold: #ffb703;
+    --line: #dbe4f0;
+    --chip: #f1f5fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10141c; --paper: #1a202b; --ink: #eef2f8; --sub: #9aa5bb;
+      --blue: #4d8bff; --blue-dark: #2c5fc4; --red: #ff5b47; --red-dark: #b83a2a;
+      --line: #2b3342; --chip: #222a37;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "M PLUS Rounded 1c", system-ui, sans-serif; line-height: 1.7;
+    -webkit-tap-highlight-color: transparent;
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 14px 16px 40px; }
+  .hidden { display: none !important; }
+  .card { background: var(--paper); border-radius: 22px; overflow: hidden; box-shadow: 0 6px 0 var(--line); }
+  .body { padding: 18px 18px 22px; }
+  .display { font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
+
+  .hero { position: relative; aspect-ratio: 16 / 10; background: linear-gradient(#ffd27a, #ff9a5a); overflow: hidden; }
+  .hero canvas { width: 100%; height: 100%; display: block; }
+  .kicker { display: inline-block; background: var(--red); color: #fff; font-weight: 800; font-size: .8rem; padding: 1px 12px; border-radius: 99px; }
+  h1 { font-size: 2.4rem; line-height: 1.15; margin: 8px 0 0; }
+  h1 .clock { color: var(--red); }
+  .lead { color: var(--sub); margin: 12px 0; font-size: .95rem; }
+  .how { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 14px; }
+  .how div { background: var(--chip); border-radius: 14px; padding: 10px; font-size: .85rem; text-align: center; line-height: 1.45; }
+  .how b { display: block; font-size: 1.4rem; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { background: var(--chip); border-radius: 14px; padding: 8px; text-align: center; line-height: 1.3; }
+  .stat b { display: block; font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.3rem; }
+  .stat span { font-size: .72rem; color: var(--sub); font-weight: 700; }
+
+  button {
+    display: block; width: 100%; font: inherit; font-weight: 800; font-size: 1.05rem;
+    border: none; border-radius: 16px; padding: 15px 16px; margin-top: 12px; cursor: pointer;
+    transition: transform .06s ease, box-shadow .06s ease;
+  }
+  .primary { background: var(--red); color: #fff; box-shadow: 0 5px 0 var(--red-dark); font-size: 1.2rem; }
+  .primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--red-dark); }
+  .ghost { background: var(--paper); color: var(--ink); border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); }
+  .ghost:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .x { background: #111; color: #fff; box-shadow: 0 5px 0 #000; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ゲーム画面 */
+  #game { position: fixed; inset: 0; z-index: 20; background: #000; touch-action: none; display: flex; align-items: center; justify-content: center; }
+  #cv { height: 100%; max-width: 100%; aspect-ratio: 9 / 16; display: block; touch-action: none; }
+
+  /* 結果 */
+  .res-time { text-align: center; margin: 4px 0 0; }
+  .res-time .t { font-family: "Dela Gothic One", sans-serif; font-size: 3.4rem; line-height: 1.1; }
+  .res-time .t.late { color: var(--red); }
+  .res-time .sub { color: var(--sub); font-weight: 700; }
+  .title-badge { text-align: center; margin: 10px 0 0; }
+  .title-badge span { display: inline-block; background: var(--blue); color: #fff; font-weight: 800; padding: 4px 18px; border-radius: 99px; font-size: 1.1rem; }
+  .title-badge.late span { background: var(--red); }
+  .excuse { background: var(--chip); border-radius: 16px; padding: 12px 14px; margin: 14px 0 0; }
+  .excuse small { display: block; color: var(--sub); font-weight: 800; font-size: .75rem; }
+  .excuse p { margin: 2px 0 0; font-weight: 800; }
+  .nat { text-align: center; margin: 12px 0 0; font-weight: 800; }
+  .nat b { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 2.6rem; color: var(--blue); margin: 0 4px; }
+  .nat small { color: var(--sub); }
+  .log { display: grid; gap: 4px; margin: 14px 0 0; padding: 0; list-style: none; font-size: .85rem; }
+  .log li { background: var(--chip); border-radius: 10px; padding: 6px 12px; display: flex; justify-content: space-between; }
+  .log li b { color: var(--red); }
+  .namebox { margin: 14px 0 0; padding: 14px; border-radius: 16px; background: color-mix(in srgb, var(--gold) 18%, var(--paper)); border: 2px solid var(--gold); }
+  .nb-head { margin: 0 0 10px; font-weight: 800; text-align: center; }
+  .nb-row { display: flex; gap: 8px; }
+  .nb-row input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--line); background: var(--paper); color: var(--ink); }
+  .nb-row button { width: auto; margin: 0; padding: 12px 18px; font-size: 1rem; }
+  .nb-row button:disabled { opacity: .5; }
+  .nb-msg { margin: 8px 0 0; font-size: .85rem; text-align: center; min-height: 1.2em; }
+  .board { margin: 18px 0 0; }
+  .board h3 { margin: 0 0 8px; font-size: 1rem; text-align: center; }
+  .board ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .board li { display: flex; align-items: center; gap: 10px; background: var(--chip); border-radius: 10px; padding: 7px 12px; font-size: .92rem; }
+  .board li .no { width: 26px; text-align: center; font-family: "Dela Gothic One", sans-serif; color: var(--sub); }
+  .board li .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .board li .ms { font-family: "Dela Gothic One", sans-serif; }
+  .board li.top1 .no { color: #e6a700; } .board li.top2 .no { color: #9aa5bb; } .board li.top3 .no { color: #c9773b; }
+  .board li.empty { justify-content: center; color: var(--sub); font-size: .85rem; }
+  .rec { margin: 18px 0 0; }
+  .rec h3 { margin: 0 0 6px; font-size: 1rem; }
+  .rec a { display: block; padding: 11px 14px; margin-top: 6px; border: 2px solid var(--line); border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: .92rem; }
+  .rec a:hover { border-color: var(--blue); }
+  .pr { font-size: .72rem; color: var(--sub); margin: 6px 0 0; }
+
+  footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <!-- タイトル -->
+  <section id="title" class="card">
+    <div class="hero"><canvas id="heroCv" width="480" height="300"></canvas></div>
+    <div class="body">
+      <span class="kicker">通勤ダッシュゲーム</span>
+      <h1 class="display">遅刻ダッシュ<br><span class="clock">8:57</span> → 9:00</h1>
+      <p class="lead">電車を降りたら8:57。改札、歩きスマホ、赤信号をかわして、9:00の始業までにタイムカードを押せ！</p>
+      <div class="how">
+        <div><b>👆</b>長押しで<br>全力ダッシュ</div>
+        <div><b>👈👉</b>左右スワイプで<br>よける</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="sPlays">…</b><span>挑戦した人</span></div>
+        <div class="stat"><b id="sBest">-</b><span>あなたの最速着席</span></div>
+      </div>
+      <button class="primary" id="startBtn">電車を降りる</button>
+      <div class="board"><h3>🏆 全国ランキング TOP10（早く着いた順）</h3><ol id="boardTitle"></ol></div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="result" class="card hidden">
+    <div class="body">
+      <div class="res-time"><div class="sub" id="rLabel"></div><div class="t" id="rTime"></div><div class="sub" id="rSub"></div></div>
+      <div class="title-badge" id="rBadgeWrap"><span id="rBadge"></span></div>
+      <div class="excuse hidden" id="rExcuseBox"><small>上司への言い訳</small><p id="rExcuse"></p></div>
+      <div class="nat hidden" id="rNatBox">全国 <b id="rNat"></b>位 <small id="rTotal"></small></div>
+      <div class="namebox hidden" id="nameBox">
+        <p class="nb-head">🏆 トップ10入り！ランキングに名前を残そう</p>
+        <div class="nb-row"><input id="nameInput" maxlength="12" placeholder="名前（12文字まで）" autocomplete="nickname"><button class="primary" id="nameBtn">登録</button></div>
+        <p class="nb-msg" id="nameMsg"></p>
+      </div>
+      <ul class="log" id="rLog"></ul>
+      <button class="primary" id="againBtn">もう一回、朝からやり直す</button>
+      <button class="x" id="shareBtn">𝕏 でシェア</button>
+      <div class="rec">
+        <h3>⏰ 明日は遅刻しないために</h3>
+        <div id="recList"></div>
+        <p class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</p>
+      </div>
+      <div class="board"><h3>🏆 全国ランキング TOP10</h3><ol id="boardResult"></ol></div>
+    </div>
+  </section>
+
+  <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
+</main>
+
+<div id="game" class="hidden"><canvas id="cv"></canvas></div>
+
+<script>
+const APP_TITLE = '遅刻ダッシュ';
+const HASHTAGS = ['遅刻ダッシュ'];
+const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+const AFFILIATE = { amazonTag: '' }; // 例: 'yourname-22'（入れるとリンクに付与＆PR表記）
+const RECS = [
+  { label: '光で起こす目覚まし時計', q: '光目覚まし時計' },
+  { label: '走れるビジネススニーカー', q: 'ビジネススニーカー メンズ' },
+  { label: '通勤用ワイヤレスイヤホン', q: 'ワイヤレスイヤホン ノイズキャンセリング' },
+  { label: '軽量の折りたたみ傘', q: '折りたたみ傘 軽量 自動開閉' },
+];
+const EXCUSES = [
+  '駅で鳩に道をゆずり続けました',
+  '改札が私だけ通してくれませんでした',
+  '歩きスマホの人と同じ方向によけ続けました',
+  'ティッシュを3回受け取ってしまいました',
+  '信号が私の前でだけ赤になりました',
+  'エレベーターが目の前で閉まり、心も閉じました',
+  'コンビニのコーヒーマシンが混んでいました',
+  '電車は定刻でした。私が定刻ではありませんでした',
+  '階段の降りてくる人の波に押し戻されました',
+  '全力で走ったのに、時間のほうが速かったです',
+  '会社の場所を一瞬忘れました',
+  '朝から人生について考えてしまいました',
+];
+
+// ===== 時間の設定 =====
+const START_SEC = 8 * 3600 + 57 * 60; // 8:57:00
+const LIMIT = 180;                     // 9:00:00 まで180秒（ゲーム内）
+const CLOCK_RATE = 3.5;                // 現実1秒 = ゲーム内3.5秒
+
+// ===== コース（単位：メートル） =====
+const COURSE = {
+  stairsEnd: 40, gate: 52, walkEnd: 170, signal: 178, crossEnd: 192,
+  lobby: 222, elevator: 240, goal: 258,
+};
+const SECTIONS = [
+  [0, 'ホーム → 階段'], [44, '改札'], [58, '駅前の歩道'], [172, '横断歩道'], [194, 'オフィス街'], [222, 'オフィスビル'], [252, 'タイムカード'],
+];
+const sectionName = (d) => SECTIONS.filter((s) => d >= s[0]).pop()[1];
+
+// 日付ごとに同じコース（今日のコース）
+function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function todaySeed() { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+
+function buildCourse() {
+  const R = rng(todaySeed());
+  const obs = [];
+  const lane = () => Math.floor(R() * 3);
+  // 階段：降りてくる人
+  for (let d = 10; d < COURSE.stairsEnd - 4; d += 4 + R() * 3) obs.push({ type: 'down', d, lane: lane(), v: -1.6 });
+  // 改札：1〜2か所がバツ
+  const closed = new Set([lane()]); if (R() < .5) closed.add(lane());
+  for (let l = 0; l < 3; l++) obs.push({ type: 'gate', d: COURSE.gate, lane: l, closed: closed.has(l) || closed.size === 3 && l === 0 });
+  // 歩道：歩きスマホ、鳩、ティッシュ配り、コーヒー
+  for (let d = 64; d < COURSE.walkEnd - 4; d += 5 + R() * 5) {
+    const r = R();
+    const type = r < .42 ? 'phone' : r < .7 ? 'pigeon' : r < .9 ? 'tissue' : 'coffee';
+    obs.push({ type, d, lane: lane(), v: type === 'phone' ? 1.3 : 0, drift: type === 'phone' ? 1.5 + R() * 2 : 0 });
+  }
+  // オフィス街
+  for (let d = COURSE.crossEnd + 6; d < COURSE.lobby - 4; d += 6 + R() * 4) {
+    const r = R(); obs.push({ type: r < .5 ? 'phone' : r < .8 ? 'pigeon' : 'coffee', d, lane: lane(), v: r < .5 ? 1.3 : 0, drift: 2 });
+  }
+  // ロビー：警備員さん
+  obs.push({ type: 'guard', d: COURSE.lobby + 8, lane: lane() });
+  return obs;
+}
+
+const EMOJI = { down: '🧑‍💼', phone: '🚶', pigeon: '🐦', tissue: '🙋', coffee: '☕', guard: '👮' };
+const HIT = {
+  down: [0.7, 'ドンッ！ 人の波に押し戻された'],
+  phone: [0.8, '歩きスマホの人とぶつかった'],
+  pigeon: [0.6, 'バサバサッ！ 鳩の群れに突っ込んだ'],
+  tissue: [0.9, 'ティッシュを受け取ってしまった'],
+  gate: [1.4, 'ピンポーン！ 改札で止められた'],
+  guard: [0.8, '警備員さんに「おはようございます」'],
+};
+
+// ===== 状態 =====
+const $ = (id) => document.getElementById(id);
+const cv = $('cv'), g = cv.getContext('2d');
+const W = 360, H = 640, LANE_X = [80, 180, 280], PY = 520, SCALE = 13;
+let S = null, raf = 0, last = 0;
+
+function newState() {
+  return {
+    d: 0, lane: 1, x: LANE_X[1], speed: 0, stamina: 100, sprint: false,
+    stun: 0, boost: 0, slow: 0, clock: 0, t: 0, obs: buildCourse(),
+    log: [], phase: 'run', taps: 0, msg: '', msgT: 0, done: false, elevator: null, step: 0,
+  };
+}
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = W * dpr; cv.height = H * dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function say(text, t = 1.2) { S.msg = text; S.msgT = t; }
+
+// ===== 入力 =====
+let press = null;
+cv.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  audio();
+  if (!S || S.done) return;
+  if (S.phase === 'punch') { punch(); return; }
+  press = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
+  S.sprint = true;
+});
+cv.addEventListener('pointermove', (e) => {
+  if (!press || !S || S.phase !== 'run') return;
+  const dx = e.clientX - press.x;
+  if (Math.abs(dx) > 28) {
+    moveLane(dx > 0 ? 1 : -1);
+    press.x = e.clientX;
+    press.moved = true;
+  }
+});
+const release = () => { press = null; if (S) S.sprint = false; };
+cv.addEventListener('pointerup', release);
+cv.addEventListener('pointercancel', release);
+window.addEventListener('keydown', (e) => {
+  if (!S || S.done || $('game').classList.contains('hidden')) return;
+  if (S.phase === 'punch' && (e.key === ' ' || e.key === 'Enter')) return punch();
+  if (e.key === 'ArrowLeft') moveLane(-1);
+  if (e.key === 'ArrowRight') moveLane(1);
+  if (e.key === ' ' || e.key === 'ArrowUp') S.sprint = true;
+});
+window.addEventListener('keyup', (e) => { if (S && (e.key === ' ' || e.key === 'ArrowUp')) S.sprint = false; });
+function moveLane(dir) { if (S.stun > 0) return; S.lane = Math.max(0, Math.min(2, S.lane + dir)); }
+
+// ===== 進行 =====
+function signalState(t) {
+  // 青4秒 → 点滅1.5秒 → 赤3.5秒（現実時間）
+  const c = (t + 2.2) % 9;
+  return c < 4 ? 'green' : c < 5.5 ? 'blink' : 'red';
+}
+function elevatorOpen(t) { return (t + 1) % 6 < 2.6; }
+
+function update(dt) {
+  S.t += dt;
+  S.clock += dt * CLOCK_RATE;
+  if (S.msgT > 0) S.msgT -= dt;
+  if (S.clock >= LIMIT && !S.done) return finish(false);
+
+  if (S.phase === 'punch') return;
+
+  // 速度
+  let target = 5.2;
+  if (S.sprint && S.stamina > 0) { target = 7.6; S.stamina = Math.max(0, S.stamina - 30 * dt); }
+  else S.stamina = Math.min(100, S.stamina + 16 * dt);
+  if (S.boost > 0) { S.boost -= dt; target *= 1.35; }
+  if (S.slow > 0) { S.slow -= dt; target *= .6; }
+  if (S.stun > 0) { S.stun -= dt; target = 0; }
+  S.speed += (target - S.speed) * Math.min(1, dt * 6);
+
+  let nd = S.d + S.speed * dt;
+
+  // 信号：赤なら停止線で止まる
+  const sig = signalState(S.t);
+  if (S.d <= COURSE.signal && nd > COURSE.signal && sig === 'red') {
+    nd = COURSE.signal;
+    if (S.waitSaid !== true) { say('赤信号…待つしかない', 1.4); S.waitSaid = true; S.log.push(['赤信号で足止め', null]); }
+  }
+  if (sig !== 'red') S.waitSaid = false;
+
+  // エレベーター
+  if (S.d < COURSE.elevator && nd >= COURSE.elevator && S.elevator === null) {
+    if (elevatorOpen(S.t)) { S.elevator = true; nd = COURSE.goal - 6; say('エレベーターに滑り込んだ！', 1.4); S.log.push(['エレベーターに間に合った', 'good']); }
+    else { S.elevator = false; S.slow = 2.2; say('目の前で閉まった！階段ダッシュ！', 1.6); S.log.push(['エレベーターに乗り遅れた', null]); }
+  }
+  S.d = nd;
+  S.step += S.speed * dt;
+
+  // 横移動
+  S.x += (LANE_X[S.lane] - S.x) * Math.min(1, dt * 14);
+
+  // 障害物
+  for (const o of S.obs) {
+    if (o.v) o.d += o.v * dt;
+    if (o.drift) {
+      o.dt = (o.dt || 0) + dt;
+      if (o.dt > o.drift) { o.dt = 0; o.lane = Math.max(0, Math.min(2, o.lane + (Math.random() < .5 ? -1 : 1))); }
+    }
+    o.x = o.x == null ? LANE_X[o.lane] : o.x + (LANE_X[o.lane] - o.x) * Math.min(1, dt * 5);
+    if (o.hit) continue;
+    if (o.type === 'gate' && !o.closed) continue;
+    const near = Math.abs(o.d - S.d) < (o.type === 'gate' ? .9 : 1.1);
+    const same = Math.abs(o.x - S.x) < 46;
+    if (near && same) {
+      o.hit = true;
+      if (o.type === 'coffee') { S.boost = 3; S.stamina = 100; say('☕ コーヒーで覚醒！加速！', 1.3); S.log.push(['コーヒーで加速', 'good']); sfx.good(); continue; }
+      const [st, text] = HIT[o.type];
+      S.stun = st; say(text, 1.2); S.log.push([text, 'bad']); sfx.bump(o.type === 'gate');
+      if (navigator.vibrate) navigator.vibrate(60);
+      if (o.type === 'gate') S.d = COURSE.gate - 1.2;
+    }
+  }
+
+  if (S.d >= COURSE.goal) { S.d = COURSE.goal; S.phase = 'punch'; S.sprint = false; say('タイムカードを連打で押せ！', 2); }
+}
+
+function punch() {
+  S.taps++;
+  sfx.tap();
+  if (S.taps >= 8) finish(true);
+}
+
+// ===== 描画 =====
+function bgColor(d) {
+  if (d < COURSE.stairsEnd) return ['#c9c3b8', '#b7b0a3'];
+  if (d < 58) return ['#d9d4cb', '#cbc5ba'];
+  if (d < COURSE.signal - 2) return ['#cfd8de', '#bfc9d0'];
+  if (d < COURSE.crossEnd) return ['#4a4f57', '#3e434a'];
+  if (d < COURSE.lobby) return ['#cfd8de', '#bfc9d0'];
+  return ['#e9e4da', '#ddd6c9'];
+}
+const sy = (d) => PY - (d - S.d) * SCALE;
+
+function draw() {
+  // 地面（1mごとに色を変えて流れを出す）
+  for (let y = 0; y < H; y += 13) {
+    const d = S.d + (PY - y) / SCALE;
+    const [a, b] = bgColor(d);
+    g.fillStyle = Math.floor(d) % 2 ? a : b;
+    g.fillRect(0, y, W, 13);
+  }
+  // 階段の段
+  if (S.d < COURSE.stairsEnd + 30) {
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 3;
+    for (let d = Math.floor(S.d - 5); d < COURSE.stairsEnd; d += 1) { const y = sy(d); if (y > -10 && y < H) { g.beginPath(); g.moveTo(20, y); g.lineTo(W - 20, y); g.stroke(); } }
+  }
+  // 横断歩道
+  const cy0 = sy(COURSE.signal), cy1 = sy(COURSE.crossEnd);
+  if (cy1 < H && cy0 > 0) {
+    g.fillStyle = '#f4f4f4';
+    for (let x = 30; x < W - 20; x += 44) g.fillRect(x, cy1 + 10, 26, cy0 - cy1 - 20);
+    g.fillStyle = '#fff'; g.fillRect(0, cy0 - 4, W, 6);
+  }
+  // レーン線
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.setLineDash([14, 14]);
+  [130, 230].forEach((x) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); });
+  g.setLineDash([]);
+  // ビル入口・ゴール
+  const ly = sy(COURSE.lobby);
+  if (ly > -20 && ly < H + 20) { g.fillStyle = '#5c6b80'; g.fillRect(0, ly - 6, W, 12); }
+  const ey = sy(COURSE.elevator);
+  if (ey > -60 && ey < H + 20 && S.elevator === null) {
+    const open = elevatorOpen(S.t);
+    g.fillStyle = '#8a95a5'; g.fillRect(40, ey - 40, W - 80, 40);
+    g.fillStyle = open ? '#ffe9a8' : '#59636f';
+    g.fillRect(open ? 60 : W / 2 - 4, ey - 34, open ? W - 120 : 8, 30);
+    g.fillStyle = '#fff'; g.font = '800 14px "M PLUS Rounded 1c"'; g.textAlign = 'center';
+    g.fillText(open ? '▲ エレベーター 開' : '▲ エレベーター 閉', W / 2, ey - 46);
+  }
+  const gy = sy(COURSE.goal);
+  if (gy > -60 && gy < H + 40) {
+    g.fillStyle = '#2f6fe4'; g.fillRect(W / 2 - 70, gy - 52, 140, 50);
+    g.fillStyle = '#fff'; g.font = '800 18px "M PLUS Rounded 1c"'; g.textAlign = 'center';
+    g.fillText('タイムカード', W / 2, gy - 20);
+  }
+
+  // 障害物
+  for (const o of S.obs) {
+    const y = sy(o.d);
+    if (y < -40 || y > H + 40 || (o.hit && o.type === 'coffee')) continue;
+    if (o.type === 'gate') {
+      g.fillStyle = '#8f9aa8'; g.fillRect(o.x - 44, y - 10, 10, 20); g.fillRect(o.x + 34, y - 10, 10, 20);
+      g.fillStyle = o.closed ? '#e8432f' : '#2bb673';
+      g.fillRect(o.x - 34, y - 4, 68, 8);
+      g.font = '800 20px "M PLUS Rounded 1c"'; g.textAlign = 'center';
+      g.fillText(o.closed ? '×' : '○', o.x, y - 16);
+      continue;
+    }
+    g.globalAlpha = o.hit ? .4 : 1;
+    const EF = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = 'rgba(0,0,0,.15)'; g.beginPath(); g.ellipse(o.x, y + 18, 18, 6, 0, 0, 7); g.fill();
+    g.font = `40px ${EF}`;
+    g.fillText(EMOJI[o.type], o.x, y);
+    // 小物（スマホ・ティッシュ）
+    if (o.type === 'phone') { g.font = `20px ${EF}`; g.fillText('📱', o.x + 14, y - 8); }
+    if (o.type === 'tissue') { g.font = `18px ${EF}`; g.fillText('🧻', o.x + 16, y + 6); }
+    g.globalAlpha = 1; g.textBaseline = 'alphabetic';
+  }
+
+  drawPlayer();
+
+  // 信号
+  if (S.d > COURSE.walkEnd - 25 && S.d < COURSE.crossEnd) {
+    const st = signalState(S.t);
+    const on = st === 'green' || (st === 'blink' && Math.floor(S.t * 6) % 2 === 0);
+    g.fillStyle = '#222'; g.beginPath(); g.roundRect(W - 78, 92, 62, 104, 10); g.fill();
+    g.fillStyle = st === 'red' ? '#ff3b30' : '#4a1a18'; g.beginPath(); g.arc(W - 47, 120, 18, 0, 7); g.fill();
+    g.fillStyle = on ? '#34d27a' : '#163a26'; g.beginPath(); g.arc(W - 47, 168, 18, 0, 7); g.fill();
+  }
+
+  drawHud();
+}
+
+function drawPlayer() {
+  const x = S.x, y = PY;
+  const swing = Math.sin(S.step * 2.2) * (S.speed > .5 ? 9 : 0);
+  g.save();
+  if (S.stun > 0) g.translate(Math.sin(S.t * 60) * 3, 0);
+  // 影
+  g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(x, y + 26, 22, 8, 0, 0, 7); g.fill();
+  // 脚
+  g.strokeStyle = '#1d2433'; g.lineWidth = 9; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(x - 8, y + 6); g.lineTo(x - 8, y + 22 + swing * .6); g.stroke();
+  g.beginPath(); g.moveTo(x + 8, y + 6); g.lineTo(x + 8, y + 22 - swing * .6); g.stroke();
+  // 腕
+  g.strokeStyle = '#26334f'; g.lineWidth = 8;
+  g.beginPath(); g.moveTo(x - 17, y - 12); g.lineTo(x - 24, y + 4 - swing); g.stroke();
+  g.beginPath(); g.moveTo(x + 17, y - 12); g.lineTo(x + 24, y + 4 + swing); g.stroke();
+  // 体（スーツ）
+  g.fillStyle = '#2b3a5c'; g.beginPath(); g.roundRect(x - 18, y - 20, 36, 30, 10); g.fill();
+  g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x - 6, y - 20); g.lineTo(x + 6, y - 20); g.lineTo(x, y - 8); g.fill();
+  g.fillStyle = '#e8432f'; g.fillRect(x - 2.5, y - 18, 5, 14);
+  // 頭
+  g.fillStyle = '#f2c39a'; g.beginPath(); g.arc(x, y - 32, 14, 0, 7); g.fill();
+  g.fillStyle = '#1d1d1d'; g.beginPath(); g.arc(x, y - 36, 14, Math.PI, 0); g.fill();
+  // カバン
+  g.fillStyle = '#6b4a2b'; g.fillRect(x + 20, y - 2 + swing * .5, 12, 16);
+  // 汗
+  if (S.sprint || S.clock > LIMIT - 40) { g.fillStyle = '#8fd3ff'; g.beginPath(); g.arc(x + 18, y - 44, 4, 0, 7); g.fill(); g.beginPath(); g.arc(x - 20, y - 40, 3, 0, 7); g.fill(); }
+  g.restore();
+}
+
+function fmtClock(sec) {
+  const s = START_SEC + Math.floor(sec);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+function drawHud() {
+  const left = LIMIT - S.clock;
+  // 時計
+  g.fillStyle = 'rgba(0,0,0,.62)'; g.beginPath(); g.roundRect(12, 12, W - 24, 64, 16); g.fill();
+  g.textAlign = 'left'; g.fillStyle = left < 30 ? (Math.floor(S.t * 4) % 2 ? '#ff5b47' : '#fff') : '#fff';
+  g.font = '34px "Dela Gothic One"'; g.fillText(fmtClock(S.clock), 26, 56);
+  g.textAlign = 'right'; g.fillStyle = '#ffd36b'; g.font = '800 14px "M PLUS Rounded 1c"';
+  g.fillText(sectionName(S.d), W - 26, 38);
+  g.fillStyle = '#fff'; g.font = '800 13px "M PLUS Rounded 1c"';
+  g.fillText(`会社まで ${Math.max(0, Math.round(COURSE.goal - S.d))}m`, W - 26, 60);
+  // スタミナ
+  g.fillStyle = 'rgba(0,0,0,.5)'; g.beginPath(); g.roundRect(20, H - 34, W - 40, 16, 8); g.fill();
+  g.fillStyle = S.stamina > 30 ? '#ffb703' : '#ff5b47';
+  g.beginPath(); g.roundRect(22, H - 32, (W - 44) * S.stamina / 100, 12, 6); g.fill();
+  g.fillStyle = '#fff'; g.font = '800 11px "M PLUS Rounded 1c"'; g.textAlign = 'left';
+  g.fillText(S.boost > 0 ? '☕ 覚醒中' : 'ダッシュ', 24, H - 40);
+  // メッセージ
+  if (S.msgT > 0 && S.msg) {
+    g.font = '800 17px "M PLUS Rounded 1c"'; g.textAlign = 'center';
+    const w = Math.min(W - 30, g.measureText(S.msg).width + 30);
+    g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.roundRect(W / 2 - w / 2, 92, w, 38, 19); g.fill();
+    g.fillStyle = '#1d2433'; g.fillText(S.msg, W / 2, 117);
+  }
+  // 連打フェーズ
+  if (S.phase === 'punch') {
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#fff'; g.textAlign = 'center';
+    g.font = '800 30px "M PLUS Rounded 1c"'; g.fillText('連打で打刻！', W / 2, 250);
+    g.font = '72px "Dela Gothic One"'; g.fillText(`${Math.min(S.taps, 8)} / 8`, W / 2, 340);
+    g.font = '34px "Dela Gothic One"'; g.fillStyle = left < 30 ? '#ff5b47' : '#ffd36b'; g.fillText(fmtClock(S.clock), W / 2, 400);
+  }
+  // スタート直後の説明
+  if (S.t < 2.6 && S.phase === 'run') {
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.beginPath(); g.roundRect(30, 250, W - 60, 110, 18); g.fill();
+    g.fillStyle = '#fff'; g.textAlign = 'center';
+    g.font = '800 18px "M PLUS Rounded 1c"'; g.fillText('長押し：全力ダッシュ', W / 2, 292);
+    g.fillText('左右スワイプ：よける', W / 2, 328);
+  }
+}
+
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000 || 0);
+  last = now;
+  if (S && !S.done) { update(dt); if (!S.done) draw(); }
+  raf = requestAnimationFrame(loop);
+}
+
+// ===== 効果音 =====
+let ac = null;
+function audio() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch {} return ac; }
+function tone(f, dur, type = 'sine', vol = .2, at = 0) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), gn = a.createGain();
+  o.type = type; o.frequency.value = f;
+  gn.gain.setValueAtTime(vol, a.currentTime + at); gn.gain.exponentialRampToValueAtTime(.001, a.currentTime + at + dur);
+  o.connect(gn).connect(a.destination); o.start(a.currentTime + at); o.stop(a.currentTime + at + dur);
+}
+const sfx = {
+  bump(gate) { if (gate) { tone(988, .18, 'sine', .25); tone(784, .3, 'sine', .25, .18); } else tone(140, .25, 'square', .15); },
+  good() { tone(660, .1, 'triangle', .2); tone(990, .18, 'triangle', .2, .1); },
+  tap() { tone(320 + Math.random() * 60, .06, 'square', .12); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, 'triangle', .2, i * .1)); },
+  lose() { [392, 330, 262].forEach((f, i) => tone(f, .35, 'sawtooth', .12, i * .18)); },
+};
+
+// ===== 開始・終了 =====
+function startGame() {
+  audio();
+  if (!store.get('played')) { store.set('played', '1'); api('/hit/chikoku-play', 'POST'); }
+  S = newState();
+  $('game').classList.remove('hidden');
+  resize();
+  cancelAnimationFrame(raf); last = performance.now(); raf = requestAnimationFrame(loop);
+}
+
+function finish(ok) {
+  S.done = true;
+  const arrived = ok && S.clock <= LIMIT;
+  (arrived ? sfx.win : sfx.lose)();
+  setTimeout(() => { $('game').classList.add('hidden'); cancelAnimationFrame(raf); showResult(arrived); }, arrived ? 300 : 900);
+  if (!arrived) { draw(); g.fillStyle = 'rgba(232,67,47,.85)'; g.fillRect(0, 250, W, 120); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '800 44px "M PLUS Rounded 1c"'; g.fillText('9:00 遅刻…', W / 2, 330); }
+}
+
+const store = {
+  get(k) { try { return localStorage.getItem('chikoku_' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('chikoku_' + k, v); } catch {} },
+};
+
+function titleOf(left) {
+  if (left >= 40) return '朝の覇者';
+  if (left >= 25) return '社畜の鑑';
+  if (left >= 10) return '定時の申し子';
+  if (left >= 1) return 'ギリギリ族';
+  return '奇跡の滑り込み';
+}
+
+let last_ = null, lastScore = null;
+async function showResult(arrived) {
+  const ms = Math.round(S.clock * 1000);
+  const left = LIMIT - Math.floor(S.clock);
+  const plays = Number(store.get('plays') || 0) + 1; store.set('plays', String(plays));
+  $('rLabel').textContent = arrived ? '着席したのは…' : '会社に着く前に…';
+  $('rTime').textContent = arrived ? fmtClock(S.clock) : '9:00:00';
+  $('rTime').className = 't' + (arrived ? '' : ' late');
+  $('rSub').textContent = arrived ? `始業 ${left}秒前！` : `会社まであと ${Math.round(COURSE.goal - S.d)}m だった`;
+  const title = arrived ? titleOf(left) : '遅刻常習犯';
+  $('rBadge').textContent = title;
+  $('rBadgeWrap').className = 'title-badge' + (arrived ? '' : ' late');
+  const excuse = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
+  $('rExcuse').textContent = `「${excuse}」`;
+  $('rExcuseBox').classList.toggle('hidden', arrived);
+  $('rLog').innerHTML = '';
+  S.log.slice(0, 6).forEach(([t, k]) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<span></span><b></b>';
+    li.children[0].textContent = t;
+    li.children[1].textContent = k === 'good' ? '👍' : k === 'bad' ? 'ロス' : '';
+    $('rLog').appendChild(li);
+  });
+  if (arrived) {
+    const best = Math.min(Number(store.get('best') || Infinity), ms);
+    store.set('best', String(best));
+  }
+  renderBest();
+  last_ = { arrived, time: fmtClock(S.clock), left, title, excuse, rank: null, total: null };
+  $('rNatBox').classList.add('hidden');
+  $('nameBox').classList.add('hidden');
+  $('title').classList.add('hidden');
+  $('result').classList.remove('hidden');
+  window.scrollTo(0, 0);
+  if (arrived) {
+    const s = await api('/score', 'POST', { game: 'chikoku', ms });
+    if (s && !s.error) {
+      lastScore = s; last_.rank = s.rank; last_.total = s.total;
+      $('rNat').textContent = s.rank.toLocaleString();
+      $('rTotal').textContent = `/ ${s.total.toLocaleString()}人中`;
+      $('rNatBox').classList.remove('hidden');
+      if (s.top10) {
+        $('nameInput').value = store.get('name') || '';
+        $('nameMsg').textContent = ''; $('nameBtn').disabled = false;
+        document.querySelector('.nb-row').classList.remove('hidden');
+        $('nameBox').classList.remove('hidden');
+      }
+    }
+  }
+  loadBoard($('boardResult'));
+}
+
+async function submitName() {
+  const name = $('nameInput').value.trim();
+  if (!name) { $('nameMsg').textContent = '名前を入力してください'; return; }
+  $('nameBtn').disabled = true;
+  const r = await api('/name', 'POST', { game: 'chikoku', id: lastScore.id, token: lastScore.token, name });
+  if (r && r.ok) {
+    store.set('name', name);
+    document.querySelector('.nb-row').classList.add('hidden');
+    $('nameMsg').textContent = `「${r.name}」で ${r.rank}位 に登録しました！`;
+    loadBoard($('boardResult'));
+    return;
+  }
+  $('nameBtn').disabled = false;
+  const why = r && r.error;
+  $('nameMsg').textContent = why === 'bad_name' ? 'その名前は使えません。別の名前にしてください'
+    : why === 'not_top' ? '他の人に抜かれて、トップ10から外れてしまいました…'
+    : why === 'already' ? 'すでに登録済みです' : '登録できませんでした。通信状況を確認してください';
+}
+
+function share() {
+  const s = last_;
+  const text = s.arrived
+    ? `始業${s.left}秒前に着席🏃💨 ${s.time}\n称号「${s.title}」${s.rank ? `｜全国${s.rank}位（${s.total}人中）` : ''}\n\n駅から会社まで、9:00に間に合う？`
+    : `9:00に間に合わず遅刻しました…\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`;
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', text);
+  u.searchParams.set('url', location.origin + location.pathname);
+  u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+
+// ===== API =====
+async function api(path, method = 'GET', data) {
+  try {
+    const opt = { method, signal: AbortSignal.timeout(8000) };
+    if (data) { opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(data); }
+    const res = await fetch(API + path, opt);
+    const j = await res.json().catch(() => null);
+    return res.ok ? j : (j && j.error ? { error: j.error } : null);
+  } catch { return null; }
+}
+async function loadBoard(el) {
+  const j = await api('/board?game=chikoku');
+  if (!j || j.error) { el.innerHTML = '<li class="empty">読み込めませんでした</li>'; return; }
+  if (!j.top.length) { el.innerHTML = '<li class="empty">まだ誰も間に合っていません。一番乗りを狙え！</li>'; return; }
+  el.innerHTML = '';
+  j.top.forEach((r) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="no"></span><span class="nm"></span><span class="ms"></span>';
+    li.children[0].textContent = r.rank;
+    li.children[1].textContent = r.name === '名無しの侍' ? '名無しの会社員' : r.name;
+    li.children[2].textContent = fmtClock(r.ms / 1000);
+    if (r.rank <= 3) li.className = 'top' + r.rank;
+    el.appendChild(li);
+  });
+}
+async function loadStats() {
+  const j = await api('/get?keys=chikoku-play');
+  $('sPlays').textContent = j && !j.error ? (j['chikoku-play'] || 0).toLocaleString() : '-';
+}
+function renderBest() {
+  const b = store.get('best');
+  $('sBest').textContent = b ? fmtClock(Number(b) / 1000) : '-';
+}
+
+// ===== おすすめ（アフィリエイト） =====
+function renderRecs() {
+  const box = $('recList');
+  RECS.forEach((r) => {
+    const u = new URL('https://www.amazon.co.jp/s');
+    u.searchParams.set('k', r.q);
+    if (AFFILIATE.amazonTag) u.searchParams.set('tag', AFFILIATE.amazonTag);
+    const a = document.createElement('a');
+    a.href = u.toString(); a.target = '_blank'; a.rel = 'noopener sponsored';
+    a.textContent = `${r.label} を見る →`;
+    box.appendChild(a);
+  });
+  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag);
+}
+
+// ===== タイトルの絵（走るサラリーマン） =====
+function drawHero() {
+  const c = $('heroCv'), h = c.getContext('2d');
+  let t = 0;
+  const tick = () => {
+    t += 1 / 60;
+    if ($('title').classList.contains('hidden')) return requestAnimationFrame(tick);
+    const gr = h.createLinearGradient(0, 0, 0, 300); gr.addColorStop(0, '#ffd27a'); gr.addColorStop(1, '#ff8f5a');
+    h.fillStyle = gr; h.fillRect(0, 0, 480, 300);
+    // ビル群
+    h.fillStyle = '#ffb38a';
+    for (let i = 0; i < 8; i++) { const x = ((i * 90 - t * 60) % 720 + 720) % 720 - 120; h.fillRect(x, 120 - (i % 3) * 30, 70, 200); }
+    h.fillStyle = '#e9785a';
+    for (let i = 0; i < 6; i++) { const x = ((i * 120 - t * 120) % 720 + 720) % 720 - 120; h.fillRect(x, 160 - (i % 2) * 25, 90, 200); }
+    // 地面
+    h.fillStyle = '#6b6f7b'; h.fillRect(0, 240, 480, 60);
+    h.fillStyle = '#fff'; for (let i = 0; i < 8; i++) { const x = ((i * 80 - t * 300) % 640 + 640) % 640 - 80; h.fillRect(x, 266, 40, 6); }
+    // 大きな時計
+    h.fillStyle = '#fff'; h.beginPath(); h.arc(390, 80, 52, 0, 7); h.fill();
+    h.strokeStyle = '#1d2433'; h.lineWidth = 5; h.beginPath(); h.arc(390, 80, 52, 0, 7); h.stroke();
+    h.lineWidth = 6; h.beginPath(); h.moveTo(390, 80); h.lineTo(390, 40); h.stroke();
+    const a = -Math.PI / 2 + (57 / 60) * Math.PI * 2 + Math.sin(t * 3) * .02;
+    h.lineWidth = 4; h.beginPath(); h.moveTo(390, 80); h.lineTo(390 + Math.cos(a) * 44, 80 + Math.sin(a) * 44); h.stroke();
+    // 走る人（横向き）
+    const x = 150, y = 200 + Math.abs(Math.sin(t * 12)) * -6, sw = Math.sin(t * 12) * 18;
+    h.lineCap = 'round';
+    h.strokeStyle = '#1d2433'; h.lineWidth = 12;
+    h.beginPath(); h.moveTo(x, y + 10); h.lineTo(x + sw, y + 44); h.stroke();
+    h.beginPath(); h.moveTo(x, y + 10); h.lineTo(x - sw, y + 44); h.stroke();
+    h.fillStyle = '#2b3a5c'; h.beginPath(); h.roundRect(x - 18, y - 32, 36, 46, 12); h.fill();
+    h.strokeStyle = '#26334f'; h.lineWidth = 10;
+    h.beginPath(); h.moveTo(x, y - 22); h.lineTo(x - sw * 1.2, y + 2); h.stroke();
+    h.beginPath(); h.moveTo(x, y - 22); h.lineTo(x + sw * 1.2, y); h.stroke();
+    h.fillStyle = '#e8432f'; h.beginPath(); h.moveTo(x + 4, y - 30); h.lineTo(x + 30 + Math.sin(t * 20) * 4, y - 22); h.lineTo(x + 4, y - 24); h.fill();
+    h.fillStyle = '#f2c39a'; h.beginPath(); h.arc(x + 4, y - 48, 16, 0, 7); h.fill();
+    h.fillStyle = '#1d1d1d'; h.beginPath(); h.arc(x + 2, y - 52, 16, Math.PI * .95, Math.PI * 1.9); h.fill();
+    h.fillStyle = '#8fd3ff'; h.beginPath(); h.arc(x + 26, y - 60 - (t * 60) % 20, 5, 0, 7); h.fill();
+    // スピード線
+    h.strokeStyle = 'rgba(255,255,255,.8)'; h.lineWidth = 4;
+    for (let i = 0; i < 4; i++) { const yy = 150 + i * 22; h.beginPath(); h.moveTo(60 - i * 10, yy); h.lineTo(110 - i * 10, yy); h.stroke(); }
+    h.font = '44px "Dela Gothic One"'; h.fillStyle = '#e8432f'; h.strokeStyle = '#1d2433'; h.lineWidth = 8; h.textAlign = 'left';
+    h.strokeText('ダダダッ', 230, 220); h.fillText('ダダダッ', 230, 220);
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+// ===== 初期化 =====
+$('startBtn').onclick = startGame;
+$('againBtn').onclick = startGame;
+$('shareBtn').onclick = share;
+$('nameBtn').onclick = submitName;
+$('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName(); });
+window.addEventListener('resize', () => { if (S) resize(); });
+renderRecs();
+renderBest();
+loadStats();
+loadBoard($('boardTitle'));
+drawHero();
+</script>
+</body>
+</html>

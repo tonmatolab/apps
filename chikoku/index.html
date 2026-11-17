@@ -120,6 +120,9 @@
   .nb-row button:disabled { opacity: .5; }
   .nb-msg { margin: 8px 0 0; font-size: .85rem; text-align: center; min-height: 1.2em; }
   .board { margin: 18px 0 0; }
+  .board.top { margin: 16px 0 4px; padding: 12px 10px 10px; border-radius: 18px; background: linear-gradient(160deg, #fff4cc, var(--paper) 60%); border: 2px solid var(--gold); box-shadow: 0 4px 0 color-mix(in srgb, var(--gold) 60%, transparent); }
+  .board.top h3 { font-size: 1.05rem; margin-bottom: 10px; }
+  @media (prefers-color-scheme: dark) { .board.top { background: linear-gradient(160deg, #3a3014, var(--paper) 60%); } }
   .board h3 { margin: 0 0 8px; font-size: 1rem; text-align: center; }
   .board ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
   .board li { display: flex; align-items: center; gap: 10px; background: var(--chip); border-radius: 10px; padding: 7px 12px; font-size: .92rem; }
@@ -127,6 +130,7 @@
   .board li .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
   .board li .ms { font-family: "Dela Gothic One", sans-serif; }
   .board li.top1 .no { color: #e6a700; } .board li.top2 .no { color: #9aa5bb; } .board li.top3 .no { color: #c9773b; }
+  .board li.late .ms { color: var(--red); }
   .board li.empty { justify-content: center; color: var(--sub); font-size: .85rem; }
   .rec { margin: 18px 0 0; }
   .rec h3 { margin: 0 0 6px; font-size: 1rem; }
@@ -153,6 +157,7 @@
     </div>
     <div class="body">
       <button class="primary start-btn" id="startBtn">🚃 電車を降りる</button>
+      <div class="board top"><h3>🏆 全国ランキング TOP10（早く着いた順）</h3><ol id="boardTitle"></ol></div>
       <p class="lead">改札、歩きスマホ、赤信号、そして部長…。あらゆる朝の障害をかわして、9:00までにタイムカードを押せ！</p>
       <div class="how">
         <div><b>🔴</b>DASHボタンで<br>猛ダッシュ</div>
@@ -173,7 +178,6 @@
         <div class="stat"><b id="sPlays">…</b><span>挑戦した人</span></div>
         <div class="stat"><b id="sBest">-</b><span>あなたの最速着席</span></div>
       </div>
-      <div class="board"><h3>🏆 全国ランキング TOP10（早く着いた順）</h3><ol id="boardTitle"></ol></div>
     </div>
   </section>
 
@@ -189,6 +193,7 @@
         <div class="nb-row"><input id="nameInput" maxlength="12" placeholder="名前（12文字まで）" autocomplete="nickname"><button class="primary" id="nameBtn">登録</button></div>
         <p class="nb-msg" id="nameMsg"></p>
       </div>
+      <div class="board top"><h3>🏆 全国ランキング TOP10</h3><ol id="boardResult"></ol></div>
       <ul class="log" id="rLog"></ul>
       <button class="primary" id="againBtn">もう一回、朝からやり直す</button>
       <button class="x" id="shareBtn">𝕏 でシェア</button>
@@ -197,7 +202,6 @@
         <div id="recList"></div>
         <p class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</p>
       </div>
-      <div class="board"><h3>🏆 全国ランキング TOP10</h3><ol id="boardResult"></ol></div>
     </div>
   </section>
 
@@ -235,7 +239,8 @@ const EXCUSES = [
 // ===== 時間の設定 =====
 const START_SEC = 8 * 3600 + 57 * 60; // 8:57:00
 const LIMIT = 180;                     // 9:00:00 まで180秒（ゲーム内）
-const CLOCK_RATE = 5.7;                // 現実1秒 = ゲーム内5.7秒
+const CLOCK_RATE = 7.1;                // 現実1秒 = ゲーム内7.1秒
+const LATE_CAP = 600;                  // 10分遅刻したら打ち切り（行方不明扱い）
 
 // ===== コース（単位：メートル） =====
 const COURSE = {
@@ -256,12 +261,12 @@ function buildCourse() {
   const obs = [];
   const lane = () => Math.floor(R() * 3);
   // 階段：降りてくる人
-  for (let d = 10; d < COURSE.stairsEnd - 4; d += 4 + R() * 3) obs.push({ type: 'down', d, lane: lane(), v: -2.6 });
+  for (let d = 9; d < COURSE.stairsEnd - 3; d += 3 + R() * 2.5) obs.push({ type: 'down', d, lane: lane(), v: -2.6 });
   // 改札：1〜2か所がバツ
   const closed = new Set([lane()]); if (R() < .5) closed.add(lane());
   for (let l = 0; l < 3; l++) obs.push({ type: 'gate', d: COURSE.gate, lane: l, closed: closed.has(l) || closed.size === 3 && l === 0 });
   // 歩道：歩きスマホ、鳩、ティッシュ配り、コーヒー
-  for (let d = 64; d < COURSE.walkEnd - 4; d += 5 + R() * 5) {
+  for (let d = 64; d < COURSE.walkEnd - 4; d += 3.5 + R() * 4) {
     const r = R();
     const type = r < .42 ? 'phone' : r < .7 ? 'pigeon' : r < .9 ? 'tissue' : 'coffee';
     obs.push({ type, d, lane: lane(), v: type === 'phone' ? 2.1 : 0, drift: type === 'phone' ? 1.5 + R() * 2 : 0 });
@@ -274,7 +279,7 @@ function buildCourse() {
   obs.push({ type: 'couple', d: 206, lane: a2, lane2: a2 + 1, v: 1.2 });
   obs.push({ type: 'boss', d: COURSE.lobby + 15, lane: lane() });
   // オフィス街
-  for (let d = COURSE.crossEnd + 6; d < COURSE.lobby - 4; d += 6 + R() * 4) {
+  for (let d = COURSE.crossEnd + 6; d < COURSE.lobby - 4; d += 4 + R() * 3.5) {
     const r = R(); obs.push({ type: r < .5 ? 'phone' : r < .8 ? 'pigeon' : 'coffee', d, lane: lane(), v: r < .5 ? 2.1 : 0, drift: 2 });
   }
   // ロビー：警備員さん
@@ -369,9 +374,9 @@ function moveLane(dir) { if (S.stun > 0) return; S.lane = Math.max(0, Math.min(2
 
 // ===== 進行 =====
 function signalState(t) {
-  // 青4秒 → 点滅1.5秒 → 赤3.5秒（現実時間）
-  const c = (t + 2.2) % 9;
-  return c < 4 ? 'green' : c < 5.5 ? 'blink' : 'red';
+  // 青3秒 → 点滅1.2秒 → 赤4.3秒（現実時間）
+  const c = (t + 2.2) % 8.5;
+  return c < 3 ? 'green' : c < 4.2 ? 'blink' : 'red';
 }
 function elevatorOpen(t) { return (t + 1) % 6 < 2.6; }
 
@@ -379,7 +384,8 @@ function update(dt) {
   S.t += dt;
   S.clock += dt * CLOCK_RATE;
   if (S.msgT > 0) S.msgT -= dt;
-  if (S.clock >= LIMIT && !S.done) return finish(false);
+  if (S.clock >= LIMIT && !S.lateSaid && !S.demo) { S.lateSaid = true; say('9:00過ぎた！遅刻確定…でも走れ！', 2); sfx.late(); if (navigator.vibrate) navigator.vibrate([80, 60, 80]); }
+  if (S.clock >= LIMIT + LATE_CAP && !S.done) return finish(false);
 
   if (S.phase === 'punch') return;
 
@@ -876,6 +882,7 @@ function drawPlayer() {
   g.restore();
 }
 
+function fmtLate(sec) { sec = Math.max(0, Math.floor(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
 function fmtClock(sec) {
   const s = START_SEC + Math.floor(sec);
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
@@ -886,12 +893,18 @@ function drawHud() {
   const left = LIMIT - S.clock;
   // 時計
   g.fillStyle = 'rgba(0,0,0,.62)'; g.beginPath(); g.roundRect(12, 12, W - 24, 64, 16); g.fill();
-  g.textAlign = 'left'; g.fillStyle = left < 30 ? (Math.floor(S.t * 4) % 2 ? '#ff5b47' : '#fff') : '#fff';
-  g.font = '34px "Dela Gothic One"'; g.fillText(fmtClock(S.clock), 26, 56);
+  g.textAlign = 'left';
+  if (left <= 0) {
+    g.fillStyle = 'rgba(232,67,47,.9)'; g.beginPath(); g.roundRect(12, 12, W - 24, 64, 16); g.fill();
+    g.fillStyle = '#fff'; g.font = '34px "Dela Gothic One"'; g.fillText(fmtClock(S.clock), 26, 56);
+  } else {
+    g.fillStyle = left < 30 ? (Math.floor(S.t * 4) % 2 ? '#ff5b47' : '#fff') : '#fff';
+    g.font = '34px "Dela Gothic One"'; g.fillText(fmtClock(S.clock), 26, 56);
+  }
   g.textAlign = 'right'; g.fillStyle = '#ffd36b'; g.font = '800 14px "M PLUS Rounded 1c"';
   g.fillText(sectionName(S.d), W - 26, 38);
   g.fillStyle = '#fff'; g.font = '800 13px "M PLUS Rounded 1c"';
-  g.fillText(`会社まで ${Math.max(0, Math.round(COURSE.goal - S.d))}m`, W - 26, 60);
+  g.fillText(left <= 0 ? `遅刻 +${fmtLate(-left)}` : `会社まで ${Math.max(0, Math.round(COURSE.goal - S.d))}m`, W - 26, 60);
   drawDashUI();
   // メッセージ
   if (S.msgT > 0 && S.msg) {
@@ -977,6 +990,7 @@ const sfx = {
   dash() { [300, 420, 600, 860].forEach((f, i) => tone(f, .08, 'sawtooth', .1, i * .04)); },
   nope() { tone(180, .12, 'square', .1); },
   bell() { tone(2200, .12, 'sine', .15); tone(2200, .12, 'sine', .15, .16); },
+  late() { [880, 660, 440].forEach((f, i) => tone(f, .18, 'square', .12, i * .12)); },
   win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, 'triangle', .2, i * .1)); },
   lose() { [392, 330, 262].forEach((f, i) => tone(f, .35, 'sawtooth', .12, i * .18)); },
 };
@@ -993,10 +1007,14 @@ function startGame() {
 
 function finish(ok) {
   S.done = true;
-  const arrived = ok && S.clock <= LIMIT;
-  (arrived ? sfx.win : sfx.lose)();
-  setTimeout(() => { $('game').classList.add('hidden'); cancelAnimationFrame(raf); showResult(arrived); }, arrived ? 300 : 900);
-  if (!arrived) { draw(); g.fillStyle = 'rgba(232,67,47,.85)'; g.fillRect(0, 250, W, 120); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '800 44px "M PLUS Rounded 1c"'; g.fillText('9:00 遅刻…', W / 2, 330); }
+  const onTime = ok && S.clock <= LIMIT;
+  (onTime ? sfx.win : sfx.lose)();
+  setTimeout(() => { $('game').classList.add('hidden'); cancelAnimationFrame(raf); showResult(ok); }, onTime ? 300 : 900);
+  if (!onTime) {
+    draw(); g.fillStyle = 'rgba(232,67,47,.88)'; g.fillRect(0, 240, W, 140); g.fillStyle = '#fff'; g.textAlign = 'center';
+    g.font = '800 40px "M PLUS Rounded 1c"'; g.fillText(ok ? '遅刻で着席…' : '行方不明…', W / 2, 310);
+    g.font = '800 20px "M PLUS Rounded 1c"'; g.fillText(ok ? `${fmtLate(S.clock - LIMIT)} の遅刻` : '10分以上たっても会社に着かなかった', W / 2, 350);
+  }
 }
 
 const store = {
@@ -1005,28 +1023,40 @@ const store = {
 };
 
 function titleOf(left) {
-  if (left >= 40) return '朝の覇者';
-  if (left >= 28) return '社畜の鑑';
-  if (left >= 15) return '定時の申し子';
+  if (left >= 20) return '朝の覇者';
+  if (left >= 12) return '社畜の鑑';
+  if (left >= 5) return '定時の申し子';
   if (left >= 1) return 'ギリギリ族';
   return '奇跡の滑り込み';
 }
+// 遅刻した秒数ごとの称号（遅れるほど偉くなる）
+function lateTitleOf(late) {
+  if (late <= 10) return 'ちょい遅刻';
+  if (late <= 30) return '遅刻常習犯';
+  if (late <= 60) return '重役出勤';
+  if (late <= 120) return '社長出勤';
+  if (late <= 240) return '会長出勤';
+  return '伝説の遅刻王';
+}
 
 let last_ = null, lastScore = null;
-async function showResult(arrived) {
+async function showResult(reached) {
   const ms = Math.round(S.clock * 1000);
   const left = LIMIT - Math.floor(S.clock);
+  const onTime = reached && left >= 0;
+  const late = Math.floor(S.clock) - LIMIT;
+  const arrived = onTime; // ベスト記録は間に合ったときだけ
   const plays = Number(store.get('plays') || 0) + 1; store.set('plays', String(plays));
-  $('rLabel').textContent = arrived ? '着席したのは…' : '会社に着く前に…';
-  $('rTime').textContent = arrived ? fmtClock(S.clock) : '9:00:00';
-  $('rTime').className = 't' + (arrived ? '' : ' late');
-  $('rSub').textContent = arrived ? `始業 ${left}秒前！` : `会社まであと ${Math.round(COURSE.goal - S.d)}m だった`;
-  const title = arrived ? titleOf(left) : '遅刻常習犯';
+  $('rLabel').textContent = onTime ? '着席したのは…' : reached ? '遅刻して着席…' : '会社に着く前に…';
+  $('rTime').textContent = reached ? fmtClock(S.clock) : '行方不明';
+  $('rTime').className = 't' + (onTime ? '' : ' late');
+  $('rSub').textContent = onTime ? `始業 ${left}秒前！` : reached ? `${fmtLate(late)} の遅刻` : `会社まであと ${Math.round(COURSE.goal - S.d)}m だった`;
+  const title = onTime ? titleOf(left) : reached ? lateTitleOf(late) : '行方不明者';
   $('rBadge').textContent = title;
-  $('rBadgeWrap').className = 'title-badge' + (arrived ? '' : ' late');
+  $('rBadgeWrap').className = 'title-badge' + (onTime ? '' : ' late');
   const excuse = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
   $('rExcuse').textContent = `「${excuse}」`;
-  $('rExcuseBox').classList.toggle('hidden', arrived);
+  $('rExcuseBox').classList.toggle('hidden', onTime);
   $('rLog').innerHTML = '';
   S.log.slice(0, 6).forEach(([t, k]) => {
     const li = document.createElement('li');
@@ -1040,13 +1070,13 @@ async function showResult(arrived) {
     store.set('best', String(best));
   }
   renderBest();
-  last_ = { arrived, time: fmtClock(S.clock), left, title, excuse, rank: null, total: null };
+  last_ = { arrived: onTime, reached, late, time: fmtClock(S.clock), left, title, excuse, rank: null, total: null };
   $('rNatBox').classList.add('hidden');
   $('nameBox').classList.add('hidden');
   $('title').classList.add('hidden');
   $('result').classList.remove('hidden');
   window.scrollTo(0, 0);
-  if (arrived) {
+  if (reached) {
     const s = await api('/score', 'POST', { game: 'chikoku', ms });
     if (s && !s.error) {
       lastScore = s; last_.rank = s.rank; last_.total = s.total;
@@ -1087,7 +1117,9 @@ function share() {
   const s = last_;
   const text = s.arrived
     ? `始業${s.left}秒前に着席🏃💨 ${s.time}\n称号「${s.title}」${s.rank ? `｜全国${s.rank}位（${s.total}人中）` : ''}\n\n駅から会社まで、9:00に間に合う？`
-    : `9:00に間に合わず遅刻しました…\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`;
+    : s.reached
+      ? `${s.time}に着席（${fmtLate(s.late)}の遅刻）💦\n称号「${s.title}」${s.rank ? `｜全国${s.rank}位（${s.total}人中）` : ''}\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`
+      : `10分たっても会社に着かず「行方不明者」に…\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`;
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);
   u.searchParams.set('url', location.origin + location.pathname);
@@ -1117,6 +1149,7 @@ async function loadBoard(el) {
     li.children[1].textContent = r.name === '名無しの侍' ? '名無しの会社員' : r.name;
     li.children[2].textContent = fmtClock(r.ms / 1000);
     if (r.rank <= 3) li.className = 'top' + r.rank;
+    if (r.ms > LIMIT * 1000) li.classList.add('late');
     el.appendChild(li);
   });
 }

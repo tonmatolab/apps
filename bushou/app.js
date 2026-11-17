@@ -166,6 +166,7 @@ function openCard(b, from) {
   $('cardBox').innerHTML = cardHTML(b);
   $('vsIn').value = '';
   $('backBattle').classList.toggle('hidden', from !== 'battle');
+  setTimeout(() => cachedImage('card:' + b.key, () => cardImage(b)), 300);
   $('backBattle').textContent = BT && BT.tenka ? '← 天下統一の結果に戻る' : '← 合戦の結果に戻る';
   show('cardView');
   if (from !== 'battle') history.replaceState(null, '', `?n=${encodeURIComponent(b.name)}`);
@@ -186,7 +187,7 @@ async function startTenka(name) {
     .then((x) => x.json()).catch(() => null);
   btn.disabled = false; btn.textContent = '出陣する';
   if (!r || r.error) { alert(r && r.error === 'bad_name' ? 'その名前では出陣できません。別の名前にしてください。' : '通信に失敗しました。時間をおいてもう一度お試しください。'); return; }
-  TENKA = { me: makeBushou(name), data: r, idx: 0, fast: false };
+  TENKA = { me: makeBushou(name), data: r, idx: 0, fast: false, id: Date.now() };
   playTenka();
 }
 function renderTenkaBar() {
@@ -232,6 +233,7 @@ function tenkaAfterBattle(rout) {
   $('tkRank').classList.remove('hidden');
   $('tkFinal').classList.remove('hidden');
   loadTop();
+  cachedImage('tenka:' + T.id, tenkaImage);
 }
 function nextTenka() { TENKA.idx++; $('tenkaBox').classList.add('hidden'); playTenka(); }
 function shareTenka() {
@@ -239,7 +241,8 @@ function shareTenka() {
   const text = d.unified
     ? `【天下統一】「${b.name}」（${b.rarity.name}・${b.nick}）が全国の武将を10人抜きして天下統一！🏯\n全国${d.rank}位`
     : `「${b.name}」（${b.rarity.name}・${b.nick}）で天下統一に挑み、${d.streak}連勝で散った…⚔️\n自己ベスト${d.best}連勝・全国${d.rank}位`;
-  tweet(text + '\n\nあなたの名前は何連勝できる？', `${pageUrl()}?n=${encodeURIComponent(b.name)}`);
+  shareRich(text + '\n\nあなたの名前は何連勝できる？', `${pageUrl()}?n=${encodeURIComponent(b.name)}`, 'tenka:' + T.id, tenkaImage, 'bushou-tenka.png',
+    [{ key: 'card:' + b.key, make: () => cardImage(b), filename: `bushou-${b.name}.png` }]);
 }
 
 // ===== 全国番付 =====
@@ -288,7 +291,7 @@ function startBattle(nameA, nameB, opt = {}) {
   BT = {
     A, B, res, imgs: [mk(A), mk(B)], troops: [res.max[0], res.max[1]], max: res.max,
     i: 0, stepT: 0, stepDur: 0, cur: null, t: 0, charge: 0, dust: [], floaters: [], cutIn: null, fallen: [[], []], done: false, skip: false,
-    soldiers: [makeArmy(0), makeArmy(1)], tenka: !!opt.tenka,
+    soldiers: [makeArmy(0), makeArmy(1)], tenka: !!opt.tenka, id: Date.now() + Math.random(),
   };
   if (opt.tenka && TENKA && TENKA.fast) BT.skip = true;
   setHP();
@@ -370,6 +373,8 @@ function finishBattle() {
   $('seeA').textContent = `${S.A.name}のカード`; $('seeB').textContent = `${S.B.name}のカード`;
   $('resultBox').classList.remove('hidden');
   BT.rout = rout;
+  cachedImage('battle:' + BT.id, battleImage);
+  [BT.A, BT.B].forEach((b) => cachedImage('card:' + b.key, () => cardImage(b)));
   // 勝ち鬨の演出
   BT.winT = 0;
   const loop = () => { BT.winT += 1 / 60; btDraw(); if (BT.winT < 2) requestAnimationFrame(loop); };
@@ -476,6 +481,40 @@ function drawSoldier(g, x, y, color, flag, dir, troop) {
 
 // ===== シェア =====
 const pageUrl = () => location.origin + location.pathname;
+// ===== 画像付きシェア =====
+// スマホ：共有シートで画像＋文章を渡す（Xアプリを選べば画像付きで投稿できる）
+// PC：Xの投稿画面を開き、同時に画像を保存する（投稿画面に貼り付けてもらう）
+const isMobile = () => matchMedia('(pointer: coarse)').matches;
+const imgCache = new Map();
+function cachedImage(key, make) {
+  if (!imgCache.has(key)) imgCache.set(key, make().then((c) => new Promise((r) => c.toBlob((b) => r({ c, blob: b }), 'image/png'))));
+  return imgCache.get(key);
+}
+function toast(text) {
+  let t = $('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = text; t.className = 'on';
+  clearTimeout(toast.tm); toast.tm = setTimeout(() => (t.className = ''), 3200);
+}
+async function shareRich(text, url, key, make, filename, extras = []) {
+  const full = `${text}\n${url}\n#${HASHTAGS[0]}`;
+  if (isMobile() && navigator.canShare) {
+    try {
+      const all = [{ key, make, filename }, ...extras];
+      const blobs = await Promise.all(all.map((x) => cachedImage(x.key, x.make)));
+      const files = blobs.map(({ blob }, i) => new File([blob], all[i].filename, { type: 'image/png' }));
+      if (files.length > 1 && navigator.canShare({ files })) { await navigator.share({ files, text: full }); return; }
+      if (navigator.canShare({ files: [files[0]] })) { await navigator.share({ files: [files[0]], text: full }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  tweet(text, url);
+  try {
+    const { blob } = await cachedImage(key, make);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('画像を保存しました。Xの投稿画面に画像を貼り付けてください');
+  } catch {}
+}
 function tweet(text, url) {
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text); u.searchParams.set('url', url); u.searchParams.set('hashtags', HASHTAGS.join(','));
@@ -483,11 +522,12 @@ function tweet(text, url) {
 }
 function shareCard() {
   const b = curB, top = STAT_KEYS.slice().sort((x, y) => b.stats[y] - b.stats[x])[0];
-  tweet(`私の名前「${b.name}」は【${b.rarity.name}】${b.nick}でした⚔️\n${STAT_NAMES[top]}${b.stats[top]}・総合戦闘力${b.power}・スキル「${b.skills.map((s) => s.name).join('」「')}」\n\nあなたの名前は何者？`, `${pageUrl()}?n=${encodeURIComponent(b.name)}`);
+  shareRich(`私の名前「${b.name}」は【${b.rarity.name}】${b.nick}でした⚔️\n${STAT_NAMES[top]}${b.stats[top]}・総合戦闘力${b.power}・スキル「${b.skills.map((s) => s.name).join('」「')}」\n\nあなたの名前は何者？`, `${pageUrl()}?n=${encodeURIComponent(b.name)}`, 'card:' + b.key, () => cardImage(b), `bushou-${b.name}.png`);
 }
 function shareBattle() {
   const S = BT, w = S.res.winner === 0 ? S.A : S.B, l = S.res.winner === 0 ? S.B : S.A;
-  tweet(`【合戦】${S.A.name} vs ${S.B.name}\n勝者は… ${w.name}（${w.rarity.name}・${w.nick}）！\n${l.name}は${S.rout}\n\nこの2人、もう一度戦ったら結果は変わる？`, `${pageUrl()}?a=${encodeURIComponent(S.A.name)}&b=${encodeURIComponent(S.B.name)}`);
+  shareRich(`【合戦】${S.A.name} vs ${S.B.name}\n勝者は… ${w.name}（${w.rarity.name}・${w.nick}）！\n${l.name}は${S.rout}\n\nこの2人、もう一度戦ったら結果は変わる？`, `${pageUrl()}?a=${encodeURIComponent(S.A.name)}&b=${encodeURIComponent(S.B.name)}`, 'battle:' + S.id, battleImage, 'bushou-battle.png',
+    [S.A, S.B].map((b) => ({ key: 'card:' + b.key, make: () => cardImage(b), filename: `bushou-${b.name}.png` })));
 }
 
 // ===== 画像保存 =====

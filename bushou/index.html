@@ -159,6 +159,9 @@
   @keyframes pulseb { 50% { transform: translateY(-3px); } }
   .tk-rank { margin: 10px auto 0; display: inline-block; background: var(--red); color: #fff; font-weight: 800; padding: 4px 16px; border-radius: 99px; }
   #backBattle { margin: 0 0 10px; }
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 80; background: rgba(20,16,13,.95); color: #fff; border: 1.5px solid var(--gold);
+    padding: 10px 16px; border-radius: 12px; font-size: .85rem; font-weight: 700; opacity: 0; transition: .25s; pointer-events: none; width: max-content; max-width: 90vw; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
   .rec a { display: block; padding: 11px 14px; margin-top: 6px; border: 1.5px solid var(--line); border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: .9rem; background: var(--chip); }
   .pr { font-size: .72rem; color: var(--sub); margin: 6px 0 0; }
   footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
@@ -204,7 +207,7 @@
     <button class="gold hidden" id="backBattle">← 合戦の結果に戻る</button>
     <div id="cardBox"></div>
     <div class="row">
-      <button class="x" id="cardShare">𝕏 でシェア</button>
+      <button class="x" id="cardShare">𝕏 画像付きでシェア</button>
       <button class="ghost" id="cardImg">カード画像</button>
     </div>
     <div class="panel tenka-panel">
@@ -245,7 +248,7 @@
       <button class="gold hidden" id="nextBtn">次の城へ ▶</button>
       <div class="hidden" id="tkFinal">
         <div class="row">
-          <button class="x" id="tkShare">𝕏 でシェア</button>
+          <button class="x" id="tkShare">𝕏 画像付きでシェア</button>
           <button class="ghost" id="tkImg">結果画像</button>
         </div>
         <button class="primary" id="tkRetry">もう一度、天下統一に挑む</button>
@@ -257,7 +260,7 @@
       <div class="kachi" id="kachi"></div>
       <div class="rout" id="rout"></div>
       <div class="row">
-        <button class="x" id="btShare">𝕏 でシェア</button>
+        <button class="x" id="btShare">𝕏 画像付きでシェア</button>
         <button class="ghost" id="btImg">結果画像</button>
       </div>
       <button class="primary" id="rematch">もう一戦（運が変わるかも）</button>

@@ -1,26 +1,28 @@
 <!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;800&display=swap" rel="stylesheet">
+<html lang="ja"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@800&display=swap" rel="stylesheet">
 <style>
   html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
-  body { background: #f6efe6; font-family: "M PLUS Rounded 1c", sans-serif; color: #3b2a20; display: flex; align-items: center; justify-content: center; }
-  .box { width: 1100px; height: 530px; background: #fffaf4; border: 3px solid #e6d8c8; border-radius: 40px; display: flex; align-items: center; gap: 48px; padding: 0 80px; box-sizing: border-box; }
-  .emoji { font-size: 220px; }
-  h1 { font-size: 84px; font-weight: 800; margin: 0; line-height: 1.2; }
-  p { font-size: 40px; color: #b5652d; margin: 20px 0 0; font-weight: 800; }
-  small { display: block; font-size: 30px; color: #8a7262; margin-top: 16px; }
-</style>
-</head>
-<body>
-  <div class="box">
-    <div class="emoji">☕</div>
-    <div>
-      <h1>コーヒー<br>タイプ診断</h1>
-      <p>あなたにぴったりの1杯は？</p>
-      <small>8問・約1分で診断</small>
-    </div>
-  </div>
-</body>
-</html>
+  body { background: linear-gradient(160deg, #ffd9a8, #f3a46b 60%, #c86b3a); font-family: "M PLUS Rounded 1c"; color: #3b2a20; position: relative; }
+  .txt { position: absolute; left: 60px; top: 100px; width: 560px; }
+  .k { display: inline-block; background: #c0632a; color: #fff; font-size: 32px; padding: 4px 22px; border-radius: 99px; }
+  h1 { font-family: "Dela Gothic One"; font-weight: 400; font-size: 84px; line-height: 1.15; margin: 18px 0 0; }
+  h1 span { color: #fff; -webkit-text-stroke: 3px #3b2a20; paint-order: stroke fill; }
+  p { font-size: 34px; margin: 18px 0 0; }
+  #art { position: absolute; right: 30px; top: 40px; width: 560px; }
+  #art svg { width: 100%; }
+  #row { position: absolute; right: 40px; bottom: 30px; display: flex; gap: 8px; }
+  #row div { width: 84px; height: 84px; background: rgba(255,255,255,.55); border-radius: 18px; }
+  #row svg { width: 100%; height: 100%; }
+</style></head><body>
+<div class="txt"><span class="k">☕ 8問・約1分</span><h1>あなたの<br><span>コーヒー</span><br>タイプ診断</h1><p>性格でわかる、ぴったりの1杯</p></div>
+<div id="art"></div><div id="row"></div>
+<script>
+fetch('index.html').then(r => r.text()).then(t => {
+  const js = t.split('<script>')[1].split('// ===== 診断ロジック')[0];
+  const s = document.createElement('script'); s.textContent = js; document.body.appendChild(s);
+  document.getElementById('art').innerHTML = drinkSVG('latte');
+  document.getElementById('row').innerHTML = ['espresso', 'drip', 'cold', 'decaf', 'fruity'].map(k => `<div>${drinkSVG(k, { bg: false })}</div>`).join('');
+});
+</script>
+</body></html>

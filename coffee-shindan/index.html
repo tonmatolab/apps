@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>コーヒータイプ診断｜8問であなたにぴったりの1杯がわかる</title>
 <meta name="description" content="8つの質問に答えるだけで、あなたの性格にぴったりのコーヒータイプがわかる無料診断。結果は画像でシェアできます。">
-<!-- OGP -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="コーヒータイプ診断☕ あなたにぴったりの1杯は？">
 <meta property="og:description" content="8問で診断。結果を画像でシェアしよう">
@@ -14,72 +13,83 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f6efe6;
-    --card: #fffaf4;
-    --ink: #3b2a20;
-    --sub: #8a7262;
-    --accent: #b5652d;
-    --accent-ink: #fff;
-    --line: #e6d8c8;
+    --bg: #f7ecdf; --bg2: #f1d9bf; --card: #fffaf4; --ink: #3b2a20; --sub: #8a7262; --accent: #c0632a; --accent-d: #8c4115;
+    --line: #ead6c0; --chip: #f5e6d4; --tc: #c0632a;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1d1714;
-      --card: #2a211c;
-      --ink: #f3e8dc;
-      --sub: #b9a291;
-      --accent: #e08a4a;
-      --accent-ink: #1d1714;
-      --line: #3d3029;
-    }
+    :root { --bg: #1b1410; --bg2: #2c1e15; --card: #261c16; --ink: #f6e9dc; --sub: #c2a891; --accent: #e5874a; --accent-d: #9c5222; --line: #3c2d23; --chip: #30241c; }
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
-    line-height: 1.7;
-  }
-  main { max-width: 520px; margin: 0 auto; padding: 24px 16px 48px; }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 28px 22px;
-  }
-  h1 { font-size: 1.6rem; margin: 0 0 8px; line-height: 1.4; }
-  .lead { color: var(--sub); margin: 0 0 24px; }
-  .hero { font-size: 4rem; text-align: center; margin: 8px 0 16px; }
-  button, .btn {
-    display: block; width: 100%;
-    font: inherit; font-weight: 700;
-    border: none; border-radius: 14px;
-    padding: 14px 16px; margin-top: 10px;
-    cursor: pointer; text-align: center; text-decoration: none;
-  }
-  .primary { background: var(--accent); color: var(--accent-ink); }
-  .ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
-  .ghost:hover { border-color: var(--accent); }
-  .opt { background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); text-align: left; font-weight: 400; }
-  .opt:hover, .opt:focus-visible { border-color: var(--accent); outline: none; }
-  .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
-  .progress > div { height: 100%; background: var(--accent); transition: width .3s; }
-  .qnum { color: var(--sub); font-size: .9rem; }
-  .q { font-size: 1.25rem; font-weight: 700; margin: 4px 0 16px; }
-  .type-label { color: var(--sub); text-align: center; margin: 0; }
-  .type-name { font-size: 1.6rem; text-align: center; margin: 0 0 4px; }
-  .type-drink { text-align: center; color: var(--accent); font-weight: 700; margin: 0 0 16px; }
-  .traits { padding-left: 1.2em; }
-  .section-title { font-weight: 800; margin: 24px 0 4px; }
-  .rec a { display: block; padding: 12px 14px; margin-top: 8px; border: 1.5px solid var(--line); border-radius: 12px; color: var(--ink); text-decoration: none; }
+  body { margin: 0; color: var(--ink); font-family: "M PLUS Rounded 1c", system-ui, sans-serif; line-height: 1.7;
+    background: radial-gradient(circle at 80% -10%, var(--bg2), var(--bg) 55%) fixed, var(--bg); -webkit-tap-highlight-color: transparent; }
+  main { max-width: 500px; margin: 0 auto; padding: 16px 16px 40px; }
+  .hidden { display: none !important; }
+  .card { background: var(--card); border-radius: 26px; box-shadow: 0 6px 0 var(--line), 0 20px 40px -24px rgba(80,40,10,.45); overflow: hidden; animation: rise .4s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .pad { padding: 18px 20px 22px; }
+  button { display: block; width: 100%; font: inherit; font-weight: 800; font-size: 1.05rem; border: none; border-radius: 16px; padding: 15px 16px; margin-top: 12px; cursor: pointer; transition: transform .06s, box-shadow .06s; }
+  .primary { background: var(--accent); color: #fff; box-shadow: 0 5px 0 var(--accent-d); font-size: 1.15rem; }
+  .primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--accent-d); }
+  .ghost { background: var(--card); color: var(--ink); border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); }
+  .ghost:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .x { background: #111; color: #fff; box-shadow: 0 5px 0 #000; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* スタート */
+  .hero { position: relative; background: linear-gradient(160deg, #ffd9a8, #f3a46b 60%, #c86b3a); padding: 20px 0 0; text-align: center; overflow: hidden; }
+  .hero .beans { position: absolute; inset: 0; opacity: .25; }
+  .hero svg.cup { width: 220px; height: auto; display: block; margin: 0 auto; position: relative; }
+  .steam path { animation: steam 2.4s ease-in-out infinite; transform-origin: center; }
+  .steam path:nth-child(2) { animation-delay: .5s; } .steam path:nth-child(3) { animation-delay: 1s; }
+  @keyframes steam { 0% { opacity: 0; transform: translateY(10px); } 40% { opacity: .9; } 100% { opacity: 0; transform: translateY(-16px); } }
+  .kicker { display: inline-block; background: var(--accent); color: #fff; font-weight: 800; font-size: .8rem; padding: 1px 12px; border-radius: 99px; }
+  h1 { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 2.2rem; line-height: 1.2; margin: 8px 0 0; }
+  h1 span { color: var(--accent); }
+  .lead { color: var(--sub); margin: 10px 0 0; font-size: .95rem; }
+  .types { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 14px 0 0; }
+  .types div { aspect-ratio: 1; border-radius: 14px; background: var(--chip); display: grid; place-items: center; overflow: hidden; }
+  .types svg { width: 100%; height: 100%; }
+  .count { text-align: center; color: var(--sub); font-size: .85rem; font-weight: 700; margin: 10px 0 0; min-height: 1.4em; }
+
+  /* 質問 */
+  .qtop { display: flex; align-items: center; gap: 10px; }
+  .qnum { font-family: "Dela Gothic One"; color: var(--accent); font-size: 1.1rem; }
+  .bar { flex: 1; height: 10px; background: var(--chip); border-radius: 6px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, #e8a35a, var(--accent)); border-radius: 6px; transition: width .35s; }
+  .qicon { font-size: 3.4rem; text-align: center; margin: 14px 0 0; line-height: 1.1; animation: pop .4s ease both; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .q { font-size: 1.3rem; font-weight: 800; text-align: center; margin: 8px 0 14px; line-height: 1.45; }
+  .opt { display: flex; align-items: center; gap: 12px; background: var(--card); color: var(--ink); border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); text-align: left; font-weight: 700; padding: 13px 14px; }
+  .opt:hover { border-color: var(--accent); }
+  .opt:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .opt b { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-family: "Dela Gothic One"; font-weight: 400; }
+  #opts .opt:nth-child(1) b { background: #c0632a; } #opts .opt:nth-child(2) b { background: #e8a35a; } #opts .opt:nth-child(3) b { background: #6b8f5a; } #opts .opt:nth-child(4) b { background: #6a7fb0; }
+  .back { width: auto; margin: 10px auto 0; padding: 6px 14px; font-size: .85rem; background: transparent; color: var(--sub); box-shadow: none; }
+
+  /* 結果 */
+  .rhead { background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--tc) 30%, #fff), color-mix(in srgb, var(--tc) 70%, #000)); padding: 18px 0 6px; text-align: center; position: relative; }
+  .rhead svg { width: 240px; height: auto; display: block; margin: 0 auto; }
+  .rhead .lbl { color: #fff; font-weight: 800; font-size: .9rem; opacity: .9; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .rname { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.7rem; text-align: center; line-height: 1.3; margin: 2px 0 0; color: var(--tc); }
+  .rdrink { text-align: center; font-weight: 800; margin: 4px 0 10px; }
+  .rdesc { margin: 0; }
+  .traits { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 12px 0 0; padding: 0; list-style: none; }
+  .traits li { background: var(--chip); border-radius: 99px; padding: 3px 12px; font-size: .85rem; font-weight: 800; }
+  .pct { text-align: center; color: var(--sub); font-size: .85rem; font-weight: 700; margin: 10px 0 0; }
+  .match { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 0; }
+  .match div { background: var(--chip); border-radius: 14px; padding: 8px; text-align: center; font-size: .8rem; line-height: 1.4; }
+  .match svg { width: 64px; height: 64px; display: block; margin: 0 auto; }
+  .match b { display: block; }
+  .rec { margin: 18px 0 0; }
+  .rec h3 { margin: 0 0 6px; font-size: 1rem; }
+  .rec a { display: flex; align-items: center; gap: 10px; padding: 11px 14px; margin-top: 8px; border: 2px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: .92rem; background: var(--card); }
   .rec a:hover { border-color: var(--accent); }
-  .pr { font-size: .75rem; color: var(--sub); margin-top: 8px; }
-  .hidden { display: none; }
-  .play-count { text-align: center; color: var(--sub); font-size: .85rem; margin: 12px 0 0; min-height: 1.4em; }
+  .pr { font-size: .72rem; color: var(--sub); margin: 6px 0 0; }
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 80; background: rgba(40,28,20,.95); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: .85rem; font-weight: 700; opacity: 0; transition: .25s; pointer-events: none; width: max-content; max-width: 90vw; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
   footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
   footer a { color: var(--sub); }
 </style>
@@ -88,200 +98,290 @@
 <main>
   <!-- スタート -->
   <section id="start" class="card">
-    <div class="hero">☕</div>
-    <h1>コーヒータイプ診断</h1>
-    <p class="lead">8つの質問に答えるだけ。あなたの性格にぴったりの1杯がわかります。（約1分）</p>
-    <button class="primary" id="startBtn">診断をはじめる</button>
-    <p class="play-count" id="playCount"></p>
+    <div class="hero" id="heroArt"></div>
+    <div class="pad">
+      <span class="kicker">☕ 8問・約1分</span>
+      <h1>あなたにぴったりの<br><span>コーヒータイプ</span>診断</h1>
+      <p class="lead">8つの質問に答えるだけ。性格から、あなたにいちばん合う1杯を見つけます。</p>
+      <div class="types" id="typeIcons"></div>
+      <button class="primary" id="startBtn">診断をはじめる</button>
+      <p class="count" id="playCount"></p>
+    </div>
   </section>
 
   <!-- 質問 -->
   <section id="quiz" class="card hidden">
-    <div class="progress"><div id="bar"></div></div>
-    <div class="qnum" id="qnum"></div>
-    <div class="q" id="qtext"></div>
-    <div id="opts"></div>
+    <div class="pad">
+      <div class="qtop"><span class="qnum" id="qnum"></span><div class="bar"><i id="bar"></i></div></div>
+      <div class="qicon" id="qicon"></div>
+      <div class="q" id="qtext"></div>
+      <div id="opts"></div>
+      <button class="back" id="backBtn">← ひとつ前に戻る</button>
+    </div>
   </section>
 
   <!-- 結果 -->
   <section id="result" class="card hidden">
-    <p class="type-label">あなたのコーヒータイプは…</p>
-    <div class="hero" id="rEmoji"></div>
-    <h2 class="type-name" id="rName"></h2>
-    <p class="type-drink" id="rDrink"></p>
-    <p id="rDesc"></p>
-    <ul class="traits" id="rTraits"></ul>
-
-    <button class="primary" id="shareX">結果をXでシェア</button>
-    <button class="ghost" id="saveImg">結果画像を保存（インスタ用）</button>
-
-    <div class="rec">
-      <div class="section-title">このタイプにおすすめ</div>
-      <div id="rRec"></div>
-      <div class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</div>
+    <div class="rhead" id="rHead"><div class="lbl">あなたのコーヒータイプは…</div><div id="rArt"></div></div>
+    <div class="pad">
+      <h2 class="rname" id="rName"></h2>
+      <p class="rdrink" id="rDrink"></p>
+      <p class="rdesc" id="rDesc"></p>
+      <ul class="traits" id="rTraits"></ul>
+      <div class="match" id="rMatch"></div>
+      <button class="x" id="shareX">𝕏 画像付きでシェア</button>
+      <button class="ghost" id="saveImg">結果画像を保存（インスタ用）</button>
+      <div class="rec">
+        <h3>☕ このタイプにおすすめ</h3>
+        <div id="rRec"></div>
+        <p class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</p>
+      </div>
+      <button class="ghost" id="retry">もう一度診断する</button>
     </div>
-
-    <button class="ghost" id="retry">もう一度診断する</button>
   </section>
 
-  <footer><a href="../">ほかの診断・アプリを見る</a></footer>
+  <div class="tonmato-next" data-current="coffee"></div>
+  <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
 </main>
 
 <script>
 // ===== アフィリエイト設定（IDを入れると自動でリンクに付与＆PR表記が出ます） =====
-const AFFILIATE = {
-  amazonTag: '',   // 例: 'yourname-22'
-};
-
+const AFFILIATE = { amazonTag: '' }; // 例: 'yourname-22'
 const APP_TITLE = 'コーヒータイプ診断';
 const HASHTAGS = ['コーヒータイプ診断'];
 
 // ===== タイプ定義 =====
 const TYPES = {
   espresso: {
-    emoji: '🔥', name: '情熱のエスプレッソタイプ', drink: 'おすすめ：濃いめのエスプレッソ',
+    color: '#a8432a', name: '情熱のエスプレッソタイプ', drink: 'おすすめ：濃いめのエスプレッソ',
     desc: '決めたら一直線、行動力のかたまり。周りを引っぱるエネルギーがあり、短時間で結果を出すのが得意です。',
-    traits: ['即決・即行動', '集中すると止まらない', '頼られるとうれしい'],
-    rec: [{ label: '深煎りエスプレッソ豆', q: 'エスプレッソ 豆 深煎り' }, { label: '直火式エスプレッソメーカー', q: 'マキネッタ' }],
+    traits: ['即決・即行動', '集中すると止まらない', '頼られるとうれしい'], good: 'drip', bad: 'decaf',
+    rec: [{ label: '深煎りエスプレッソ豆', q: 'エスプレッソ 豆 深煎り', icon: '🫘' }, { label: '直火式エスプレッソメーカー', q: 'マキネッタ', icon: '🔥' }],
   },
   latte: {
-    emoji: '🤍', name: '癒しのカフェラテタイプ', drink: 'おすすめ：ふわふわミルクのカフェラテ',
+    color: '#c98a5a', name: '癒しのカフェラテタイプ', drink: 'おすすめ：ふわふわミルクのカフェラテ',
     desc: 'やさしい空気で周りを和ませる人。人との時間を大切にし、ちょっとした甘さやご褒美で元気になれます。',
-    traits: ['聞き上手', 'かわいいものに弱い', 'まったり時間が好き'],
-    rec: [{ label: '電動ミルクフォーマー', q: 'ミルクフォーマー 電動' }, { label: 'カフェラテ向けブレンド豆', q: 'コーヒー豆 ラテ ブレンド' }],
+    traits: ['聞き上手', 'かわいいものに弱い', 'まったり時間が好き'], good: 'decaf', bad: 'espresso',
+    rec: [{ label: '電動ミルクフォーマー', q: 'ミルクフォーマー 電動', icon: '🥛' }, { label: 'カフェラテ向けブレンド豆', q: 'コーヒー豆 ラテ ブレンド', icon: '🫘' }],
   },
   drip: {
-    emoji: '🎯', name: 'こだわりのハンドドリップタイプ', drink: 'おすすめ：丁寧に淹れたハンドドリップ',
+    color: '#6b5a3a', name: 'こだわりのハンドドリップタイプ', drink: 'おすすめ：丁寧に淹れたハンドドリップ',
     desc: '細部まで手を抜かない職人気質。調べて比べて納得してから動くので、選んだものへの満足度はいつも高め。',
-    traits: ['道具にこだわる', 'ルーティンを大事にする', 'レビューは必ず読む'],
-    rec: [{ label: 'ハンドドリップ スターターセット', q: 'ハンドドリップ セット' }, { label: '細口ドリップケトル', q: 'ドリップケトル 細口' }],
+    traits: ['道具にこだわる', 'ルーティンを大事にする', 'レビューは必ず読む'], good: 'espresso', bad: 'cold',
+    rec: [{ label: 'ハンドドリップ スターターセット', q: 'ハンドドリップ セット', icon: '☕' }, { label: '細口ドリップケトル', q: 'ドリップケトル 細口', icon: '🫖' }],
   },
   cold: {
-    emoji: '🧊', name: '自由なコールドブリュータイプ', drink: 'おすすめ：すっきり水出しコーヒー',
+    color: '#2f7aa8', name: '自由なコールドブリュータイプ', drink: 'おすすめ：すっきり水出しコーヒー',
     desc: '気分で動ける身軽な自由人。ルールに縛られず、自分が心地よいスタイルを見つけるのが上手です。',
-    traits: ['ノリと直感で動く', '夜型になりがち', '堅苦しいのが苦手'],
-    rec: [{ label: '水出しコーヒーポット', q: '水出しコーヒー ポット' }, { label: '水出し用コーヒーバッグ', q: '水出しコーヒー パック' }],
+    traits: ['ノリと直感で動く', '夜型になりがち', '堅苦しいのが苦手'], good: 'fruity', bad: 'drip',
+    rec: [{ label: '水出しコーヒーポット', q: '水出しコーヒー ポット', icon: '🧊' }, { label: '水出し用コーヒーバッグ', q: '水出しコーヒー パック', icon: '🫘' }],
   },
   decaf: {
-    emoji: '🌙', name: 'マイペースなデカフェタイプ', drink: 'おすすめ：夜でも安心のデカフェ',
+    color: '#4a4f8a', name: 'マイペースなデカフェタイプ', drink: 'おすすめ：夜でも安心のデカフェ',
     desc: '自分のリズムを大切にするおだやかな人。無理をしない分、長く安定して力を発揮できるタイプです。',
-    traits: ['睡眠を大事にする', '温泉やサウナが好き', '人に流されない'],
-    rec: [{ label: 'デカフェ コーヒー豆', q: 'デカフェ コーヒー 豆' }, { label: 'デカフェ ドリップバッグ', q: 'デカフェ ドリップバッグ' }],
+    traits: ['睡眠を大事にする', '温泉やサウナが好き', '人に流されない'], good: 'latte', bad: 'espresso',
+    rec: [{ label: 'デカフェ コーヒー豆', q: 'デカフェ コーヒー 豆', icon: '🌙' }, { label: 'デカフェ ドリップバッグ', q: 'デカフェ ドリップバッグ', icon: '☕' }],
   },
   fruity: {
-    emoji: '🍓', name: '冒険の浅煎りフルーティタイプ', drink: 'おすすめ：華やかな浅煎りシングルオリジン',
+    color: '#d0456a', name: '冒険の浅煎りフルーティタイプ', drink: 'おすすめ：華やかな浅煎りシングルオリジン',
     desc: '新しいもの・珍しいものに目がない探検家。好奇心が強く、まだ誰も知らない「好き」を見つけるのが得意。',
-    traits: ['新店開拓が趣味', '流行に敏感', '旅先で冒険する'],
-    rec: [{ label: '浅煎り シングルオリジン豆', q: 'コーヒー豆 浅煎り シングルオリジン' }, { label: '飲み比べセット', q: 'コーヒー豆 飲み比べ セット' }],
+    traits: ['新店開拓が趣味', '流行に敏感', '旅先で冒険する'], good: 'cold', bad: 'drip',
+    rec: [{ label: '浅煎り シングルオリジン豆', q: 'コーヒー豆 浅煎り シングルオリジン', icon: '🍓' }, { label: '飲み比べセット', q: 'コーヒー豆 飲み比べ セット', icon: '🎁' }],
   },
 };
 
 // ===== 質問（各選択肢がタイプに加点） =====
 const QUESTIONS = [
-  { q: '朝起きて、まず何をする？', a: [
-    ['すぐ起きて動き出す', { espresso: 2 }],
-    ['しばらく布団でゴロゴロ', { latte: 2, decaf: 1 }],
-    ['いつものルーティンをこなす', { drip: 2 }],
-    ['その日の気分で決める', { cold: 2, fruity: 1 }],
-  ]},
-  { q: '理想の休日は？', a: [
-    ['気になっていたお店を開拓', { fruity: 2, cold: 1 }],
-    ['家でまったり過ごす', { latte: 2, decaf: 1 }],
-    ['趣味にとことん没頭', { drip: 2 }],
-    ['予定をぎっしり詰め込む', { espresso: 2 }],
-  ]},
-  { q: '好きな味はどれ？', a: [
-    ['ビターで大人な味', { espresso: 2, drip: 1 }],
-    ['やさしい甘さ', { latte: 2 }],
-    ['さっぱり・すっきり', { cold: 2 }],
-    ['フルーツみたいな酸味', { fruity: 2 }],
-  ]},
-  { q: 'カフェインとの付き合い方は？', a: [
-    ['ないと一日が始まらない', { espresso: 2 }],
-    ['午後からは控えたい', { decaf: 2 }],
-    ['夜でも気にせず飲む', { cold: 2 }],
-    ['ほどほどに楽しむ', { drip: 1, latte: 1 }],
-  ]},
-  { q: '仕事や勉強のスタイルは？', a: [
-    ['短時間で一気に集中', { espresso: 2 }],
-    ['コツコツ丁寧に', { drip: 2 }],
-    ['みんなでワイワイ', { latte: 2 }],
-    ['自分のペースを守る', { decaf: 1, cold: 1 }],
-  ]},
-  { q: '行ってみたい旅先は？', a: [
-    ['まだ誰も知らない秘境', { fruity: 2 }],
-    ['南国のビーチリゾート', { cold: 2 }],
-    ['のんびり温泉宿', { decaf: 2 }],
-    ['刺激的な大都会', { espresso: 1, latte: 1 }],
-  ]},
-  { q: '買い物のときのあなたは？', a: [
-    ['ピンときたら即決', { espresso: 2 }],
-    ['レビューを読み比べる', { drip: 2 }],
-    ['見た目のかわいさ重視', { latte: 2 }],
-    ['珍しいものに惹かれる', { fruity: 2 }],
-  ]},
-  { q: '理想の夜の過ごし方は？', a: [
-    ['早めに寝てしっかり休む', { decaf: 2 }],
-    ['好きな映画をゆっくり観る', { latte: 1, decaf: 1 }],
-    ['夜ふかしして作業する', { espresso: 1, cold: 1 }],
-    ['気になることを調べまくる', { fruity: 1, drip: 1 }],
-  ]},
+  { icon: '⏰', q: '朝起きて、まず何をする？', a: [['すぐ起きて動き出す', { espresso: 2 }], ['しばらく布団でゴロゴロ', { latte: 2, decaf: 1 }], ['いつものルーティンをこなす', { drip: 2 }], ['その日の気分で決める', { cold: 2, fruity: 1 }]] },
+  { icon: '🌤️', q: '理想の休日は？', a: [['気になっていたお店を開拓', { fruity: 2, cold: 1 }], ['家でまったり過ごす', { latte: 2, decaf: 1 }], ['趣味にとことん没頭', { drip: 2 }], ['予定をぎっしり詰め込む', { espresso: 2 }]] },
+  { icon: '👅', q: '好きな味はどれ？', a: [['ビターで大人な味', { espresso: 2, drip: 1 }], ['やさしい甘さ', { latte: 2 }], ['さっぱり・すっきり', { cold: 2 }], ['フルーツみたいな酸味', { fruity: 2 }]] },
+  { icon: '⚡', q: 'カフェインとの付き合い方は？', a: [['ないと一日が始まらない', { espresso: 2 }], ['午後からは控えたい', { decaf: 2 }], ['夜でも気にせず飲む', { cold: 2 }], ['ほどほどに楽しむ', { drip: 1, latte: 1 }]] },
+  { icon: '💼', q: '仕事や勉強のスタイルは？', a: [['短時間で一気に集中', { espresso: 2 }], ['コツコツ丁寧に', { drip: 2 }], ['みんなでワイワイ', { latte: 2 }], ['自分のペースを守る', { decaf: 1, cold: 1 }]] },
+  { icon: '🧳', q: '行ってみたい旅先は？', a: [['まだ誰も知らない秘境', { fruity: 2 }], ['南国のビーチリゾート', { cold: 2 }], ['のんびり温泉宿', { decaf: 2 }], ['刺激的な大都会', { espresso: 1, latte: 1 }]] },
+  { icon: '🛍️', q: '買い物のときのあなたは？', a: [['ピンときたら即決', { espresso: 2 }], ['レビューを読み比べる', { drip: 2 }], ['見た目のかわいさ重視', { latte: 2 }], ['珍しいものに惹かれる', { fruity: 2 }]] },
+  { icon: '🌙', q: '理想の夜の過ごし方は？', a: [['早めに寝てしっかり休む', { decaf: 2 }], ['好きな映画をゆっくり観る', { latte: 1, decaf: 1 }], ['夜ふかしして作業する', { espresso: 1, cold: 1 }], ['気になることを調べまくる', { fruity: 1, drip: 1 }]] },
 ];
 
-// ===== 診断ロジック =====
-const $ = (id) => document.getElementById(id);
-let idx = 0;
-let score = {};
-let resultKey = null;
-
-function show(id) {
-  ['start', 'quiz', 'result'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
-  window.scrollTo(0, 0);
+// ===== イラスト（タイプごとの1杯） viewBox 0 0 240 220 =====
+const INK = '#3b2a20';
+const L = `stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`;
+function steam(x, y, col = '#fff') {
+  return `<g class="steam" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" opacity=".85">
+    <path d="M${x - 22} ${y} q-10 -16 0 -30 q10 -14 0 -28"/><path d="M${x} ${y - 6} q-10 -16 0 -30 q10 -14 0 -28"/><path d="M${x + 22} ${y} q-10 -16 0 -30 q10 -14 0 -28"/></g>`;
 }
-
-function startQuiz() {
-  idx = 0;
-  score = Object.fromEntries(Object.keys(TYPES).map((k) => [k, 0]));
-  show('quiz');
-  renderQ();
+function drinkSVG(id, opt = {}) {
+  let s = '';
+  const bg = opt.bg !== false;
+  if (bg) s += `<circle cx="120" cy="120" r="96" fill="#fff" opacity=".22"/>`;
+  if (id === 'espresso') {
+    s += steam(120, 92);
+    s += `<ellipse cx="120" cy="186" rx="80" ry="14" fill="#f4ede4" ${L}/>`;
+    s += `<path d="M70 110 L170 110 L160 176 Q120 190 80 176 Z" fill="#fff" ${L}/>`;
+    s += `<path d="M168 124 q28 0 26 22 q-2 18 -30 16" fill="none" ${L} stroke-width="8"/><path d="M168 124 q28 0 26 22 q-2 18 -30 16" fill="none" stroke="#fff" stroke-width="3"/>`;
+    s += `<ellipse cx="120" cy="112" rx="50" ry="10" fill="#3a1d10" ${L}/><ellipse cx="114" cy="111" rx="30" ry="5" fill="#b9733a"/>`;
+    s += `<path d="M88 150 q8 -16 0 -28 q16 10 10 28 Z" fill="#e8432f" opacity=".9"/>`;
+  } else if (id === 'latte') {
+    s += steam(120, 74);
+    s += `<path d="M58 92 L182 92 L172 182 Q120 200 68 182 Z" fill="#f7d6c2" ${L}/>`;
+    s += `<path d="M180 108 q34 2 30 32 q-4 26 -38 22" fill="none" ${L} stroke-width="10"/><path d="M180 108 q34 2 30 32 q-4 26 -38 22" fill="none" stroke="#f7d6c2" stroke-width="4"/>`;
+    s += `<ellipse cx="120" cy="94" rx="62" ry="13" fill="#b9733a" ${L}/>`;
+    s += `<path d="M120 104 C100 92 98 82 108 80 C114 79 118 84 120 88 C122 84 126 79 132 80 C142 82 140 92 120 104 Z" fill="#fff"/>`;
+    s += `<circle cx="84" cy="140" r="8" fill="#ff9ab0"/><circle cx="156" cy="140" r="8" fill="#ff9ab0"/><path d="M106 146 q14 10 28 0" fill="none" ${L}/>`;
+  } else if (id === 'drip') {
+    s += `<path d="M78 40 L162 40 L136 92 L104 92 Z" fill="#f2e3c9" ${L}/><path d="M86 48 L154 48 L132 86 L108 86 Z" fill="#7a4a24"/>`;
+    s += `<rect x="96" y="90" width="48" height="10" rx="4" fill="#d9c2a0" ${L}/>`;
+    s += `<path d="M120 104 l-5 10 a5 5 0 0 0 10 0 Z" fill="#5a3418"/><path d="M120 124 l-4 8 a4 4 0 0 0 8 0 Z" fill="#5a3418"/>`;
+    s += `<path d="M70 140 L170 140 L162 194 Q120 206 78 194 Z" fill="#fff" ${L}/><ellipse cx="120" cy="142" rx="50" ry="9" fill="#4a2512" ${L}/>`;
+    s += `<path d="M40 160 q10 -30 40 -26" fill="none" stroke="#c0632a" stroke-width="6" stroke-linecap="round"/><path d="M28 168 q4 -10 12 -8" fill="none" ${L}/>`;
+  } else if (id === 'cold') {
+    s += `<path d="M76 46 L164 46 L152 200 Q120 210 88 200 Z" fill="#dff1ff" ${L}/>`;
+    s += `<path d="M80 86 L160 86 L152 198 Q120 206 88 198 Z" fill="#4a2512"/>`;
+    s += `<rect x="96" y="96" width="26" height="24" rx="5" fill="#e9f7ff" opacity=".85" transform="rotate(-12 109 108)"/><rect x="124" y="118" width="24" height="22" rx="5" fill="#e9f7ff" opacity=".85" transform="rotate(14 136 129)"/><rect x="100" y="140" width="22" height="20" rx="5" fill="#e9f7ff" opacity=".7"/>`;
+    s += `<path d="M138 20 L126 150" stroke="#2f7aa8" stroke-width="9" stroke-linecap="round"/><path d="M138 20 L126 150" stroke="#8fd3ff" stroke-width="4" stroke-linecap="round"/>`;
+    s += `<path d="M80 60 q4 40 0 80" stroke="#fff" stroke-width="5" opacity=".6" fill="none" stroke-linecap="round"/>`;
+    s += `<path d="M178 70 l6 -12 l6 12 l-6 12 Z M188 104 l4 -8 l4 8 l-4 8 Z" fill="#fff"/>`;
+  } else if (id === 'decaf') {
+    s += `<path d="M178 46 a24 24 0 1 0 22 32 a18 18 0 1 1 -22 -32 Z" fill="#ffe08a" ${L}/>`;
+    s += `<path d="M44 60 l4 -8 l4 8 l-4 8 Z M62 34 l3 -6 l3 6 l-3 6 Z M200 120 l3 -6 l3 6 l-3 6 Z" fill="#ffe08a"/>`;
+    s += `<text x="96" y="88" font-family="Dela Gothic One" font-size="22" fill="#fff" opacity=".9">z</text><text x="112" y="72" font-family="Dela Gothic One" font-size="28" fill="#fff" opacity=".9">z</text>`;
+    s += `<path d="M60 100 L176 100 L168 188 Q118 204 68 188 Z" fill="#4a4f8a" ${L}/>`;
+    s += `<path d="M174 116 q32 2 28 30 q-4 24 -36 20" fill="none" ${L} stroke-width="10"/><path d="M174 116 q32 2 28 30 q-4 24 -36 20" fill="none" stroke="#4a4f8a" stroke-width="4"/>`;
+    s += `<ellipse cx="118" cy="102" rx="58" ry="12" fill="#7a4a24" ${L}/>`;
+    s += `<path d="M98 146 q8 6 16 0 M126 146 q8 6 16 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M110 166 q10 6 20 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`;
+  } else if (id === 'fruity') {
+    s += steam(112, 84);
+    s += `<path d="M62 100 L162 100 L154 180 Q112 196 70 180 Z" fill="#fff" ${L}/>`;
+    s += `<path d="M160 114 q30 2 26 28 q-4 22 -34 18" fill="none" ${L} stroke-width="9"/><path d="M160 114 q30 2 26 28 q-4 22 -34 18" fill="none" stroke="#fff" stroke-width="3"/>`;
+    s += `<ellipse cx="112" cy="102" rx="50" ry="11" fill="#c46a2c" ${L}/>`;
+    s += `<path d="M84 140 h56" stroke="#d0456a" stroke-width="6" stroke-linecap="round"/>`;
+    s += `<path d="M186 160 q-22 0 -24 22 q2 22 24 24 q22 -2 24 -24 q-2 -22 -24 -22 Z" fill="#e8432f" ${L} stroke-width="3"/><path d="M176 158 l10 -12 l10 12 Z" fill="#3cb371"/>`;
+    s += `<circle cx="180" cy="178" r="2" fill="#ffe08a"/><circle cx="192" cy="186" r="2" fill="#ffe08a"/><circle cx="184" cy="194" r="2" fill="#ffe08a"/>`;
+    s += `<circle cx="40" cy="176" r="12" fill="#5a3d9a" ${L} stroke-width="3"/><circle cx="58" cy="186" r="10" fill="#7a5ac0" ${L} stroke-width="3"/>`;
+  }
+  return dedupeAttrs(`<svg viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">${s}</svg>`);
 }
-
-function renderQ() {
-  const item = QUESTIONS[idx];
-  $('bar').style.width = `${(idx / QUESTIONS.length) * 100}%`;
-  $('qnum').textContent = `Q${idx + 1} / ${QUESTIONS.length}`;
-  $('qtext').textContent = item.q;
-  const box = $('opts');
-  box.innerHTML = '';
-  item.a.forEach(([label, pts]) => {
-    const b = document.createElement('button');
-    b.className = 'opt';
-    b.textContent = label;
-    b.onclick = () => {
-      for (const [k, v] of Object.entries(pts)) score[k] += v;
-      idx++;
-      idx < QUESTIONS.length ? renderQ() : finish();
-    };
-    box.appendChild(b);
+// 同じ属性が重なっていると画像として読み込めないので、後に書いたほうだけ残す
+function dedupeAttrs(svg) {
+  return svg.replace(/<([a-zA-Z]+)((?:\s+[a-zA-Z:-]+="[^"]*")+)\s*(\/?)>/g, (m, name, attrs, slash) => {
+    const map = new Map();
+    attrs.replace(/([a-zA-Z:-]+)="([^"]*)"/g, (_, k, v) => { map.delete(k); map.set(k, v); return ''; });
+    return '<' + name + [...map].map(([k, v]) => ` ${k}="${v}"`).join('') + (slash ? '/' : '') + '>';
   });
 }
 
+// ===== 診断ロジック =====
+const $ = (id) => document.getElementById(id);
+let idx = 0, history_ = [], resultKey = null;
+const blankScore = () => Object.fromEntries(Object.keys(TYPES).map((k) => [k, 0]));
+function show(id) { ['start', 'quiz', 'result'].forEach((s) => $(s).classList.toggle('hidden', s !== id)); window.scrollTo(0, 0); }
+function startQuiz() { idx = 0; history_ = []; show('quiz'); renderQ(); }
+function renderQ() {
+  const item = QUESTIONS[idx];
+  $('bar').style.width = `${(idx / QUESTIONS.length) * 100}%`;
+  $('qnum').textContent = `Q${idx + 1}/${QUESTIONS.length}`;
+  $('qicon').textContent = item.icon; $('qicon').style.animation = 'none'; void $('qicon').offsetWidth; $('qicon').style.animation = '';
+  $('qtext').textContent = item.q;
+  $('backBtn').classList.toggle('hidden', idx === 0);
+  const box = $('opts'); box.innerHTML = '';
+  item.a.forEach(([label, pts], i) => {
+    const b = document.createElement('button');
+    b.className = 'opt'; b.innerHTML = `<b>${'ABCD'[i]}</b><span></span>`; b.lastChild.textContent = label;
+    b.onclick = () => { history_.push(pts); idx++; idx < QUESTIONS.length ? renderQ() : finish(); };
+    box.appendChild(b);
+  });
+}
 function finish() {
+  const score = blankScore();
+  history_.forEach((pts) => { for (const [k, v] of Object.entries(pts)) score[k] += v; });
   // 同点のときは TYPES の定義順で先のものを採用
   resultKey = Object.keys(TYPES).reduce((best, k) => (score[k] > score[best] ? k : best));
   renderResult(resultKey);
   history.replaceState(null, '', `?r=${resultKey}`);
   countPlay();
 }
+function amazonUrl(q) {
+  const u = new URL('https://www.amazon.co.jp/s'); u.searchParams.set('k', q);
+  if (AFFILIATE.amazonTag) u.searchParams.set('tag', AFFILIATE.amazonTag);
+  return u.toString();
+}
+function renderResult(key) {
+  const t = TYPES[key];
+  document.documentElement.style.setProperty('--tc', t.color);
+  $('rArt').innerHTML = drinkSVG(key);
+  $('rName').textContent = t.name;
+  $('rDrink').textContent = t.drink;
+  $('rDesc').textContent = t.desc;
+  $('rTraits').innerHTML = ''; t.traits.forEach((s) => { const li = document.createElement('li'); li.textContent = s; $('rTraits').appendChild(li); });
+  $('rMatch').innerHTML = `<div>${drinkSVG(t.good, { bg: false })}<b>相性◎</b>${TYPES[t.good].name.replace('タイプ', '')}</div><div>${drinkSVG(t.bad, { bg: false })}<b>ちょっと苦手</b>${TYPES[t.bad].name.replace('タイプ', '')}</div>`;
+  $('rRec').innerHTML = '';
+  t.rec.forEach((r) => {
+    const a = document.createElement('a'); a.href = amazonUrl(r.q); a.target = '_blank'; a.rel = 'noopener sponsored';
+    a.innerHTML = `<span style="font-size:1.4rem">${r.icon}</span><span></span>`; a.lastChild.textContent = `${r.label} をAmazonで見る →`;
+    $('rRec').appendChild(a);
+  });
+  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag);
+  show('result');
+  imgPromise = null; makeShareImage();
+}
+
+// ===== 画像（1080x1350） =====
+let imgPromise = null;
+function svgImg(svg) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }); }
+function makeShareImage() {
+  if (imgPromise) return imgPromise;
+  imgPromise = (async () => {
+    const t = TYPES[resultKey];
+    await Promise.all([document.fonts.load('40px "Dela Gothic One"'), document.fonts.load('800 40px "M PLUS Rounded 1c"')]);
+    const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const g = c.getContext('2d');
+    const bg = g.createRadialGradient(540, 420, 60, 540, 520, 900); bg.addColorStop(0, '#fff3e0'); bg.addColorStop(1, t.color);
+    g.fillStyle = bg; g.fillRect(0, 0, 1080, 1350);
+    g.fillStyle = '#fffaf4'; g.beginPath(); g.roundRect(70, 70, 940, 1210, 60); g.fill();
+    const art = await svgImg(drinkSVG(resultKey, { bg: false }));
+    g.drawImage(art, 210, 120, 660, 605);
+    g.textAlign = 'center'; g.fillStyle = '#8a7262'; g.font = '800 40px "M PLUS Rounded 1c"'; g.fillText('わたしのコーヒータイプは…', 540, 800);
+    g.fillStyle = t.color; g.font = '72px "Dela Gothic One"';
+    const nm = t.name; if (nm.length > 11) { g.fillText(nm.slice(0, nm.length - 4), 540, 900); g.fillText(nm.slice(nm.length - 4), 540, 990); } else g.fillText(nm, 540, 940);
+    g.fillStyle = '#3b2a20'; g.font = '800 40px "M PLUS Rounded 1c"'; g.fillText(t.drink, 540, 1070);
+    g.fillStyle = '#8a7262'; g.font = '800 34px "M PLUS Rounded 1c"'; g.fillText(t.traits.map((x) => '#' + x).join('  '), 540, 1140);
+    g.fillStyle = '#c0632a'; g.font = '36px "Dela Gothic One"'; g.fillText('☕ ' + APP_TITLE, 540, 1225);
+    return await new Promise((r) => c.toBlob((b) => r(b), 'image/png'));
+  })();
+  return imgPromise;
+}
+function toast(text) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); } t.textContent = text; t.className = 'on'; clearTimeout(toast.tm); toast.tm = setTimeout(() => (t.className = ''), 3200); }
+const pageUrl = () => location.origin + location.pathname;
+function tweet(text) {
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', text); u.searchParams.set('url', pageUrl()); u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+async function share() {
+  const t = TYPES[resultKey];
+  const text = `私のコーヒータイプは「${t.name}」でした☕\n${t.drink}\n\nあなたは何タイプ？👇`;
+  if (matchMedia('(pointer: coarse)').matches && navigator.canShare) {
+    try {
+      const blob = await makeShareImage();
+      const file = new File([blob], `coffee-${resultKey}.png`, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: `${text}\n${pageUrl()}\n#${HASHTAGS[0]}` }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  tweet(text);
+  const blob = await makeShareImage();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `coffee-${resultKey}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('画像を保存しました。Xの投稿画面に画像を貼り付けてください');
+}
+async function saveImage() {
+  const blob = await makeShareImage();
+  const file = new File([blob], `coffee-${resultKey}.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 
 // ===== 診断した人数（共通 counter-api。1端末1回だけ数える） =====
 const COUNTER_API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
 const PLAY_KEY = 'coffee-play';
 function countPlay() {
-  try {
-    if (localStorage.getItem('coffee_played')) return;
-    localStorage.setItem('coffee_played', '1');
-  } catch { return; }
+  try { if (localStorage.getItem('coffee_played')) return; localStorage.setItem('coffee_played', '1'); } catch { return; }
   fetch(`${COUNTER_API}/hit/${PLAY_KEY}`, { method: 'POST' }).catch(() => {});
 }
 async function loadCount() {
@@ -292,130 +392,26 @@ async function loadCount() {
   } catch {}
 }
 
-function amazonUrl(q) {
-  const u = new URL('https://www.amazon.co.jp/s');
-  u.searchParams.set('k', q);
-  if (AFFILIATE.amazonTag) u.searchParams.set('tag', AFFILIATE.amazonTag);
-  return u.toString();
-}
-
-function renderResult(key) {
-  const t = TYPES[key];
-  $('rEmoji').textContent = t.emoji;
-  $('rName').textContent = t.name;
-  $('rDrink').textContent = t.drink;
-  $('rDesc').textContent = t.desc;
-  $('rTraits').innerHTML = '';
-  t.traits.forEach((s) => {
-    const li = document.createElement('li');
-    li.textContent = s;
-    $('rTraits').appendChild(li);
-  });
-  $('rRec').innerHTML = '';
-  t.rec.forEach((r) => {
-    const a = document.createElement('a');
-    a.href = amazonUrl(r.q);
-    a.target = '_blank';
-    a.rel = 'noopener sponsored';
-    a.textContent = `${r.label} をAmazonで見る →`;
-    $('rRec').appendChild(a);
-  });
-  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag);
-  show('result');
-}
-
-function pageUrl() {
-  return location.origin + location.pathname;
-}
-
-function shareX() {
-  const t = TYPES[resultKey];
-  const text = `私のコーヒータイプは「${t.name}」${t.emoji}\n${t.drink}\n\nあなたは何タイプ？👇`;
-  const u = new URL('https://twitter.com/intent/tweet');
-  u.searchParams.set('text', text);
-  u.searchParams.set('url', pageUrl());
-  u.searchParams.set('hashtags', HASHTAGS.join(','));
-  window.open(u.toString(), '_blank', 'noopener');
-}
-
-// ===== 結果画像（1080x1350：インスタのフィード／ストーリーに使いやすい縦長） =====
-async function makeImage(key) {
-  const t = TYPES[key];
-  await document.fonts.load('800 60px "M PLUS Rounded 1c"');
-  await document.fonts.load('400 40px "M PLUS Rounded 1c"');
-  const W = 1080, H = 1350;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const g = c.getContext('2d');
-  const F = '"M PLUS Rounded 1c", sans-serif';
-
-  g.fillStyle = '#f6efe6'; g.fillRect(0, 0, W, H);
-  g.fillStyle = '#fffaf4';
-  roundRect(g, 60, 60, W - 120, H - 120, 48); g.fill();
-  g.strokeStyle = '#e6d8c8'; g.lineWidth = 3; g.stroke();
-
-  g.textAlign = 'center';
-  g.fillStyle = '#8a7262'; g.font = `400 40px ${F}`;
-  g.fillText('あなたのコーヒータイプは…', W / 2, 200);
-  g.font = `220px ${F}`;
-  g.fillText(t.emoji, W / 2, 470);
-  g.fillStyle = '#3b2a20'; g.font = `800 64px ${F}`;
-  wrap(g, t.name, W / 2, 600, W - 220, 84);
-  g.fillStyle = '#b5652d'; g.font = `700 40px ${F}`;
-  g.fillText(t.drink, W / 2, 790);
-
-  g.fillStyle = '#3b2a20'; g.font = `400 38px ${F}`;
-  t.traits.forEach((s, i) => g.fillText(`✔ ${s}`, W / 2, 900 + i * 64));
-
-  g.fillStyle = '#8a7262'; g.font = `700 36px ${F}`;
-  g.fillText(`☕ ${APP_TITLE}`, W / 2, H - 150);
-  return c;
-}
-
-function roundRect(g, x, y, w, h, r) {
-  g.beginPath();
-  g.moveTo(x + r, y);
-  g.arcTo(x + w, y, x + w, y + h, r);
-  g.arcTo(x + w, y + h, x, y + h, r);
-  g.arcTo(x, y + h, x, y, r);
-  g.arcTo(x, y, x + w, y, r);
-  g.closePath();
-}
-
-function wrap(g, text, x, y, maxW, lh) {
-  let line = '', lines = [];
-  for (const ch of text) {
-    if (g.measureText(line + ch).width > maxW) { lines.push(line); line = ch; }
-    else line += ch;
-  }
-  lines.push(line);
-  lines.forEach((l, i) => g.fillText(l, x, y + i * lh));
-}
-
-async function saveImage() {
-  const canvas = await makeImage(resultKey);
-  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-  const file = new File([blob], `coffee-${resultKey}.png`, { type: 'image/png' });
-  // スマホなら共有シートから直接インスタへ
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; }
-  }
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = file.name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+// ===== スタート画面の絵 =====
+function renderStart() {
+  const beans = Array.from({ length: 14 }, (_, i) => `<ellipse cx="${(i * 73) % 500}" cy="${(i * 47) % 260}" rx="12" ry="8" transform="rotate(${i * 37} ${(i * 73) % 500} ${(i * 47) % 260})" fill="#7a4a24"/>`).join('');
+  $('heroArt').innerHTML = `<svg class="beans" viewBox="0 0 500 260" preserveAspectRatio="xMidYMid slice">${beans}</svg>` +
+    `<svg class="cup" viewBox="0 0 240 220">${drinkSVG('latte', { bg: false }).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</svg>`;
+  $('typeIcons').innerHTML = Object.keys(TYPES).map((k) => `<div style="background:color-mix(in srgb, ${TYPES[k].color} 18%, var(--card))">${drinkSVG(k, { bg: false })}</div>`).join('');
 }
 
 $('startBtn').onclick = startQuiz;
+$('backBtn').onclick = () => { if (idx > 0) { idx--; history_.pop(); renderQ(); } };
 $('retry').onclick = () => { history.replaceState(null, '', pageUrl()); show('start'); };
-$('shareX').onclick = shareX;
+$('shareX').onclick = share;
 $('saveImg').onclick = saveImage;
 
-// ?r=タイプ でアクセスされたら結果を直接表示
+renderStart();
 const r = new URLSearchParams(location.search).get('r');
 if (r && TYPES[r]) { resultKey = r; renderResult(r); }
 loadCount();
 </script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/next.js"></script>
 </body>
 </html>

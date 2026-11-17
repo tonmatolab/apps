@@ -1,0 +1,17 @@
+{
+  "name": "とんまとラボ｜無料ゲーム・診断集",
+  "short_name": "とんまとラボ",
+  "description": "1分で遊べる無料のゲーム・診断集",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff4e2",
+  "theme_color": "#e8432f",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

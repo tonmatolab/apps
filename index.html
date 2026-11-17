@@ -3,88 +3,143 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>無料診断・ミニアプリ集</title>
-<meta name="description" content="1分で遊べる無料の診断・ミニアプリ集。">
+<title>とんまとラボ｜1分で遊べる無料ゲーム・診断集</title>
+<meta name="description" content="1分で遊べる無料のゲーム・診断集。戦国武将ガチャ、遅刻ダッシュ、居合斬りなど。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="とんまとラボ🍅 1分で遊べる無料ゲーム・診断集">
+<meta property="og:description" content="名将ガチャ、遅刻ダッシュ、居合斬り…ぜんぶ無料・登録なしで遊べます">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/bushou/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#e8432f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #f7f4ef; --card: #fff; --ink: #2b2622; --sub: #857a70; --line: #e7e0d6; --accent: #b5652d; --chip: #f2ece3; }
+  :root { --bg: #fff4e2; --bg2: #ffe2bd; --card: #fff; --ink: #2b2118; --sub: #7a6a5c; --red: #e8432f; --red-d: #a92c1d; --gold: #ffb703; --line: #f1dfc4; --chip: #fff3df; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1b1917; --card: #262320; --ink: #f2ece5; --sub: #b0a597; --line: #3a3530; --accent: #e08a4a; --chip: #312d29; }
+    :root { --bg: #17120e; --bg2: #2a1c12; --card: #231c16; --ink: #fbefe0; --sub: #c2ae99; --line: #3a2e25; --chip: #2d241d; }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "M PLUS Rounded 1c", system-ui, sans-serif; }
-  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 48px; }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  p { color: var(--sub); margin: 0 0 16px; }
-  .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 20px; }
-  .totals div { background: var(--chip); border-radius: 14px; padding: 10px; text-align: center; line-height: 1.35; }
-  .totals b { display: block; font-size: 1.4rem; }
-  .totals span { font-size: .75rem; color: var(--sub); font-weight: 700; }
-  a.app { display: flex; gap: 16px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; color: var(--ink); text-decoration: none; }
-  a.app:hover { border-color: var(--accent); }
-  .icon { font-size: 2.2rem; }
-  .name { font-weight: 800; }
-  .desc { color: var(--sub); font-size: .9rem; }
-  .plays { display: inline-block; margin-top: 4px; font-size: .78rem; font-weight: 700; color: var(--accent); min-height: 1.2em; }
+  body { margin: 0; color: var(--ink); font-family: "M PLUS Rounded 1c", system-ui, sans-serif; line-height: 1.6;
+    background: radial-gradient(circle at 15% -5%, var(--bg2), var(--bg) 55%) fixed, var(--bg); }
+  main { max-width: 560px; margin: 0 auto; padding: 18px 16px 48px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand img { width: 58px; height: 58px; border-radius: 16px; box-shadow: 0 4px 0 var(--line); }
+  .brand h1 { margin: 0; font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.7rem; line-height: 1.15; }
+  .brand p { margin: 2px 0 0; color: var(--sub); font-size: .85rem; font-weight: 700; }
+  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 0; }
+  .totals div { background: var(--card); border-radius: 14px; padding: 8px 4px; text-align: center; line-height: 1.3; box-shadow: 0 3px 0 var(--line); }
+  .totals b { display: block; font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.25rem; }
+  .totals span { font-size: .68rem; color: var(--sub); font-weight: 800; }
+  .install { display: none; width: 100%; margin: 12px 0 0; font: inherit; font-weight: 800; border: none; border-radius: 14px; padding: 12px; cursor: pointer;
+    background: var(--ink); color: var(--bg); box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .install.on { display: block; }
+  .sec { margin: 22px 0 10px; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  /* 注目（いちばん人気） */
+  .feature { display: block; position: relative; border-radius: 22px; overflow: hidden; text-decoration: none; color: #fff; box-shadow: 0 6px 0 var(--line), 0 18px 40px -20px rgba(0,0,0,.5); }
+  .feature img { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; }
+  .feature .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 14px; background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+  .feature .cap b { display: block; font-size: 1.35rem; }
+  .feature .cap span { font-size: .85rem; opacity: .9; }
+  .badges { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
+  .badge { font-size: .75rem; font-weight: 800; padding: 2px 10px; border-radius: 99px; color: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .badge.hot { background: var(--red); }
+  .badge.new { background: #2f7de1; }
+  .badge.tag { background: rgba(0,0,0,.55); }
+  /* 一覧 */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .app { position: relative; display: block; background: var(--card); border-radius: 18px; overflow: hidden; text-decoration: none; color: var(--ink);
+    box-shadow: 0 4px 0 var(--line); transition: transform .08s; }
+  .app:active { transform: translateY(3px); }
+  .app img { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; background: var(--chip); }
+  .app .badges { left: 8px; top: 8px; }
+  .app .body { padding: 8px 10px 10px; }
+  .app .t { font-weight: 800; font-size: .9rem; line-height: 1.35; }
+  .app .d { font-size: .72rem; color: var(--sub); line-height: 1.4; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .app .p { font-size: .7rem; font-weight: 800; color: var(--red); margin-top: 4px; min-height: 1em; }
+  footer { text-align: center; color: var(--sub); font-size: .75rem; margin-top: 32px; }
+  #iosTip { display: none; margin-top: 8px; font-size: .8rem; color: var(--sub); text-align: center; }
 </style>
 </head>
 <body>
 <main>
-  <h1>無料診断・ミニアプリ集</h1>
-  <p>1分で遊べる診断やツールを公開しています。</p>
-  <div class="totals">
-    <div><b id="views">…</b><span>👀 このページの閲覧数</span></div>
-    <div><b id="players">…</b><span>🎮 遊んだ人の合計</span></div>
+  <div class="brand">
+    <img src="icons/icon-192.png" alt="">
+    <div><h1>とんまとラボ</h1><p>1分で遊べる無料ゲーム・診断集｜登録なし</p></div>
   </div>
-  <!-- 新しいアプリはここに1ブロック追加（新しいものを上に）。data-key はカウンターのキー -->
-  <a class="app" href="bushou/" data-key="bushou-play">
-    <div class="icon">🏯</div>
-    <div><div class="name">名将ガチャ</div><div class="desc">名前で生まれる戦国武将。友達の名前と合戦させよう</div><span class="plays"></span></div>
-  </a>
-  <a class="app" href="chikoku/" data-key="chikoku-play">
-    <div class="icon">🏃</div>
-    <div><div class="name">遅刻ダッシュ</div><div class="desc">8:57に駅を出発。9:00の始業に間に合うか？</div><span class="plays"></span></div>
-  </a>
-  <a class="app" href="iai/" data-key="iai-play">
-    <div class="icon">⚔️</div>
-    <div><div class="name">居合斬り 反射神経テスト</div><div class="desc">「斬！」の瞬間にタップ。あなたは全国上位何%？</div><span class="plays"></span></div>
-  </a>
-  <a class="app" href="nobunaga-isshou/" data-key="nobunaga-play">
-    <div class="icon">🔥</div>
-    <div><div class="name">織田信長の一生クイズ</div><div class="desc">1問ミスで即死。本能寺まで完走できるか？</div><span class="plays"></span></div>
-  </a>
-  <a class="app" href="coffee-shindan/" data-key="coffee-play">
-    <div class="icon">☕</div>
-    <div><div class="name">コーヒータイプ診断</div><div class="desc">8問であなたにぴったりの1杯がわかる</div><span class="plays"></span></div>
-  </a>
+  <div class="totals">
+    <div><b id="players">…</b><span>🎮 遊んだ人</span></div>
+    <div><b id="views">…</b><span>👀 このページの閲覧</span></div>
+    <div><b id="count">-</b><span>🧩 アプリ数</span></div>
+  </div>
+  <button class="install" id="installBtn">📲 ホーム画面に追加して、いつでも遊ぶ</button>
+  <p id="iosTip">iPhoneは、下の共有ボタン <b>⎋</b> →「ホーム画面に追加」で追加できます</p>
+
+  <div class="sec">🔥 いまいちばん人気</div>
+  <div id="feature"></div>
+  <div class="sec">🎮 ぜんぶのゲーム・診断</div>
+  <div class="grid" id="grid"></div>
+
+  <footer>とんまとラボ 🍅 新しいゲームを続々公開中</footer>
 </main>
+<script src="shared/apps.js"></script>
 <script>
 const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+const APPS = window.TONMATO_APPS;
 const fmt = (n) => n.toLocaleString();
+// 新しく追加した2本にだけ NEW を付ける
+const NEW_IDS = new Set(APPS.slice().sort((x, y) => new Date(y.added) - new Date(x.added)).slice(0, 2).map((a) => a.id));
+const isNew = (a) => NEW_IDS.has(a.id);
 async function call(path, method = 'GET') {
-  try {
-    const r = await fetch(API + path, { method, signal: AbortSignal.timeout(8000) });
-    return r.ok ? await r.json() : null;
-  } catch { return null; }
+  try { const r = await fetch(API + path, { method, signal: AbortSignal.timeout(8000) }); return r.ok ? await r.json() : null; } catch { return null; }
 }
+function card(a, plays, hot) {
+  const el = document.createElement('a');
+  el.className = 'app'; el.href = a.path;
+  el.innerHTML = `<img alt="" loading="lazy"><div class="badges"></div><div class="body"><div class="t"></div><div class="d"></div><div class="p"></div></div>`;
+  el.querySelector('img').src = a.path + 'og.png';
+  el.querySelector('.t').textContent = `${a.icon} ${a.title}`;
+  el.querySelector('.d').textContent = a.desc;
+  el.querySelector('.p').textContent = plays ? `👤 ${fmt(plays)}人が遊びました` : '';
+  const b = el.querySelector('.badges');
+  if (hot) b.insertAdjacentHTML('beforeend', '<span class="badge hot">人気No.1</span>');
+  if (isNew(a)) b.insertAdjacentHTML('beforeend', '<span class="badge new">NEW</span>');
+  return el;
+}
+function render(counts) {
+  const sorted = APPS.map((a) => ({ a, n: (counts && counts[a.key]) || 0 }))
+    .sort((x, y) => y.n - x.n || new Date(y.a.added) - new Date(x.a.added));
+  const top = sorted[0];
+  const f = document.getElementById('feature');
+  f.innerHTML = `<a class="feature" href="${top.a.path}"><img alt=""><div class="badges"><span class="badge hot">人気No.1</span>${isNew(top.a) ? '<span class="badge new">NEW</span>' : ''}<span class="badge tag"></span></div><div class="cap"><b></b><span></span></div></a>`;
+  f.querySelector('img').src = top.a.path + 'og.png';
+  f.querySelector('.tag').textContent = top.a.tag;
+  f.querySelector('b').textContent = `${top.a.icon} ${top.a.title}`;
+  f.querySelector('.cap span').textContent = `${top.a.desc}${top.n ? `｜👤 ${fmt(top.n)}人` : ''}`;
+  const g = document.getElementById('grid'); g.innerHTML = '';
+  sorted.forEach((x, i) => g.appendChild(card(x.a, x.n, i === 0 && x.n > 0)));
+  document.getElementById('count').textContent = APPS.length;
+  if (counts) document.getElementById('players').textContent = fmt(sorted.reduce((s, x) => s + x.n, 0));
+}
+render(null);
 (async () => {
-  // 閲覧数：開かれるたびに+1
   const v = await call('/hit/portal-view', 'POST');
   document.getElementById('views').textContent = v ? fmt(v.value) : '-';
-  // 各アプリの遊んだ人数（各アプリ側で1端末1回だけ数えている）
-  const cards = [...document.querySelectorAll('a.app[data-key]')];
-  const j = await call('/get?keys=' + cards.map((c) => c.dataset.key).join(','));
-  if (!j) { document.getElementById('players').textContent = '-'; return; }
-  let total = 0;
-  cards.forEach((c) => {
-    const n = j[c.dataset.key] || 0;
-    total += n;
-    c.querySelector('.plays').textContent = `👤 ${fmt(n)}人が遊びました`;
-  });
-  document.getElementById('players').textContent = fmt(total);
+  const j = await call('/get?keys=' + APPS.map((a) => a.key).join(','));
+  if (j) render(j); else document.getElementById('players').textContent = '-';
 })();
+
+// ホーム画面に追加
+let deferred = null;
+const btn = document.getElementById('installBtn');
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; if (!standalone) btn.classList.add('on'); });
+btn.onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; btn.classList.remove('on'); };
+if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) document.getElementById('iosTip').style.display = 'block';
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>

@@ -440,7 +440,7 @@ function btDraw() {
     for (let i = 0; i < 16; i++) { const y = 70 + i * 9; g.beginPath(); g.moveTo(left ? BW : 0, y); g.lineTo(left ? BW - 120 - (i % 3) * 40 : 120 + (i % 3) * 40, y); g.stroke(); }
     const img = S.imgs[c.side];
     const px = left ? 10 : BW - 130;
-    g.drawImage(img, 0, 30, 200, 130, px, 82, 120, 78 * 1.6);
+    g.drawImage(img, 0, 50, 200, 130, px, 82, 120, 78 * 1.6);
     g.textAlign = left ? 'left' : 'right';
     const tx = left ? 140 : BW - 140;
     g.font = '800 15px "M PLUS Rounded 1c"'; g.fillStyle = '#fff'; g.fillText((left ? S.A : S.B).name, tx, 112);

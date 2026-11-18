@@ -1,5 +1,6 @@
 // 全アプリの一覧（一覧ページと「次はこれで遊ぼう」で使う）。新しいアプリはここに1行足す
 window.TONMATO_APPS = [
+  { id: 'nobiru', path: 'nobiru/', title: 'のびーるトルコアイス', desc: '指で引っ張ってどこまで伸ばせる？欲張るとプツン', icon: '🍦', key: 'nobiru-play', added: '2026-11-18', tag: 'バカゲー' },
   { id: 'bushou', path: 'bushou/', title: '名将ガチャ', desc: '名前で生まれる戦国武将。友達の名前と合戦させよう', icon: '🏯', key: 'bushou-play', added: '2026-11-17', tag: '戦国' },
   { id: 'chikoku', path: 'chikoku/', title: '遅刻ダッシュ', desc: '8:57に駅を出発。9:00の始業に間に合うか？', icon: '🏃', key: 'chikoku-play', added: '2026-11-15', tag: 'アクション' },
   { id: 'iai', path: 'iai/', title: '居合斬り 反射神経テスト', desc: '「斬！」の瞬間にタップ。あなたは全国何位？', icon: '⚔️', key: 'iai-play', added: '2026-11-14', tag: '反射神経' },

@@ -22,6 +22,7 @@ const ALLOWED_ORIGINS = [
 const GAMES = {
   iai: { min: 100, max: 1000 },
   chikoku: { min: 60000, max: 800000 }, // 8:57からの経過ミリ秒（ゲーム内時間・遅刻も含む）
+  nobiru: { min: 10, max: 40000000000, desc: true }, // 伸ばした長さ（cm）。大きいほど上位。月まで約384億cm
 };
 const TOP_N = 10;
 // 日替わりランキング：'chikoku-d20261118' のように、元のゲーム名＋日付で受け付ける
@@ -69,8 +70,9 @@ function cleanName(raw) {
 }
 
 async function rankOf(env, game, ms, id) {
-  // 同タイムは先に出した人が上
-  const r = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ? AND (ms < ? OR (ms = ? AND id < ?))')
+  // 同タイムは先に出した人が上。desc のゲームは大きいほど上位
+  const cmp = gameRule(game).desc ? '>' : '<';
+  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM scores WHERE game = ? AND (ms ${cmp} ? OR (ms = ? AND id < ?))`)
     .bind(game, ms, ms, id).first();
   return r.n + 1;
 }
@@ -130,7 +132,7 @@ export default {
     if (req.method === 'GET' && url.pathname === '/board') {
       const game = url.searchParams.get('game');
       if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
-      const rows = await env.DB.prepare('SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ASC, id ASC LIMIT ?').bind(game, TOP_N).all();
+      const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, TOP_N).all();
       const total = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?').bind(game).first()).n;
       return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || DEFAULT_NAME, ms: r.ms })) });
     }

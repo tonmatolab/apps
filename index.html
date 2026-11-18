@@ -13,133 +13,370 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<meta name="theme-color" content="#e8432f">
+<meta name="theme-color" content="#eee6db" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2a2521" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #fff4e2; --bg2: #ffe2bd; --card: #fff; --ink: #2b2118; --sub: #7a6a5c; --red: #e8432f; --red-d: #a92c1d; --gold: #ffb703; --line: #f1dfc4; --chip: #fff3df; }
+  :root {
+    --bg: #eee6db; --card: #f5eee5; --ink: #3b2f26; --sub: #8c7b6c; --soft: #e6dccf; --red: #e8543c; --red2: #f2795f;
+    --hi: rgba(255,255,255,.85); --lo: rgba(150,122,92,.32); --lo2: rgba(150,122,92,.18);
+    --clay: 9px 9px 18px var(--lo), -7px -7px 16px var(--hi), inset 2px 2px 3px rgba(255,255,255,.7), inset -3px -4px 8px var(--lo2);
+    --clay-s: 5px 5px 10px var(--lo), -4px -4px 9px var(--hi), inset 1px 1px 2px rgba(255,255,255,.7), inset -2px -3px 5px var(--lo2);
+    --pressed: inset 5px 5px 10px var(--lo), inset -5px -5px 10px var(--hi);
+    --latin: "Outfit", system-ui, sans-serif; --ja: "Zen Maru Gothic", system-ui, sans-serif;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #17120e; --bg2: #2a1c12; --card: #231c16; --ink: #fbefe0; --sub: #c2ae99; --line: #3a2e25; --chip: #2d241d; }
+    :root { --bg: #2a2521; --card: #302a25; --ink: #f2e9df; --sub: #a99a8b; --soft: #26211d;
+      --hi: rgba(255,240,225,.06); --lo: rgba(0,0,0,.55); --lo2: rgba(0,0,0,.3);
+      --clay: 9px 9px 18px var(--lo), -6px -6px 14px var(--hi), inset 2px 2px 3px rgba(255,240,225,.07), inset -3px -4px 8px var(--lo2);
+      --clay-s: 5px 5px 10px var(--lo), -4px -4px 9px var(--hi), inset 1px 1px 2px rgba(255,240,225,.07), inset -2px -3px 5px var(--lo2); }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; color: var(--ink); font-family: "M PLUS Rounded 1c", system-ui, sans-serif; line-height: 1.6;
-    background: radial-gradient(circle at 15% -5%, var(--bg2), var(--bg) 55%) fixed, var(--bg); }
-  main { max-width: 560px; margin: 0 auto; padding: 18px 16px 48px; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .brand img { width: 58px; height: 58px; border-radius: 16px; box-shadow: 0 4px 0 var(--line); }
-  .brand h1 { margin: 0; font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.7rem; line-height: 1.15; }
-  .brand p { margin: 2px 0 0; color: var(--sub); font-size: .85rem; font-weight: 700; }
-  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 0; }
-  .totals div { background: var(--card); border-radius: 14px; padding: 8px 4px; text-align: center; line-height: 1.3; box-shadow: 0 3px 0 var(--line); }
-  .totals b { display: block; font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.25rem; }
-  .totals span { font-size: .68rem; color: var(--sub); font-weight: 800; }
-  .install { display: none; width: 100%; margin: 12px 0 0; font: inherit; font-weight: 800; border: none; border-radius: 14px; padding: 12px; cursor: pointer;
-    background: var(--ink); color: var(--bg); box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ja); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  main { max-width: 600px; margin: 0 auto; padding: 0 18px 56px; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ヘッダー */
+  .top { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .wm { font-family: var(--latin); font-weight: 700; font-size: .95rem; letter-spacing: .16em; }
+  .wm span { color: var(--red); }
+  .top small { font-family: var(--latin); font-size: .68rem; font-weight: 500; letter-spacing: .14em; color: var(--sub); padding: 5px 12px; border-radius: 99px; box-shadow: var(--pressed); }
+
+  /* ヒーロー */
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 22px 0 6px; }
+  .eyebrow { margin: 0 0 12px; display: inline-block; font-family: var(--latin); font-size: .68rem; font-weight: 700; letter-spacing: .18em; color: var(--red); }
+  h1 { margin: 0; font-weight: 900; font-size: clamp(1.45rem, 6.5vw, 2.4rem); line-height: 1.3; letter-spacing: -.01em; }
+  h1 em { font-style: normal; color: var(--red); }
+  h1 .nw { white-space: nowrap; display: inline-block; }
+  .lead { margin: 12px 0 0; color: var(--sub); font-size: .86rem; font-weight: 500; }
+  .logo-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .logo { position: relative; width: 90px; height: 90px; padding: 8px; border: none; border-radius: 50%; background: var(--card); cursor: pointer; box-shadow: var(--clay);
+    touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; transition: box-shadow .15s, transform .15s; }
+  .logo:active { box-shadow: var(--pressed); transform: scale(.97); }
+  .logo img { width: 100%; height: 100%; border-radius: 50%; display: block; pointer-events: none; }
+  .logo .press { position: absolute; inset: -5px; border-radius: 50%; border: 3px solid var(--red); opacity: 0; pointer-events: none;
+    -webkit-mask: conic-gradient(#000 var(--p, 0%), transparent 0); mask: conic-gradient(#000 var(--p, 0%), transparent 0); }
+  .logo.holding .press { opacity: 1; }
+  .hint { font-size: .64rem; font-weight: 700; color: var(--sub); letter-spacing: .04em; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+  .hint::before { content: '☝'; display: inline-block; animation: poke 1.6s ease-in-out infinite; }
+  @keyframes poke { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-3px); } }
+  .hint.gone { opacity: 0; transition: opacity .6s; }
+
+  /* 数字 */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 26px 0 0; }
+  .stats div { background: var(--card); border-radius: 22px; padding: 12px 6px 10px; text-align: center; box-shadow: var(--clay-s); }
+  .stats b { display: block; font-family: var(--latin); font-weight: 700; font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stats div:first-child b { color: var(--red); }
+  .stats span { display: block; margin-top: 4px; font-size: .66rem; font-weight: 700; color: var(--sub); }
+
+  .install { display: none; width: 100%; margin: 20px 0 0; font: inherit; font-weight: 700; font-size: .9rem; border: none; border-radius: 99px; padding: 14px; cursor: pointer; color: #fff;
+    background: linear-gradient(145deg, var(--red2), var(--red)); box-shadow: 6px 6px 14px var(--lo), -5px -5px 12px var(--hi), inset 2px 2px 4px rgba(255,255,255,.35), inset -3px -4px 8px rgba(120,30,10,.25); }
+  .install:active { box-shadow: inset 4px 4px 10px rgba(120,30,10,.4); }
   .install.on { display: block; }
-  .sec { margin: 22px 0 10px; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-  /* 注目（いちばん人気） */
-  .feature { display: block; position: relative; border-radius: 22px; overflow: hidden; text-decoration: none; color: #fff; box-shadow: 0 6px 0 var(--line), 0 18px 40px -20px rgba(0,0,0,.5); }
-  .feature img { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; }
-  .feature .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 14px; background: linear-gradient(transparent, rgba(0,0,0,.85)); }
-  .feature .cap b { display: block; font-size: 1.35rem; }
-  .feature .cap span { font-size: .85rem; opacity: .9; }
-  .badges { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
-  .badge { font-size: .75rem; font-weight: 800; padding: 2px 10px; border-radius: 99px; color: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
-  .badge.hot { background: var(--red); }
-  .badge.new { background: #2f7de1; }
-  .badge.tag { background: rgba(0,0,0,.55); }
-  /* 一覧 */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .app { position: relative; display: block; background: var(--card); border-radius: 18px; overflow: hidden; text-decoration: none; color: var(--ink);
-    box-shadow: 0 4px 0 var(--line); transition: transform .08s; }
-  .app:active { transform: translateY(3px); }
-  .app img { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; background: var(--chip); }
-  .app .badges { left: 8px; top: 8px; }
-  .app .body { padding: 8px 10px 10px; }
-  .app .t { font-weight: 800; font-size: .9rem; line-height: 1.35; }
-  .app .d { font-size: .72rem; color: var(--sub); line-height: 1.4; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .app .p { font-size: .7rem; font-weight: 800; color: var(--red); margin-top: 4px; min-height: 1em; }
-  footer { text-align: center; color: var(--sub); font-size: .75rem; margin-top: 32px; }
-  #iosTip { display: none; margin-top: 8px; font-size: .8rem; color: var(--sub); text-align: center; }
+  #iosTip { display: none; margin: 10px 0 0; font-size: .76rem; color: var(--sub); text-align: center; }
+
+  /* 見出し */
+  .sec { display: flex; align-items: center; justify-content: space-between; margin: 38px 0 16px; }
+  .sec h2 { margin: 0; font-weight: 900; font-size: 1.08rem; }
+  .sec h2 small { margin-left: 8px; font-family: var(--latin); font-weight: 700; font-size: .66rem; letter-spacing: .16em; color: var(--sub); }
+  .sec span { font-family: var(--latin); font-size: .7rem; font-weight: 700; color: var(--sub); padding: 4px 12px; border-radius: 99px; box-shadow: var(--pressed); }
+
+  /* カード */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .tile { position: relative; display: flex; flex-direction: column; background: var(--card); border-radius: 28px; padding: 8px; box-shadow: var(--clay);
+    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s; }
+  .tile:active { transform: scale(.98); box-shadow: var(--pressed); }
+  .tile.wide { grid-column: 1 / -1; }
+  .tile .ph { position: relative; aspect-ratio: 1200 / 630; overflow: hidden; border-radius: 21px; background: var(--soft); }
+  .tile .ph img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+  .tile:hover .ph img { transform: scale(1.04); }
+  .tile .body { display: flex; flex-direction: column; gap: 4px; flex: 1; padding: 10px 8px 6px; }
+  .tile .meta { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; font-family: var(--latin); font-size: .64rem; font-weight: 700; color: var(--sub); }
+  .tile .meta .tag { font-family: var(--ja); padding: 1px 9px; border-radius: 99px; box-shadow: var(--pressed); }
+  .tile .meta .new { color: #fff; background: var(--red); padding: 1px 8px; border-radius: 99px; letter-spacing: .08em; }
+  .tile .t { font-weight: 900; font-size: .92rem; line-height: 1.4; }
+  .tile .d { font-size: .73rem; font-weight: 500; color: var(--sub); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tile .foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; font-family: var(--latin); font-size: .7rem; font-weight: 500; color: var(--sub); }
+  .tile .foot i { font-style: normal; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--card); color: var(--red); font-weight: 700; box-shadow: var(--clay-s); }
+  .tile.wide .t { font-size: 1.2rem; }
+  .tile.wide .d { font-size: .8rem; }
+  .tile.wide .hot { position: absolute; left: 12px; top: 12px; font-family: var(--latin); font-size: .66rem; font-weight: 700; letter-spacing: .12em; padding: 5px 12px;
+    border-radius: 99px; background: rgba(255,250,244,.94); color: #3b2f26; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+  .tile.wide .hot b { color: var(--red); }
+
+  footer { margin-top: 48px; text-align: center; font-size: .72rem; color: var(--sub); }
+  footer b { font-family: var(--latin); letter-spacing: .16em; color: var(--ink); }
+
+  /* スクロールでぷにっと出る */
+  .rv { opacity: 0; transform: translateY(18px) scale(.97); transition: opacity .6s ease, transform .7s cubic-bezier(.3,1.5,.5,1); }
+  .rv.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } .hint::before { animation: none; } }
+
+  /* ギミック：トマト */
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+  .splat { position: absolute; pointer-events: none; z-index: 5; width: 74px; height: 74px; margin: -37px 0 0 -37px; animation: splatIn .18s ease-out both; }
+  .splat.out { transition: opacity 1.2s; opacity: 0; }
+  @keyframes splatIn { from { transform: scale(.2) rotate(var(--r)); } to { transform: scale(1) rotate(var(--r)); } }
+  .shake { animation: shake .3s; }
+  @keyframes shake { 25% { translate: -3px 1px; } 50% { translate: 3px -1px; } 75% { translate: -2px 0; } }
+  .toast { position: fixed; left: 50%; bottom: 28px; z-index: 60; transform: translate(-50%, 20px); opacity: 0; transition: .3s; pointer-events: none;
+    background: var(--ink); color: var(--bg); font-size: .8rem; font-weight: 700; padding: 10px 18px; border-radius: 99px; white-space: nowrap; }
+  .toast.on { transform: translate(-50%, 0); opacity: 1; }
 </style>
 </head>
 <body>
+<canvas id="fx"></canvas>
 <main>
-  <div class="brand">
-    <img src="icons/icon-192.png" alt="">
-    <div><h1>とんまとラボ</h1><p>1分で遊べる無料ゲーム・診断集｜登録なし</p></div>
-  </div>
-  <div class="totals">
-    <div><b id="players">…</b><span>🎮 遊んだ人</span></div>
-    <div><b id="views">…</b><span>👀 このページの閲覧</span></div>
-    <div><b id="count">-</b><span>🧩 アプリ数</span></div>
-  </div>
-  <button class="install" id="installBtn">📲 ホーム画面に追加して、いつでも遊ぶ</button>
-  <p id="iosTip">iPhoneは、下の共有ボタン <b>⎋</b> →「ホーム画面に追加」で追加できます</p>
+  <header class="top">
+    <div class="wm">TONMATO <span>LAB</span></div>
+    <small>MINI GAMES</small>
+  </header>
 
-  <div class="sec">🔥 いまいちばん人気</div>
-  <div id="feature"></div>
-  <div class="sec">🎮 ぜんぶのゲーム・診断</div>
+  <section class="hero">
+    <div>
+      <p class="eyebrow fall">FREE · NO SIGN-UP · 1 MIN</p>
+      <h1 class="fall"><span class="nw">くだらないことに、</span><br><span class="nw"><em>全力</em>で。</span></h1>
+      <p class="lead fall">1分で遊べるゲームと診断。<br>登録なし・無料。</p>
+    </div>
+    <div class="logo-wrap fall">
+      <button class="logo" id="logo" aria-label="とんまと"><span class="press"></span><img src="icons/icon-192.png" alt="" draggable="false"></button>
+      <span class="hint" id="hint">タップしてみて</span>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="fall"><b id="players">–</b><span>遊んだ人</span></div>
+    <div class="fall"><b id="views">–</b><span>このページの閲覧</span></div>
+    <div class="fall"><b id="count">–</b><span>アプリ</span></div>
+  </div>
+  <button class="install" id="installBtn">ホーム画面に追加して、いつでも遊ぶ</button>
+  <p id="iosTip">iPhoneは、共有ボタン →「ホーム画面に追加」で追加できます</p>
+
+  <div class="sec fall"><h2>ぜんぶのゲーム・診断<small>ALL APPS</small></h2><span id="secCount"></span></div>
   <div class="grid" id="grid"></div>
 
-  <footer>とんまとラボ 🍅 新しいゲームを続々公開中</footer>
+  <footer class="fall"><b>TONMATO LAB</b> 🍅 新しいゲームを続々公開中</footer>
 </main>
+<div class="toast" id="toast"></div>
 <script src="shared/apps.js"></script>
 <script>
 const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
 const APPS = window.TONMATO_APPS;
+const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toLocaleString();
-// 新しく追加した2本にだけ NEW を付ける
 const NEW_IDS = new Set(APPS.slice().sort((x, y) => new Date(y.added) - new Date(x.added)).slice(0, 2).map((a) => a.id));
-const isNew = (a) => NEW_IDS.has(a.id);
 async function call(path, method = 'GET') {
   try { const r = await fetch(API + path, { method, signal: AbortSignal.timeout(8000) }); return r.ok ? await r.json() : null; } catch { return null; }
 }
-function card(a, plays, hot) {
-  const el = document.createElement('a');
-  el.className = 'app'; el.href = a.path;
-  el.innerHTML = `<img alt="" loading="lazy"><div class="badges"></div><div class="body"><div class="t"></div><div class="d"></div><div class="p"></div></div>`;
-  el.querySelector('img').src = a.path + 'og.png';
-  el.querySelector('.t').textContent = `${a.icon} ${a.title}`;
-  el.querySelector('.d').textContent = a.desc;
-  el.querySelector('.p').textContent = plays ? `👤 ${fmt(plays)}人が遊びました` : '';
-  const b = el.querySelector('.badges');
-  if (hot) b.insertAdjacentHTML('beforeend', '<span class="badge hot">人気No.1</span>');
-  if (isNew(a)) b.insertAdjacentHTML('beforeend', '<span class="badge new">NEW</span>');
-  return el;
+function countUp(el, to) {
+  const t0 = performance.now(), d = 900;
+  const step = (now) => { const k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(Math.round(to * e)); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
 }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 function render(counts) {
   const sorted = APPS.map((a) => ({ a, n: (counts && counts[a.key]) || 0 }))
     .sort((x, y) => y.n - x.n || new Date(y.a.added) - new Date(x.a.added));
-  const top = sorted[0];
-  const f = document.getElementById('feature');
-  f.innerHTML = `<a class="feature" href="${top.a.path}"><img alt=""><div class="badges"><span class="badge hot">人気No.1</span>${isNew(top.a) ? '<span class="badge new">NEW</span>' : ''}<span class="badge tag"></span></div><div class="cap"><b></b><span></span></div></a>`;
-  f.querySelector('img').src = top.a.path + 'og.png';
-  f.querySelector('.tag').textContent = top.a.tag;
-  f.querySelector('b').textContent = `${top.a.icon} ${top.a.title}`;
-  f.querySelector('.cap span').textContent = `${top.a.desc}${top.n ? `｜👤 ${fmt(top.n)}人` : ''}`;
-  const g = document.getElementById('grid'); g.innerHTML = '';
-  sorted.forEach((x, i) => g.appendChild(card(x.a, x.n, i === 0 && x.n > 0)));
-  document.getElementById('count').textContent = APPS.length;
-  if (counts) document.getElementById('players').textContent = fmt(sorted.reduce((s, x) => s + x.n, 0));
+  // 1位は横長の大きなタイル。残りが奇数なら最後も横長にしてすき間をなくす
+  const rest = sorted.length - 1;
+  $('grid').innerHTML = sorted.map((x, i) => {
+    const wide = i === 0 || (rest % 2 === 1 && i === sorted.length - 1);
+    return `<a class="tile rv fall${wide ? ' wide' : ''}" href="${x.a.path}">
+      <div class="ph"><img src="${x.a.path}og.png" alt="" loading="lazy" draggable="false">${i === 0 && x.n ? '<span class="hot"><b>No.1</b> POPULAR</span>' : ''}</div>
+      <div class="body">
+        <div class="meta"><span>${String(i + 1).padStart(2, '0')}</span><span class="tag">${esc(x.a.tag)}</span>${NEW_IDS.has(x.a.id) ? '<span class="new">NEW</span>' : ''}</div>
+        <div class="t">${esc(x.a.title)}</div>
+        <div class="d">${esc(x.a.desc)}</div>
+        <div class="foot"><span>${x.n ? `${fmt(x.n)} players` : 'new'}</span><i>→</i></div>
+      </div></a>`;
+  }).join('');
+  $('count').textContent = APPS.length;
+  $('secCount').textContent = `${APPS.length} TITLES`;
+  if (counts) countUp($('players'), sorted.reduce((s, x) => s + x.n, 0));
+  observe();
 }
+// スクロールでふわっと出す
+const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' }) : null;
+function observe() { document.querySelectorAll('.rv:not(.in)').forEach((el, i) => { el.style.transitionDelay = `${(i % 2) * 70}ms`; io ? io.observe(el) : el.classList.add('in'); }); }
+
 render(null);
 (async () => {
-  const v = await call('/hit/portal-view', 'POST');
-  document.getElementById('views').textContent = v ? fmt(v.value) : '-';
+  // 手元での確認中は閲覧数を増やさない
+  const v = LOCAL ? await call('/get?keys=portal-view').then((j) => j && { value: j['portal-view'] }) : await call('/hit/portal-view', 'POST');
+  if (v) countUp($('views'), v.value);
   const j = await call('/get?keys=' + APPS.map((a) => a.key).join(','));
-  if (j) render(j); else document.getElementById('players').textContent = '-';
+  if (j) render(j);
 })();
 
 // ホーム画面に追加
 let deferred = null;
-const btn = document.getElementById('installBtn');
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; if (!standalone) btn.classList.add('on'); });
-btn.onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; btn.classList.remove('on'); };
-if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) document.getElementById('iosTip').style.display = 'block';
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; if (!standalone) $('installBtn').classList.add('on'); });
+$('installBtn').onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $('installBtn').classList.remove('on'); };
+if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) $('iosTip').style.display = 'block';
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// ===== 隠しギミック =====
+function toast(msg, ms = 2400) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.remove('on'), ms); }
+let actx = null;
+function snd(kind) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const a = actx, t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+    if (kind === 'pop') { o.frequency.setValueAtTime(620, t); o.frequency.exponentialRampToValueAtTime(240, t + .09); g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .1); }
+    else if (kind === 'splat') { o.type = 'triangle'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(50, t + .16); g.gain.setValueAtTime(.22, t); g.gain.exponentialRampToValueAtTime(.001, t + .18); }
+    else { o.type = 'sine'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + .35); g.gain.setValueAtTime(.25, t); g.gain.exponentialRampToValueAtTime(.001, t + .4); }
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + .45);
+  } catch {}
+}
+
+// --- ② トマト投げ：ロゴをタップするとトマトが飛び出し、カードに当たるとペチャッ ---
+const cv = $('fx'), cx = cv.getContext('2d');
+let VW = 0, VH = 0;
+function fit() { const dpr = Math.min(devicePixelRatio || 1, 2); VW = innerWidth; VH = innerHeight; cv.width = VW * dpr; cv.height = VH * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+fit(); addEventListener('resize', fit);
+const tomatoes = [];
+let fxRaf = 0, fxLast = 0;
+let throws = 0;
+function throwTomato() {
+  throws++;
+  const h = $('hint');
+  if (throws === 3) h.textContent = '長押しもしてみて';
+  if (throws === 12) h.classList.add('gone');
+  const r = $('logo').getBoundingClientRect();
+  tomatoes.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, vx: -150 - Math.random() * 520, vy: -620 - Math.random() * 520,
+    r: 11 + Math.random() * 7, rot: 0, vr: (Math.random() - .5) * 14, t: 0, bounces: 0 });
+  snd('pop'); if (navigator.vibrate) navigator.vibrate(8);
+  if (!fxRaf) { fxLast = performance.now(); fxRaf = requestAnimationFrame(fxLoop); }
+}
+function drawTomato(o) {
+  cx.save(); cx.translate(o.x, o.y); cx.rotate(o.rot);
+  const g = cx.createRadialGradient(-o.r * .35, -o.r * .35, o.r * .1, 0, 0, o.r);
+  g.addColorStop(0, '#ff7a5c'); g.addColorStop(.6, '#e8432f'); g.addColorStop(1, '#b52a1a');
+  cx.fillStyle = g; cx.beginPath(); cx.ellipse(0, 0, o.r, o.r * .9, 0, 0, Math.PI * 2); cx.fill();
+  cx.fillStyle = '#3f9b3a';
+  for (let k = 0; k < 5; k++) { cx.save(); cx.rotate(k * Math.PI * 2 / 5); cx.beginPath(); cx.ellipse(0, -o.r * .78, o.r * .16, o.r * .38, 0, 0, Math.PI * 2); cx.fill(); cx.restore(); }
+  cx.fillStyle = 'rgba(255,255,255,.55)'; cx.beginPath(); cx.ellipse(-o.r * .38, -o.r * .3, o.r * .18, o.r * .11, -.6, 0, Math.PI * 2); cx.fill();
+  cx.restore();
+}
+const SPLAT = (c) => `<svg viewBox="-40 -40 80 80" xmlns="http://www.w3.org/2000/svg"><g fill="${c}">
+  <path d="M0-24C9-24 11-14 18-16S30-8 24 0 30 14 18 15 9 26 0 22-12 28-17 17-30 12-24 2-30-12-17-14-9-24 0-24Z"/>
+  <circle cx="29" cy="-21" r="4"/><circle cx="-31" cy="19" r="3.5"/><circle cx="7" cy="33" r="3"/><circle cx="-24" cy="-27" r="2.5"/></g>
+  <path d="M-9-10C-4-15 4-15 7-11" stroke="rgba(255,255,255,.5)" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <g fill="#3f9b3a"><ellipse cx="-3" cy="-2" rx="3" ry="6" transform="rotate(30)"/><ellipse cx="3" cy="-2" rx="3" ry="6" transform="rotate(-40)"/></g></svg>`;
+function splatOn(tile, x, y) {
+  const r = tile.getBoundingClientRect();
+  const s = document.createElement('div'); s.className = 'splat';
+  s.style.left = `${x - r.left}px`; s.style.top = `${y - r.top}px`; s.style.setProperty('--r', `${Math.random() * 360}deg`);
+  s.innerHTML = SPLAT('#e8432f'); tile.appendChild(s);
+  tile.classList.remove('shake'); void tile.offsetWidth; tile.classList.add('shake');
+  snd('splat'); if (navigator.vibrate) navigator.vibrate(18);
+  setTimeout(() => s.classList.add('out'), 4500); setTimeout(() => s.remove(), 5800);
+}
+function fxLoop(now) {
+  const dt = Math.min(.033, (now - fxLast) / 1000); fxLast = now;
+  cx.clearRect(0, 0, VW, VH);
+  const tiles = [...document.querySelectorAll('.tile')].map((el) => ({ el, r: el.getBoundingClientRect() }));
+  for (let i = tomatoes.length - 1; i >= 0; i--) {
+    const o = tomatoes[i];
+    o.t += dt; o.vy += 2100 * dt; o.x += o.vx * dt; o.y += o.vy * dt; o.rot += o.vr * dt;
+    if (o.x < o.r) { o.x = o.r; o.vx *= -.6; } if (o.x > VW - o.r) { o.x = VW - o.r; o.vx *= -.6; }
+    let gone = false;
+    if (o.t > .18 && o.vy > 0) {
+      const hit = tiles.find((T) => o.x > T.r.left + 6 && o.x < T.r.right - 6 && o.y > T.r.top + 4 && o.y < T.r.bottom - 4);
+      if (hit) { splatOn(hit.el, o.x, o.y); gone = true; }
+    }
+    if (!gone && o.y > VH - o.r) { o.y = VH - o.r; o.vy *= -.42; o.vx *= .7; o.bounces++; if (o.bounces > 2) gone = true; }
+    if (gone) tomatoes.splice(i, 1); else drawTomato(o);
+  }
+  fxRaf = tomatoes.length ? requestAnimationFrame(fxLoop) : 0;
+  if (!fxRaf) cx.clearRect(0, 0, VW, VH);
+}
+
+// --- ⑥ トマト重力：ロゴを長押しすると、画面の中身がぜんぶ落ちる ---
+let G = null;
+function gravityOn() {
+  if (G) return;
+  $('hint').classList.add('gone');
+  snd('thud'); if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+  document.documentElement.style.overflow = 'hidden';
+  const bodies = [...document.querySelectorAll('.fall')].map((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > VH) return null;
+    el.style.transition = 'none'; el.style.willChange = 'transform';
+    return { el, x: r.left, y: r.top, w: r.width, h: r.height, dx: 0, dy: 0, vx: (Math.random() - .5) * 120, vy: -Math.random() * 260,
+      rot: 0, vr: (Math.random() - .5) * 3, landed: false, delay: Math.random() * .18 };
+  }).filter(Boolean).sort((a, b) => b.y - a.y);
+  G = { bodies, t: 0, last: performance.now(), raf: 0, ready: false };
+  setTimeout(() => { if (G) { G.ready = true; toast('タップするか、スマホを振ると元に戻ります', 3200); } }, 900);
+  G.raf = requestAnimationFrame(gLoop);
+}
+function gLoop(now) {
+  if (!G) return;
+  const dt = Math.min(.033, (now - G.last) / 1000); G.last = now; G.t += dt;
+  const floor0 = VH - 6;
+  for (const b of G.bodies) {
+    if (G.t < b.delay) continue;
+    if (!b.landed) {
+      b.vy += 2600 * dt; b.dx += b.vx * dt; b.dy += b.vy * dt; b.rot += b.vr * dt;
+      const left = b.x + b.dx, right = left + b.w;
+      if (left < 0) { b.dx = -b.x; b.vx = Math.abs(b.vx) * .5; } if (right > VW) { b.dx = VW - b.w - b.x; b.vx = -Math.abs(b.vx) * .5; }
+      // 先に落ちたものの上に積み重なる
+      let floor = floor0;
+      for (const o of G.bodies) if (o !== b && o.landed && left < o.x + o.dx + o.w - 10 && right > o.x + o.dx + 10) floor = Math.min(floor, o.y + o.dy + o.h * .18);
+      if (b.y + b.dy + b.h > floor && b.vy > 0) {
+        b.dy = floor - b.h - b.y;
+        if (b.vy > 420) { b.vy *= -.28; b.vr *= .5; } else { b.landed = true; b.vy = 0; b.rot = Math.max(-.35, Math.min(.35, b.rot)); }
+      }
+    }
+    b.el.style.transform = `translate(${b.dx}px, ${b.dy}px) rotate(${b.rot}rad)`;
+  }
+  G.raf = requestAnimationFrame(gLoop);
+}
+function gravityOff() {
+  if (!G || !G.ready) return;
+  cancelAnimationFrame(G.raf);
+  const bodies = G.bodies; G = null; $('toast').classList.remove('on');
+  snd('pop');
+  for (const b of bodies) { b.el.style.transition = 'transform .8s cubic-bezier(.3,1.4,.5,1)'; b.el.style.transform = ''; }
+  setTimeout(() => { for (const b of bodies) { b.el.style.transition = ''; b.el.style.willChange = ''; } document.documentElement.style.overflow = ''; }, 850);
+}
+// 落ちている間のタップは、リンクを開かずに元に戻すだけ
+document.addEventListener('click', (e) => { if (G) { e.preventDefault(); e.stopPropagation(); gravityOff(); } }, true);
+addEventListener('devicemotion', (e) => { const a = e.accelerationIncludingGravity || e.acceleration; if (G && a && Math.hypot(a.x || 0, a.y || 0, a.z || 0) > 24) gravityOff(); });
+
+// ロゴ：タップでトマト、長押しで重力
+const logo = $('logo');
+let hold = null;
+logo.addEventListener('contextmenu', (e) => e.preventDefault());
+logo.addEventListener('pointerdown', (e) => {
+  if (G) return;
+  e.preventDefault();
+  const t0 = performance.now();
+  hold = { fired: false, raf: 0 };
+  logo.classList.add('holding');
+  const tick = () => {
+    if (!hold) return;
+    const p = Math.min(1, (performance.now() - t0 - 180) / 520);
+    logo.style.setProperty('--p', `${Math.max(0, p) * 100}%`);
+    if (p >= 1 && !hold.fired) { hold.fired = true; logo.classList.remove('holding'); gravityOn(); return; }
+    hold.raf = requestAnimationFrame(tick);
+  };
+  hold.raf = requestAnimationFrame(tick);
+});
+const release = () => {
+  if (!hold) return;
+  cancelAnimationFrame(hold.raf);
+  if (!hold.fired) throwTomato();
+  hold = null; logo.classList.remove('holding'); logo.style.setProperty('--p', '0%');
+};
+logo.addEventListener('pointerup', release);
+logo.addEventListener('pointerleave', () => { if (hold && !hold.fired) { cancelAnimationFrame(hold.raf); hold = null; logo.classList.remove('holding'); logo.style.setProperty('--p', '0%'); } });
+logo.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); throwTomato(); } });
 </script>
 </body>
 </html>

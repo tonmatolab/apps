@@ -105,6 +105,7 @@
   .title-badge { text-align: center; margin: 10px 0 0; }
   .title-badge span { display: inline-block; background: var(--blue); color: #fff; font-weight: 800; padding: 4px 18px; border-radius: 99px; font-size: 1.1rem; }
   .title-badge.late span { background: var(--red); }
+  .special { margin: 8px auto 0; width: fit-content; padding: 3px 14px; border-radius: 99px; background: #fff3c4; color: #8a5a00; font-weight: 800; font-size: .85rem; border: 1.5px dashed #e0a800; }
   .excuse { background: var(--chip); border-radius: 16px; padding: 12px 14px; margin: 14px 0 0; }
   .excuse small { display: block; color: var(--sub); font-weight: 800; font-size: .75rem; }
   .excuse p { margin: 2px 0 0; font-weight: 800; }
@@ -209,6 +210,7 @@
     <div class="body">
       <div class="res-time"><div class="sub" id="rLabel"></div><div class="t" id="rTime"></div><div class="sub" id="rSub"></div></div>
       <div class="title-badge" id="rBadgeWrap"><span id="rBadge"></span></div>
+      <div class="special hidden" id="rBadge2"></div>
       <div class="excuse hidden" id="rExcuseBox"><small>上司への言い訳</small><p id="rExcuse"></p></div>
       <div class="nat hidden" id="rNatBox">今日 <b id="rDay"></b>位 <small id="rDayTotal"></small>　通算 <b id="rNat"></b>位 <small id="rTotal"></small></div>
       <div class="namebox hidden" id="nameBox">
@@ -379,7 +381,7 @@ function newState(charId) {
     char: charOf(charId || store.get('char') || 'kacho'), weather: todayWeather(), jump: 0, gust: 0, gustT: 0,
     d: 0, lane: 1, x: LANE_X[1], speed: 0, stamina: 100, sprint: false, dash: 0, noDash: 0,
     stun: 0, boost: 0, slow: 0, clock: 0, t: 0, obs: buildCourse(),
-    log: [], phase: 'run', taps: 0, msg: '', msgT: 0, done: false, elevator: null, step: 0,
+    log: [], ev: {}, phase: 'run', taps: 0, msg: '', msgT: 0, done: false, elevator: null, step: 0,
   };
 }
 
@@ -487,15 +489,15 @@ function update(dt) {
   const sig = signalState(S.t);
   if (S.d <= COURSE.signal && nd > COURSE.signal && sig === 'red') {
     nd = COURSE.signal;
-    if (S.waitSaid !== true) { say('赤信号…待つしかない', 1.4); S.waitSaid = true; S.log.push(['赤信号で足止め', null]); }
+    if (S.waitSaid !== true) { say('赤信号…待つしかない', 1.4); S.waitSaid = true; S.log.push(['赤信号で足止め', null]); S.ev.red = (S.ev.red || 0) + 1; }
   }
   if (sig !== 'red') S.waitSaid = false;
   if (!S.demo && sig === 'green' && COURSE.signal - S.d < 40 && COURSE.signal - S.d > -6 && S.piyo !== Math.floor(S.t)) { S.piyo = Math.floor(S.t); sfx.piyo(); }
 
   // エレベーター
   if (S.d < COURSE.elevator && nd >= COURSE.elevator && S.elevator === null) {
-    if (elevatorOpen(S.t)) { S.elevator = true; nd = COURSE.goal - 6; say('エレベーターに滑り込んだ！', 1.4); S.log.push(['エレベーターに間に合った', 'good']); }
-    else { S.elevator = false; S.slow = 2.2; say('目の前で閉まった！階段ダッシュ！', 1.6); S.log.push(['エレベーターに乗り遅れた', null]); }
+    if (elevatorOpen(S.t)) { S.elevator = true; nd = COURSE.goal - 6; say('エレベーターに滑り込んだ！', 1.4); S.ev.elev = 1; S.log.push(['エレベーターに間に合った', 'good']); }
+    else { S.elevator = false; S.slow = 2.2; say('目の前で閉まった！階段ダッシュ！', 1.6); S.ev.elevMiss = 1; S.log.push(['エレベーターに乗り遅れた', null]); }
   }
   S.d = nd;
   S.step += S.speed * dt;
@@ -524,6 +526,7 @@ function update(dt) {
     const same = Math.abs(o.x - S.x) < 46 || (o.lane2 != null && Math.abs(LANE_X[o.lane2] + (o.x - LANE_X[o.lane]) - S.x) < 46);
     if (near && same) {
       o.hit = true;
+      S.ev[o.type] = (S.ev[o.type] || 0) + 1;
       if (o.type === 'coffee') { S.boost = 3; S.stamina = 100; say('☕ コーヒーで覚醒！加速！', 1.3); S.log.push(['コーヒーで加速', 'good']); sfx.good(); continue; }
       const [st, text] = HIT[o.type];
       S.stun = st * S.char.stunMul; say(text, 1.2); S.log.push([text, 'bad']); if (o.type === 'puddle') sfx.splash(); else sfx.bump(o.type === 'gate');
@@ -1247,13 +1250,85 @@ function titleOf(left) {
   return '奇跡の滑り込み';
 }
 // 遅刻した秒数ごとの称号（遅れるほど偉くなる）
-function lateTitleOf(late) {
-  if (late <= 10) return 'ちょい遅刻';
-  if (late <= 30) return '遅刻常習犯';
-  if (late <= 60) return '重役出勤';
-  if (late <= 120) return '社長出勤';
-  if (late <= 240) return '会長出勤';
-  return '伝説の遅刻王';
+const LATE_TITLES = [
+  [3, '誤差の範囲'], [10, 'ちょい遅刻'], [20, 'タイムカードと目が合った人'], [30, '遅刻常習犯'], [45, '朝礼スルー職人'], [60, '重役出勤'],
+  [90, '始末書予備軍'], [120, '社長出勤'], [180, '会長出勤'], [240, '創業者出勤'], [300, '株主総会レベル'], [360, '昼休みと勘違いした人'],
+  [420, '有給と勘違いした人'], [480, '転職を考え始めた人'], [540, '会社がなくなっていた人'], [Infinity, '伝説の遅刻王'],
+];
+function lateTitleOf(late) { return LATE_TITLES.find(([s]) => late <= s)[1]; }
+// その回の出来事で付く特別称号（いちばん目立つものを1つ）
+function specialTitleOf(late) {
+  const e = S.ev, hits = Object.keys(HIT).reduce((n, k) => n + (e[k] || 0), 0);
+  const C = S.char.id;
+  const cands = [
+    [late <= 1, '惜しすぎる人'],
+    [C === 'shacho', '自分の会社に遅刻した社長'],
+    [C === 'shinjin', '初日から伝説'],
+    [e.boss, '部長のお気に入り'],
+    [hits >= 3, '人間ピンボール'],
+    [e.gate, '改札に嫌われた人'],
+    [e.elevMiss, '閉まるボタンの犠牲者'],
+    [e.dog, '散歩代行'],
+    [e.bike, '自転車と和解した人'],
+    [e.red, '赤信号の申し子'],
+    [e.pigeon, '鳩の友達'],
+    [e.tissue, 'ティッシュコレクター'],
+    [(e.coffee || 0) >= 2, 'カフェイン中毒'],
+    [hits === 0, 'ただ足が遅い人'],
+    [S.weather === 'rain', '雨のせいにする人'],
+    [S.weather === 'snow', '雪国育ちじゃない人'],
+    [S.weather === 'wind', '風に負けた人'],
+  ];
+  const hit = cands.find(([ok]) => ok);
+  return hit ? hit[1] : '';
+}
+
+// ===== 上司への言い訳（その回に起きたことに合わせる） =====
+const EXCUSE_BY = {
+  boss: ['部長と大事な話をしていました（「最近どう？」と聞かれました）', '部長に捕まっていました。部長に聞いてください', '部長の「最近どう？」に、誠実に答えすぎました', '部長の週末のゴルフの話を最後まで聞きました'],
+  gate: ['改札が私だけを拒みました。きっと前世で何かありました', '改札で「残高不足」と言われ、人生を見つめ直しました', '改札のピンポーンが鳴り、駅員さんと分かり合っていました'],
+  elevMiss: ['エレベーターが目の前で閉まり、心も閉じました', '「開」ボタンを押してもらえませんでした。社会は冷たいです', 'エレベーターに乗り遅れ、階段で人生を振り返りました'],
+  dog: ['犬の散歩を手伝っていました。私の犬ではありません', 'リードに絡まって、犬と飼い主さんと私で輪になっていました', '犬に懐かれてしまい、別れがつらかったです'],
+  bike: ['逆走してきた自転車と、正面から向き合いました', '自転車のベルに驚いて、一回駅まで戻りました', '自転車と正面衝突しましたが、お互い大人の対応をしました'],
+  red: ['信号が私の前でだけ赤になりました', '赤信号はちゃんと守りました。社会人なので', '信号待ちの間に、人生の優先順位について考えていました'],
+  cart: ['台車の荷物を一緒に運んでいました（勝手に）', '台車に激突し、段ボールと一緒に崩れ落ちました'],
+  couple: ['カップルの間を割って入る勇気がありませんでした', '前を歩くカップルの幸せを邪魔できませんでした'],
+  pigeon: ['鳩の会議に巻き込まれました', '駅前で鳩に道をゆずり続けました', '鳩と目が合ってしまい、動けませんでした'],
+  tissue: ['ティッシュを受け取ってしまい、お礼を言っていました', '配っている方が笑顔だったので、もう1つもらいに戻りました'],
+  down: ['階段で人の波に押し戻され、ホームまで帰りました', '上ってくる人の流れに逆らえませんでした'],
+  phone: ['歩きスマホの人と、同じ方向によけ続けました', '前の人が歩きスマホで、私も気になって画面を見てしまいました'],
+  guard: ['警備員さんと丁寧に「おはようございます」を交わしていました', '警備員さんに社員証を見せたら、免許証でした'],
+  puddle: ['水たまりに映る自分を見つめていました', '水たまりで転び、一度帰って着替えようか本気で迷いました'],
+  snowman: ['雪だるまに道を聞いていました', '雪だるまに激突し、作った子どもに謝っていました'],
+  paper: ['飛んできた書類が顔に貼りつき、前が見えませんでした', '風で飛んできた他社の書類を、届けるか迷っていました'],
+  coffee: ['コーヒーで覚醒しすぎて、会社を通り過ぎました'],
+};
+const EXCUSE_WEATHER = {
+  rain: ['雨で靴下が濡れ、心も濡れました', '傘をさした人の列に飲み込まれました'],
+  snow: ['雪で足元が見えず、一歩ずつ慎重に来ました', '雪がきれいで、つい足跡をつけていました'],
+  wind: ['向かい風が私だけに吹いていました', '風で前髪が決まらず、何度も直していました'],
+};
+const EXCUSE_CHAR = {
+  shacho: ['社長なので、私が来た時間が始業時間です', '社長室までの道がわかりませんでした'],
+  shinjin: ['入社式の会場と間違えました', '先輩に「ゆっくりでいいよ」と言われた気がしました'],
+  bucho: ['部長は少し遅れて来るのがマナーです', '部下の様子を、少し離れたところから見守っていました'],
+  kacho: ['課長会議に出ていたつもりでした（夢の中で）'],
+};
+// 出来事ごとの優先度（目立つ出来事ほど先に言い訳にする）
+const EXCUSE_ORDER = ['boss', 'gate', 'elevMiss', 'dog', 'bike', 'red', 'cart', 'couple', 'pigeon', 'tissue', 'down', 'phone', 'guard', 'puddle', 'snowman', 'paper', 'coffee'];
+function excuseOf(late) {
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  if (late <= 1) return pick(['1秒くらいは誤差だと思っています', 'タイムカードの時計が1秒進んでいました', '心はもう着席していました']);
+  const happened = EXCUSE_ORDER.filter((k) => S.ev[k]);
+  // いちばん目立つ出来事を中心に、たまに2番目や天気・キャラの言い訳も混ぜる
+  const pool = [];
+  if (happened[0]) pool.push(...EXCUSE_BY[happened[0]], ...EXCUSE_BY[happened[0]]);
+  if (happened[1]) pool.push(...EXCUSE_BY[happened[1]]);
+  if (EXCUSE_WEATHER[S.weather]) pool.push(...EXCUSE_WEATHER[S.weather]);
+  if (EXCUSE_CHAR[S.char.id]) pool.push(...EXCUSE_CHAR[S.char.id]);
+  if (!happened.length) pool.push('全力で走ったのに、時間のほうが速かったです', 'ゆっくり急いでいました', '走ると逆に遅くなる体質です', '何にもぶつからなかったのに、なぜか遅れました');
+  if (late > 300) pool.push('遅刻ではなく、時差出勤の実験です', '9:00の定義について考えていました');
+  return pick(pool.length ? pool : EXCUSES);
 }
 
 let last_ = null, lastScore = null;
@@ -1269,9 +1344,12 @@ async function showResult(reached) {
   $('rTime').className = 't' + (onTime ? '' : ' late');
   $('rSub').textContent = onTime ? `始業 ${left}秒前！` : reached ? `${fmtLate(late)} の遅刻` : `会社まであと ${Math.round(COURSE.goal - S.d)}m だった`;
   const title = onTime ? titleOf(left) : reached ? lateTitleOf(late) : '行方不明者';
+  const special = onTime ? '' : specialTitleOf(late);
   $('rBadge').textContent = title;
+  $('rBadge2').textContent = special ? `＋ 特別称号「${special}」` : '';
+  $('rBadge2').classList.toggle('hidden', !special);
   $('rBadgeWrap').className = 'title-badge' + (onTime ? '' : ' late');
-  const excuse = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
+  const excuse = excuseOf(late);
   $('rExcuse').textContent = `「${excuse}」`;
   $('rExcuseBox').classList.toggle('hidden', onTime);
   $('rLog').innerHTML = '';
@@ -1287,7 +1365,7 @@ async function showResult(reached) {
     store.set('best', String(best));
   }
   renderBest();
-  last_ = { arrived: onTime, reached, late, time: fmtClock(S.clock), left, title, excuse, rank: null, total: null };
+  last_ = { arrived: onTime, reached, late, time: fmtClock(S.clock), left, title, special, excuse, rank: null, total: null };
   $('rNatBox').classList.add('hidden');
   $('nameBox').classList.add('hidden');
   $('title').classList.add('hidden');
@@ -1346,7 +1424,7 @@ function share() {
   const text = s.arrived
     ? `${S.char.icon}${S.char.name}で始業${s.left}秒前に着席🏃💨 ${s.time}\n称号「${s.title}」${s.day ? `｜今日${s.day}位` : ''}${s.rank ? `｜通算${s.rank}位` : ''}\n今日の天気：${WEATHERS[S.weather].icon}${WEATHERS[S.weather].name}\n\n駅から会社まで、9:00に間に合う？`
     : s.reached
-      ? `${s.time}に着席（${fmtLate(s.late)}の遅刻）💦\n称号「${s.title}」${s.rank ? `｜全国${s.rank}位（${s.total}人中）` : ''}\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`
+      ? `${s.time}に着席（${fmtLate(s.late)}の遅刻）💦\n称号「${s.title}」${s.special ? `＋「${s.special}」` : ''}${s.rank ? `｜全国${s.rank}位（${s.total}人中）` : ''}\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`
       : `10分たっても会社に着かず「行方不明者」に…\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`;
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);

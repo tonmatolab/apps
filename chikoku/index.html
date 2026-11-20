@@ -61,7 +61,7 @@
   .hero-foot { position: absolute; left: 0; right: 0; bottom: 12px; z-index: 2; text-align: center; color: #fff; font-weight: 800; font-size: .8rem; text-shadow: 0 2px 4px #000; pointer-events: none; }
   @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
   @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
-  .start-btn { animation: pulse 1.4s ease-in-out infinite; font-size: 1.35rem !important; padding: 18px 16px !important; }
+  .start-btn { animation: pulse 1.4s ease-in-out infinite; font-size: 1.35rem !important; padding: 18px 16px !important; margin: 4px 0 16px !important; }
   .gimmicks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 14px; }
   .gimmicks div { background: var(--chip); border-radius: 12px; padding: 6px 2px; text-align: center; font-size: .68rem; font-weight: 700; color: var(--sub); line-height: 1.3; }
   .gimmicks b { display: block; font-size: 1.5rem; line-height: 1.3; }
@@ -193,10 +193,10 @@
       <div class="hero-foot">駅から会社まで、9:00に間に合え！</div>
     </div>
     <div class="body">
+      <button class="primary start-btn" id="startBtn">🚃 電車を降りる</button>
       <div class="today-bar" id="todayBar"></div>
       <p class="sec-title">キャラを選ぶ</p>
       <div class="chars" id="chars"></div>
-      <button class="primary start-btn" id="startBtn">🚃 電車を降りる</button>
       <button class="sound-btn" id="soundBtn"></button>
       <div class="board top" data-ol="boardTitle"><h3>🏆 全国ランキング TOP10</h3><div class="btabs"><button class="on" data-b="day">今日</button><button data-b="all">通算</button></div><ol id="boardTitle"></ol></div>
       <p class="lead">改札、歩きスマホ、赤信号、そして部長…。あらゆる朝の障害をかわして、9:00までにタイムカードを押せ！</p>

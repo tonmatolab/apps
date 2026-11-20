@@ -93,7 +93,9 @@
 
   /* ゲーム画面 */
   #game { position: fixed; inset: 0; z-index: 20; background: #000; touch-action: none; display: flex; align-items: center; justify-content: center; }
-  #cv { display: block; touch-action: none; }
+  #stage { position: relative; line-height: 0; }
+  #cv3 { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #cv { position: relative; display: block; touch-action: none; }
 
   /* 結果 */
   .res-time { text-align: center; margin: 4px 0 0; }
@@ -162,7 +164,7 @@
   <!-- タイトル -->
   <section id="title" class="card">
     <div class="hero">
-      <canvas id="heroCv"></canvas>
+      <canvas id="hero3"></canvas><canvas id="heroCv"></canvas>
       <div class="hero-ov">
         <span class="hero-badge">始業まであと3分！</span>
         <div class="hero-clock" id="heroClock">8:57:00</div>
@@ -230,8 +232,10 @@
   <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
 </main>
 
-<div id="game" class="hidden"><canvas id="cv"></canvas></div>
+<div id="game" class="hidden"><div id="stage"><canvas id="cv3"></canvas><canvas id="cv"></canvas></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="world3d.js"></script>
 <script>
 const APP_TITLE = '遅刻ダッシュ';
 const HASHTAGS = ['遅刻ダッシュ'];
@@ -272,7 +276,7 @@ const COURSE = {
 const SECTIONS = [
   [0, 'ホーム → 階段'], [44, '改札'], [58, '駅前の歩道'], [172, '横断歩道'], [194, 'オフィス街'], [222, 'オフィスビル'], [252, 'タイムカード'],
 ];
-const sectionName = (d) => SECTIONS.filter((s) => d >= s[0]).pop()[1];
+const sectionName = (d) => (SECTIONS.filter((s) => d >= s[0]).pop() || SECTIONS[0])[1];
 
 // 日付ごとに同じコース（今日のコース）
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -366,6 +370,9 @@ let MUTE = false;
 const W = 360, LANE_X = [80, 180, 280];
 let H = 640; // 画面の縦横比に合わせて変える
 let S = null, raf = 0, last = 0;
+// 3D表示（使えない端末では従来の2D表示）
+let W3 = null, HW3 = null;
+const CTX3 = { get LANE_X() { return LANE_X; }, pxToM: (px) => ((px - 180) / 100) * 1.15, get JUMP_T() { return JUMP_T; }, signalState: (t) => signalState(t), elevatorOpen: (t) => elevatorOpen(t) };
 
 function newState(charId) {
   return {
@@ -384,6 +391,8 @@ function resize() {
   HY = Math.round(H * .3); FOC = FOC_BASE = 340 * H / 640;
   cv.width = W * dpr; cv.height = H * dpr;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!W3 && window.Chikoku3D) W3 = Chikoku3D.create($('cv3'));
+  if (W3) W3.setSize(W * s, H * s, window.devicePixelRatio || 1);
 }
 
 function say(text, t = 1.2) { S.msg = text; S.msgT = t; }
@@ -828,6 +837,7 @@ function draw() {
   const sprinting = S.sprint && S.stamina > 0 && S.stun <= 0;
   const targetF = FOC_BASE * (sprinting || S.boost > 0 ? .88 : 1);
   FOC += (targetF - FOC) * .12;
+  if (W3 && g === cv.getContext('2d')) return draw3d(sprinting);
   g.save();
   if (S.stun > 0) g.translate(Math.sin(S.t * 70) * 4, Math.cos(S.t * 55) * 2);
   drawSky();
@@ -861,6 +871,32 @@ function draw() {
   if (!S.demo) drawHud();
 }
 
+function draw3d(sprinting) {
+  W3.render(S, CTX3);
+  g.clearRect(0, 0, W, H);
+  if (sprinting || S.boost > 0) drawSpeedLines();
+  if (S.weather !== 'sunny' && S.d >= 58 && S.d < 222) drawWeather(); // 雨・雪・風は屋外だけ
+  const vg = g.createRadialGradient(W / 2, H * .55, H * .4, W / 2, H * .55, H * .85);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.28)');
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  // 猛ダッシュ中の擬音（頭の横に）
+  if (S.dash > 0) {
+    const hp = W3.playerHead();
+    if (hp) {
+      const sx = hp.x * W / W3.w, sy = hp.y * H / W3.h, right = S.x <= 200;
+      g.save(); g.translate(sx + (right ? 40 : -40) + Math.sin(S.t * 50) * 2, sy + 10); g.rotate(right ? -.2 : .2);
+      g.font = '28px "Dela Gothic One"'; g.textAlign = right ? 'left' : 'right'; g.lineWidth = 6; g.strokeStyle = '#1d2433'; g.fillStyle = '#ffd36b';
+      g.strokeText('ドドドド', 0, 0); g.fillText('ドドドド', 0, 0); g.restore();
+    }
+  }
+  if (!S.demo && S.d > COURSE.walkEnd - 25 && S.d < COURSE.crossEnd) {
+    const st = signalState(S.t), on = st === 'green' || (st === 'blink' && Math.floor(S.t * 6) % 2 === 0);
+    g.fillStyle = 'rgba(20,20,20,.85)'; g.beginPath(); g.roundRect(W - 62, 88, 46, 80, 10); g.fill();
+    g.fillStyle = st === 'red' ? '#ff3b30' : '#4a1a18'; g.beginPath(); g.arc(W - 39, 110, 13, 0, 7); g.fill();
+    g.fillStyle = on ? '#34d27a' : '#163a26'; g.beginPath(); g.arc(W - 39, 146, 13, 0, 7); g.fill();
+  }
+  if (!S.demo) drawHud();
+}
 function drawWeather() {
   const w = S.weather;
   if (w === 'rain') {
@@ -1090,7 +1126,7 @@ function drawDashUI() {
 }
 
 function loop(now) {
-  const dt = Math.min(.05, (now - last) / 1000 || 0);
+  const dt = Math.max(0, Math.min(.05, (now - last) / 1000 || 0)); // 重い処理の直後に時間が巻き戻らないように
   last = now;
   if (S && !S.done) { update(dt); if (!S.done) draw(); }
   raf = requestAnimationFrame(loop);
@@ -1388,7 +1424,7 @@ function demoBot() {
 }
 function heroTick(now) {
   requestAnimationFrame(heroTick);
-  const dt = Math.min(.05, (now - heroLast) / 1000 || 0); heroLast = now;
+  const dt = Math.max(0, Math.min(.05, (now - heroLast) / 1000 || 0)); heroLast = now;
   if ($('title').classList.contains('hidden')) return;
   const keep = S;
   try {
@@ -1397,7 +1433,8 @@ function heroTick(now) {
     demoBot();
     update(dt);
     S.clock = Math.min(S.clock, 60); S.stun = Math.min(S.stun, .4);
-    withView(heroCtx, HERO_H, draw, .47);
+    if (HW3) { HW3.render(S, CTX3); heroCtx.clearRect(0, 0, W, HERO_H); }
+    else withView(heroCtx, HERO_H, draw, .47);
   } finally { S = keep; MUTE = false; }
   // 時計：8:57:00 → 9:00 を繰り返す
   const c = (now / 1000 * 30) % 200;
@@ -1409,6 +1446,7 @@ function initHero() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   heroCv.width = W * dpr; heroCv.height = HERO_H * dpr;
   heroCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (window.Chikoku3D) { HW3 = Chikoku3D.create($('hero3'), { hero: true }); const fitHero = () => { const r = heroCv.getBoundingClientRect(); if (HW3 && r.width) HW3.setSize(r.width, r.height, dpr); }; fitHero(); window.addEventListener('resize', fitHero); }
   requestAnimationFrame(heroTick);
 }
 

@@ -96,6 +96,25 @@
   #stage { position: relative; line-height: 0; }
   #cv3 { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   #cv { position: relative; display: block; touch-action: none; }
+  .ov { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 20px; line-height: 1.5; background: rgba(10,14,24,.35); }
+  .ov-card { width: 100%; max-width: 330px; background: rgba(255,255,255,.96); border-radius: 22px; padding: 18px 16px 14px; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.35); color: #1d2433; }
+  .ov-title { margin: 0 0 12px; font-size: 1.3rem; font-weight: 800; }
+  .ov-sub { margin: 0; font-size: .82rem; font-weight: 800; color: #5a6578; }
+  .ov-char { margin: 6px 0 10px; font-size: 1.15rem; font-weight: 800; }
+  .ov-char b { font-size: 2rem; vertical-align: middle; margin-right: 6px; }
+  .ov-how { list-style: none; margin: 0 0 14px; padding: 10px 12px; background: #f1f4f8; border-radius: 14px; text-align: left; font-size: .86rem; font-weight: 800; }
+  .ov-how li { padding: 3px 0; white-space: nowrap; } .ov-how b { display: inline-block; min-width: 2.8em; white-space: nowrap; }
+  .ov-go { width: 100%; margin: 0; border: none; border-radius: 99px; padding: 14px; font: inherit; font-size: 1.25rem; font-weight: 800; color: #fff; background: linear-gradient(#ff7a5c, #e8432f); box-shadow: 0 5px 0 #a92c1d; animation: goPulse 1.2s ease-in-out infinite; }
+  .ov-go:active { transform: translateY(3px); box-shadow: 0 2px 0 #a92c1d; }
+  @keyframes goPulse { 50% { transform: scale(1.04); } }
+  .ov-btn { width: 100%; margin: 10px 0 0; border: none; border-radius: 99px; padding: 11px; font: inherit; font-weight: 800; background: #eef1f5; color: #1d2433; }
+  .ov-back { margin: 10px 0 0; border: none; background: none; font: inherit; font-size: .8rem; font-weight: 800; color: #6a7486; padding: 4px; box-shadow: none; width: auto; }
+  .replay { margin: 14px 0 0; padding: 12px; background: #1d2433; border-radius: 18px; color: #fff; text-align: center; }
+  .replay h3 { margin: 0 0 8px; font-size: .95rem; }
+  .replay video { width: 100%; max-height: 360px; border-radius: 12px; background: #000; display: block; }
+  .replay .row { margin-top: 10px; }
+  .replay button { margin: 0; }
+  .replay small { display: block; margin-top: 6px; color: #aab3c2; font-size: .72rem; }
 
   /* 結果 */
   .res-time { text-align: center; margin: 4px 0 0; }
@@ -212,6 +231,8 @@
       <div class="title-badge" id="rBadgeWrap"><span id="rBadge"></span></div>
       <div class="special hidden" id="rBadge2"></div>
       <div class="excuse hidden" id="rExcuseBox"><small>上司への言い訳</small><p id="rExcuse"></p></div>
+      <div class="replay hidden" id="replayBox"><h3>🎬 今回のリプレイ動画</h3><video id="replayVid" playsinline muted loop autoplay></video>
+        <div class="row"><button class="primary" id="replayShare">動画をシェア</button><button class="ghost" id="replaySave">保存する</button></div><small id="replayNote"></small></div>
       <div class="nat hidden" id="rNatBox">今日 <b id="rDay"></b>位 <small id="rDayTotal"></small>　通算 <b id="rNat"></b>位 <small id="rTotal"></small></div>
       <div class="namebox hidden" id="nameBox">
         <p class="nb-head">🏆 トップ10入り！ランキングに名前を残そう</p>
@@ -234,7 +255,21 @@
   <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
 </main>
 
-<div id="game" class="hidden"><div id="stage"><canvas id="cv3"></canvas><canvas id="cv"></canvas></div></div>
+<div id="game" class="hidden"><div id="stage"><canvas id="cv3"></canvas><canvas id="cv"></canvas>
+  <div class="ov hidden" id="readyOv"><div class="ov-card">
+    <p class="ov-sub" id="readyToday"></p>
+    <div class="ov-char" id="readyChar"></div>
+    <ul class="ov-how"><li><b>👈👉</b>左右スワイプでよける</li><li><b>👆</b>上スワイプでジャンプ</li><li><b>🔴</b>右下のDASHで猛ダッシュ</li><li><b>✨</b>ギリギリでよけるとゲージ回復</li></ul>
+    <button class="ov-go" id="goBtn">▶ スタート</button>
+    <button class="ov-back" id="readyBack">← キャラ選びに戻る</button>
+  </div></div>
+  <div class="ov hidden" id="pauseOv"><div class="ov-card">
+    <p class="ov-title">⏸ 一時停止中</p>
+    <button class="ov-go" id="resumeBtn">▶ 再開する</button>
+    <button class="ov-btn" id="restartBtn">↺ 最初からやり直す</button>
+    <button class="ov-back" id="quitBtn">✕ やめてタイトルへ</button>
+  </div></div>
+</div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script src="world3d.js"></script>
@@ -408,9 +443,11 @@ cv.addEventListener('pointerdown', (e) => {
   audio();
   if (!S || S.done) return;
   if (S.phase === 'punch') { punch(); return; }
+  if (S.phase !== 'run' || S.paused) return;
   const p = toCanvas(e), b = btn();
   if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + 14) { tryDash(); return; }
-  if (p.x < 62 && p.y > H - 156 && p.y < H - 108) { toggleSound(); return; }
+  if (p.x < 58 && p.y > H - 156 && p.y < H - 108) { pauseGame(); return; }
+  if (p.x >= 58 && p.x < 106 && p.y > H - 156 && p.y < H - 108) { toggleSound(); return; }
   press = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false, jumped: false };
 });
 cv.addEventListener('pointermove', (e) => {
@@ -429,6 +466,9 @@ cv.addEventListener('pointercancel', release);
 window.addEventListener('keydown', (e) => {
   if (!S || S.done || $('game').classList.contains('hidden')) return;
   if (S.phase === 'punch' && (e.key === ' ' || e.key === 'Enter')) return punch();
+  if (S.phase === 'ready' && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); return goCount(); }
+  if (e.key === 'Escape' || e.key === 'p') { if (S.paused) resumeGame(); else if (S.phase === 'run') pauseGame(); return; }
+  if (S.phase !== 'run' || S.paused) return;
   if (e.key === 'ArrowLeft') moveLane(-1);
   if (e.key === 'ArrowRight') moveLane(1);
   if (e.key === ' ') { e.preventDefault(); tryDash(); }
@@ -444,7 +484,7 @@ function tryDash() {
   S.stamina -= dashCost(); S.dash = DASH_TIME; sfx.dash();
   if (navigator.vibrate && !S.demo) navigator.vibrate(25);
 }
-function moveLane(dir) { if (S.stun > 0) return; S.lane = Math.max(0, Math.min(2, S.lane + dir)); }
+function moveLane(dir) { if (S.stun > 0) return; const l = Math.max(0, Math.min(2, S.lane + dir)); if (l !== S.lane) S.laneT = S.t; S.lane = l; }
 
 // ===== 進行 =====
 function signalState(t) {
@@ -455,10 +495,25 @@ function signalState(t) {
 function elevatorOpen(t) { return (t + 1) % 6 < 2.6; }
 
 function update(dt) {
+  // スタート前（ボタン待ち・カウントダウン）は時計を止める
+  if (S.phase === 'ready' || S.phase === 'count') {
+    S.t += dt;
+    if (S.phase === 'count') {
+      const before = Math.ceil(S.countT); S.countT -= dt; const after = Math.ceil(S.countT);
+      if (after !== before && after > 0) sfx.count(false);
+      if (S.countT <= 0) { S.phase = 'run'; S.runStart = S.t; sfx.count(true); sfx.door(); bgm.start(); say(`${WEATHERS[S.weather].icon} 今日の天気：${WEATHERS[S.weather].name}（${WEATHERS[S.weather].note}）`, 2.2); }
+    }
+    return;
+  }
+  // ゴール演出中
+  if (S.phase === 'goal') { S.t += dt; S.goalT += dt; if (S.goalT > .55 && !S.stamped) { S.stamped = true; sfx.stamp(); sfx.clunk(); if (navigator.vibrate) navigator.vibrate(80); } if (S.goalT > 2.1 && !S.done) finish(true); return; }
   S.t += dt;
   S.clock += dt * CLOCK_RATE;
+  if (S.niceT > 0) S.niceT -= dt;
+  if (S.lateFx > 0) S.lateFx -= dt;
+  if (S.bossCallT > 0) { S.bossCallT -= dt; if (S.bossCallT <= 0) say(`部長「${store.get('name') || S.char.name}くん…ちょっといいかな」`, 2.2); }
   if (S.msgT > 0) S.msgT -= dt;
-  if (S.clock >= LIMIT && !S.lateSaid && !S.demo) { S.lateSaid = true; say('9:00過ぎた！遅刻確定…でも走れ！', 2); sfx.late(); if (navigator.vibrate) navigator.vibrate([80, 60, 80]); }
+  if (S.clock >= LIMIT && !S.lateSaid && !S.demo) { S.lateSaid = true; S.lateFx = 2; S.bossCallT = 2.3; say('9:00過ぎた！遅刻確定…でも走れ！', 2); sfx.late(); sfx.gong(); if (navigator.vibrate) navigator.vibrate([80, 60, 80]); }
   if (S.clock >= LIMIT + LATE_CAP && !S.done) return finish(false);
 
   if (S.phase === 'punch') return;
@@ -520,6 +575,15 @@ function update(dt) {
     if (o.type === 'boss' && !o.warned && o.d - S.d < 22) { o.warned = true; say('前方に部長！ 見つかるな！', 1.4); }
     o.x = o.x == null ? LANE_X[o.lane] : o.x + (LANE_X[o.lane] - o.x) * Math.min(1, dt * 5);
     if (o.hit) continue;
+    if (!o.passed && o.d < S.d - .7) {
+      o.passed = true;
+      const dodgeable = o.type !== 'coffee' && !(o.type === 'gate' && !o.closed);
+      const lat = Math.abs(o.x - S.x);
+      if (dodgeable && !S.demo && lat < 118 && S.t - (S.laneT || -9) < .9 && S.stun <= 0) {
+        S.combo = (S.niceT > 0 ? S.combo : 0) + 1; S.niceT = 1.6; S.niceMax = Math.max(S.niceMax || 0, S.combo);
+        S.stamina = Math.min(100, S.stamina + 7); S.ev.nice = (S.ev.nice || 0) + 1; sfx.nice(S.combo);
+      }
+    }
     if (o.type === 'gate' && !o.closed) continue;
     if (S.jump > 0 && LOW.has(o.type)) { const nearJ = Math.abs(o.d - S.d) < 1.1 && Math.abs(o.x - S.x) < 46; if (nearJ && !o.jumped) { o.jumped = true; S.stamina = Math.min(100, S.stamina + 8); if (!S.demo) say('ひょいっ！ 飛び越えた', .8); } continue; }
     const near = Math.abs(o.d - S.d) < (o.type === 'gate' ? .9 : 1.1);
@@ -537,7 +601,11 @@ function update(dt) {
   }
 
   // ゴールに着いたら自動で打刻
-  if (S.d >= COURSE.goal) { S.d = COURSE.goal; S.phase = 'punch'; S.sprint = false; S.dash = 0; sfx.stamp(); if (!S.demo) finish(true); }
+  if (S.d >= COURSE.goal) {
+    S.d = COURSE.goal; S.sprint = false; S.dash = 0;
+    if (S.demo) { S.phase = 'punch'; return; }
+    S.phase = 'goal'; S.goalT = 0; S.speed = 0; bgm.stop();
+  }
 }
 
 function punch() {
@@ -871,7 +939,7 @@ function draw() {
     g.fillStyle = st === 'red' ? '#ff3b30' : '#4a1a18'; g.beginPath(); g.arc(W - 39, 110, 13, 0, 7); g.fill();
     g.fillStyle = on ? '#34d27a' : '#163a26'; g.beginPath(); g.arc(W - 39, 146, 13, 0, 7); g.fill();
   }
-  if (!S.demo) drawHud();
+  if (!S.demo) { drawHud(); drawFx(); }
 }
 
 function draw3d(sprinting) {
@@ -898,7 +966,55 @@ function draw3d(sprinting) {
     g.fillStyle = st === 'red' ? '#ff3b30' : '#4a1a18'; g.beginPath(); g.arc(W - 39, 110, 13, 0, 7); g.fill();
     g.fillStyle = on ? '#34d27a' : '#163a26'; g.beginPath(); g.arc(W - 39, 146, 13, 0, 7); g.fill();
   }
-  if (!S.demo) drawHud();
+  if (!S.demo) { drawHud(); drawFx(); }
+}
+// カウントダウン・ニアミス・9:00の瞬間・ゴールの打刻
+function drawFx() {
+  g.textAlign = 'center';
+  if (S.phase === 'count') {
+    const n = Math.ceil(S.countT), k = S.countT - Math.floor(S.countT);
+    g.save(); g.translate(W / 2, H * .42); g.scale(1 + k * .6, 1 + k * .6); g.globalAlpha = Math.min(1, k * 2.5);
+    g.font = '120px "Dela Gothic One"'; g.lineWidth = 12; g.strokeStyle = '#1d2433'; g.fillStyle = '#ffd36b';
+    g.strokeText(n, 0, 40); g.fillText(n, 0, 40); g.restore(); g.globalAlpha = 1;
+  }
+  if (S.phase === 'run' && S.t - (S.runStart || 0) < .8) {
+    const k = (S.t - S.runStart) / .8; g.globalAlpha = 1 - k; g.font = '64px "Dela Gothic One"'; g.lineWidth = 10; g.strokeStyle = '#1d2433'; g.fillStyle = '#ff5b47';
+    g.strokeText('GO!!', W / 2, H * .45); g.fillText('GO!!', W / 2, H * .45); g.globalAlpha = 1;
+  }
+  if (S.niceT > 0) {
+    const k = S.niceT / 1.6; g.globalAlpha = Math.min(1, k * 2);
+    const y = H * .52 - (1 - k) * 40;
+    g.font = '30px "Dela Gothic One"'; g.lineWidth = 7; g.strokeStyle = '#1d2433'; g.fillStyle = '#7dffb0';
+    const txt = S.combo > 1 ? `ナイス回避！×${S.combo}` : 'ナイス回避！';
+    g.strokeText(txt, W / 2, y); g.fillText(txt, W / 2, y);
+    g.font = '800 14px "M PLUS Rounded 1c"'; g.fillStyle = '#fff'; g.strokeText('ゲージ回復', W / 2, y + 22); g.fillText('ゲージ回復', W / 2, y + 22);
+    g.globalAlpha = 1;
+  }
+  // 9:00を過ぎた瞬間：赤く点滅
+  if (S.lateFx > 0 && S.phase !== 'goal') {
+    const a = Math.min(1, S.lateFx / 2) * (.35 + .25 * Math.sin(S.t * 18));
+    g.fillStyle = `rgba(232,40,30,${a})`; g.fillRect(0, 0, W, H);
+    if (S.lateFx > .6) { g.save(); g.translate(W / 2, H * .4); g.rotate(-.08); g.font = '46px "Dela Gothic One"'; g.lineWidth = 9; g.strokeStyle = '#1d2433'; g.fillStyle = '#fff'; g.strokeText('遅刻確定', 0, 0); g.fillText('遅刻確定', 0, 0); g.restore(); }
+  } else if (S.lateSaid && S.phase === 'run') {
+    const vg = g.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .75); vg.addColorStop(0, 'rgba(232,40,30,0)'); vg.addColorStop(1, `rgba(232,40,30,${.22 + .08 * Math.sin(S.t * 4)})`);
+    g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  }
+  // ゴール：打刻
+  if (S.phase === 'goal') {
+    const k = S.goalT;
+    if (k > .55 && k < .75) { g.fillStyle = `rgba(255,255,255,${(.75 - k) * 4})`; g.fillRect(0, 0, W, H); }
+    if (k > .55) {
+      const late = S.clock > LIMIT, s = Math.min(1, (k - .55) * 6), sc = 1 + (1 - s) * 1.2;
+      g.save(); g.translate(W / 2, H * .36); g.scale(sc, sc); g.rotate(-.12);
+      g.font = '58px "Dela Gothic One"'; g.lineWidth = 10; g.strokeStyle = '#1d2433'; g.fillStyle = late ? '#ff5b47' : '#ffd36b';
+      g.strokeText('ガチャン！', 0, 0); g.fillText('ガチャン！', 0, 0); g.restore();
+      if (k > .9) {
+        g.fillStyle = 'rgba(20,24,34,.85)'; g.beginPath(); g.roundRect(W / 2 - 130, H * .46, 260, 92, 18); g.fill();
+        g.fillStyle = '#fff'; g.font = '800 13px "M PLUS Rounded 1c"'; g.fillText(late ? '打刻時刻（遅刻）' : '打刻時刻', W / 2, H * .46 + 24);
+        g.font = '44px "Dela Gothic One"'; g.fillStyle = late ? '#ff5b47' : '#7dffb0'; g.fillText(fmtClock(S.clock), W / 2, H * .46 + 72);
+      }
+    }
+  }
 }
 function drawWeather() {
   const w = S.weather;
@@ -1065,8 +1181,9 @@ function drawHud() {
   g.textAlign = 'right'; g.fillStyle = '#ffd36b'; g.font = '800 14px "M PLUS Rounded 1c"';
   g.fillText(`${WEATHERS[S.weather].icon} ${sectionName(S.d)}`, W - 26, 38);
   // 音のオン・オフ
-  g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.roundRect(14, H - 150, 40, 36, 10); g.fill();
-  g.font = '18px sans-serif'; g.textAlign = 'center'; g.fillText(SOUND_OFF ? '🔇' : '🔊', 34, H - 125);
+  g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.roundRect(14, H - 150, 40, 36, 10); g.fill(); g.beginPath(); g.roundRect(62, H - 150, 40, 36, 10); g.fill();
+  g.fillStyle = '#fff'; g.fillRect(27, H - 140, 5, 16); g.fillRect(37, H - 140, 5, 16);
+  g.font = '18px sans-serif'; g.textAlign = 'center'; g.fillText(SOUND_OFF ? '🔇' : '🔊', 82, H - 125);
   g.fillStyle = '#fff'; g.font = '800 13px "M PLUS Rounded 1c"';
   g.fillText(left <= 0 ? `遅刻 +${fmtLate(-left)}` : `会社まで ${Math.max(0, Math.round(COURSE.goal - S.d))}m`, W - 26, 60);
   drawDashUI();
@@ -1086,7 +1203,7 @@ function drawHud() {
     g.font = '34px "Dela Gothic One"'; g.fillStyle = left < 30 ? '#ff5b47' : '#ffd36b'; g.fillText(fmtClock(S.clock), W / 2, 400);
   }
   // スタート直後の説明
-  if (S.t < 2.6 && S.phase === 'run') {
+  if (false) {
     g.fillStyle = 'rgba(0,0,0,.55)'; g.beginPath(); g.roundRect(30, 250, W - 60, 110, 18); g.fill();
     g.fillStyle = '#fff'; g.textAlign = 'center';
     g.font = '800 17px "M PLUS Rounded 1c"'; g.fillText('右下のDASHボタン：猛ダッシュ', W / 2, 284);
@@ -1131,7 +1248,7 @@ function drawDashUI() {
 function loop(now) {
   const dt = Math.max(0, Math.min(.05, (now - last) / 1000 || 0)); // 重い処理の直後に時間が巻き戻らないように
   last = now;
-  if (S && !S.done) { update(dt); if (!S.done) draw(); }
+  if (S && !S.done) { if (!S.paused) update(dt); if (!S.done) { draw(); replay.frame(); } }
   raf = requestAnimationFrame(loop);
 }
 
@@ -1209,6 +1326,11 @@ const sfx = {
   piyo() { tone(2400, .05, 'sine', .08); tone(2700, .05, 'sine', .08, .08); },
   chime() { [659, 523, 587, 392].forEach((f, i) => tone(f, .4, 'sine', .14, i * .32)); },
   lose() { [392, 330, 262].forEach((f, i) => tone(f, .35, 'sawtooth', .12, i * .18)); },
+  count(go) { if (go) { tone(880, .35, 'square', .14); tone(1320, .35, 'square', .1); } else tone(440, .15, 'square', .14); },
+  door() { noise(.6, 2500, .25); },
+  nice(n) { tone(780 + Math.min(n, 6) * 90, .08, 'triangle', .16); tone(1170 + Math.min(n, 6) * 90, .14, 'triangle', .14, .07); },
+  clunk() { noise(.12, 600, .5); tone(90, .25, 'square', .2); },
+  gong() { tone(110, 1.6, 'sine', .3); tone(220, 1.2, 'sine', .12); },
 };
 
 // ===== 開始・終了 =====
@@ -1216,12 +1338,106 @@ function startGame() {
   audio();
   if (!store.get('played')) { store.set('played', '1'); api('/hit/chikoku-play', 'POST'); }
   S = newState(store.get('char'));
+  S.phase = 'ready';
   $('game').classList.remove('hidden');
   resize();
   cancelAnimationFrame(raf); last = performance.now(); raf = requestAnimationFrame(loop);
+  const w = WEATHERS[S.weather];
+  $('readyToday').textContent = `📅 今日のコース　${w.icon} ${w.name}（${w.note}）`;
+  $('readyChar').innerHTML = `<b>${S.char.icon}</b>${S.char.name}で出社`;
+  $('readyOv').classList.remove('hidden'); $('pauseOv').classList.add('hidden');
   sfx.chime();
-  setTimeout(() => { if (S && !S.done) bgm.start(); }, 1300);
-  say(`${WEATHERS[S.weather].icon} 今日の天気：${WEATHERS[S.weather].name}（${WEATHERS[S.weather].note}）`, 2.4);
+  replay.reset();
+}
+function goCount() {
+  if (!S || S.phase !== 'ready') return;
+  audio(); $('readyOv').classList.add('hidden');
+  S.phase = 'count'; S.countT = 3; sfx.count(false);
+  replay.start();
+}
+function pauseGame() {
+  if (!S || S.done || S.paused || S.phase !== 'run') return;
+  S.paused = true; bgm.stop(); replay.pause(); $('pauseOv').classList.remove('hidden');
+}
+function resumeGame() {
+  if (!S || !S.paused) return;
+  S.paused = false; $('pauseOv').classList.add('hidden'); last = performance.now(); bgm.start(); replay.resume();
+}
+function quitGame() {
+  if (S) S.done = true; bgm.stop(); replay.reset(); cancelAnimationFrame(raf);
+  $('game').classList.add('hidden'); $('pauseOv').classList.add('hidden'); $('readyOv').classList.add('hidden');
+  $('result').classList.add('hidden'); $('title').classList.remove('hidden'); window.scrollTo(0, 0);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+
+// ===== リプレイ動画（プレイ中の画面を録画して、結果画面でシェアできるようにする） =====
+const replay = {
+  rec: null, chunks: [], cv: null, ctx: null, url: null, blob: null, type: '', on: false,
+  supported() { return !!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream); },
+  pickType() { return ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((m) => { try { return MediaRecorder.isTypeSupported(m); } catch { return false; } }) || ''; },
+  reset() { try { if (this.rec && this.rec.state !== 'inactive') this.rec.stop(); } catch {} this.rec = null; this.on = false; this.chunks = []; $('replayBox').classList.add('hidden'); },
+  start() {
+    if (!this.supported() || !W3) return;
+    try {
+      if (!this.cv) { this.cv = document.createElement('canvas'); this.ctx = this.cv.getContext('2d'); }
+      this.cv.width = 540; this.cv.height = Math.round(540 * H / W);
+      this.type = this.pickType();
+      const stream = this.cv.captureStream(30);
+      this.rec = new MediaRecorder(stream, Object.assign({ videoBitsPerSecond: 2500000 }, this.type ? { mimeType: this.type } : {}));
+      this.chunks = []; this.rec.ondataavailable = (e) => { if (e.data && e.data.size) this.chunks.push(e.data); };
+      this.rec.start(1000); this.on = true;
+    } catch (e) { this.rec = null; this.on = false; }
+  },
+  pause() { try { if (this.rec && this.rec.state === 'recording') this.rec.pause(); } catch {} },
+  resume() { try { if (this.rec && this.rec.state === 'paused') this.rec.resume(); } catch {} },
+  // 毎フレーム：3Dと2Dを重ねて録画用の画面に描く
+  frame() {
+    if (!this.on || !this.rec || this.rec.state !== 'recording') return;
+    const c = this.ctx, w = this.cv.width, h = this.cv.height;
+    c.drawImage($('cv3'), 0, 0, w, h); c.drawImage(cv, 0, 0, w, h);
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, h - 34, w, 34);
+    c.fillStyle = '#fff'; c.font = '800 18px "M PLUS Rounded 1c"'; c.textAlign = 'center'; c.fillText('遅刻ダッシュ｜とんまとラボ', w / 2, h - 11);
+  },
+  // 最後に結果のカードを1.5秒映してから止める
+  finish(card) {
+    if (!this.on || !this.rec) return;
+    const c = this.ctx, w = this.cv.width, h = this.cv.height, t0 = performance.now();
+    const step = () => {
+      c.fillStyle = card.late ? '#3a1414' : '#14263a'; c.fillRect(0, 0, w, h);
+      c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = '800 26px "M PLUS Rounded 1c"'; c.fillText(card.label, w / 2, h * .3);
+      c.font = '84px "Dela Gothic One"'; c.fillStyle = card.late ? '#ff5b47' : '#ffd36b'; c.fillText(card.time, w / 2, h * .42);
+      c.font = '800 34px "M PLUS Rounded 1c"'; c.fillStyle = '#fff'; c.fillText(`称号「${card.title}」`, w / 2, h * .53);
+      if (card.special) { c.font = '800 24px "M PLUS Rounded 1c"'; c.fillStyle = '#ffd36b'; c.fillText(`＋「${card.special}」`, w / 2, h * .59); }
+      c.font = '800 22px "M PLUS Rounded 1c"'; c.fillStyle = '#aab3c2'; c.fillText('遅刻ダッシュ｜とんまとラボ', w / 2, h * .9);
+      if (performance.now() - t0 < 1600) requestAnimationFrame(step);
+      else { this.on = false; this.rec.onstop = () => this.ready(); try { this.rec.stop(); } catch {} }
+    };
+    try { if (this.rec.state === 'paused') this.rec.resume(); } catch {}
+    step();
+  },
+  ready() {
+    if (!this.chunks.length) return;
+    const type = (this.type || this.chunks[0].type || 'video/webm').split(';')[0];
+    this.blob = new Blob(this.chunks, { type });
+    if (this.url) URL.revokeObjectURL(this.url);
+    this.url = URL.createObjectURL(this.blob);
+    $('replayVid').src = this.url; $('replayBox').classList.remove('hidden');
+    $('replayNote').textContent = type.includes('mp4') ? 'そのままXに投稿できます' : '※この形式はXに投稿できない場合があります（iPhoneならそのまま投稿できます）';
+  },
+  ext() { return this.blob && this.blob.type.includes('mp4') ? 'mp4' : 'webm'; },
+  async share() {
+    if (!this.blob) return;
+    const file = new File([this.blob], `chikoku-dash.${this.ext()}`, { type: this.blob.type });
+    const text = shareText() + '\n' + location.origin + location.pathname + '\n#' + HASHTAGS[0];
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    this.save(); toastMsg('動画を保存しました。Xの投稿画面で動画を添付してください');
+  },
+  save() { if (!this.blob) return; const a = document.createElement('a'); a.href = this.url; a.download = `chikoku-dash.${this.ext()}`; a.click(); },
+};
+function toastMsg(text) {
+  let el = document.getElementById('toastMsg');
+  if (!el) { el = document.createElement('div'); el.id = 'toastMsg'; el.style.cssText = 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:90;background:#1d2433;color:#fff;font-weight:800;font-size:.82rem;padding:10px 16px;border-radius:99px;max-width:90vw;text-align:center;transition:opacity .3s'; document.body.appendChild(el); }
+  el.textContent = text; el.style.opacity = 1; clearTimeout(toastMsg.tm); toastMsg.tm = setTimeout(() => (el.style.opacity = 0), 3500);
 }
 
 function finish(ok) {
@@ -1366,6 +1582,7 @@ async function showResult(reached) {
   }
   renderBest();
   last_ = { arrived: onTime, reached, late, time: fmtClock(S.clock), left, title, special, excuse, rank: null, total: null };
+  replay.finish({ late: !onTime, label: onTime ? `始業${left}秒前に着席！` : reached ? `${fmtLate(late)}の遅刻…` : '行方不明…', time: reached ? fmtClock(S.clock) : '??:??', title, special });
   $('rNatBox').classList.add('hidden');
   $('nameBox').classList.add('hidden');
   $('title').classList.add('hidden');
@@ -1420,17 +1637,20 @@ async function submitName() {
 }
 
 function share() {
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', shareText());
+  u.searchParams.set('url', location.origin + location.pathname);
+  u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+function shareText() {
   const s = last_;
   const text = s.arrived
     ? `${S.char.icon}${S.char.name}で始業${s.left}秒前に着席🏃💨 ${s.time}\n称号「${s.title}」${s.day ? `｜今日${s.day}位` : ''}${s.rank ? `｜通算${s.rank}位` : ''}\n今日の天気：${WEATHERS[S.weather].icon}${WEATHERS[S.weather].name}\n\n駅から会社まで、9:00に間に合う？`
     : s.reached
       ? `${s.time}に着席（${fmtLate(s.late)}の遅刻）💦\n称号「${s.title}」${s.special ? `＋「${s.special}」` : ''}${s.rank ? `｜全国${s.rank}位（${s.total}人中）` : ''}\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`
       : `10分たっても会社に着かず「行方不明者」に…\n上司への言い訳「${s.excuse}」\n\nあなたは間に合う？`;
-  const u = new URL('https://twitter.com/intent/tweet');
-  u.searchParams.set('text', text);
-  u.searchParams.set('url', location.origin + location.pathname);
-  u.searchParams.set('hashtags', HASHTAGS.join(','));
-  window.open(u.toString(), '_blank', 'noopener');
+  return text;
 }
 
 // ===== API =====
@@ -1552,6 +1772,13 @@ renderChars(); renderToday(); renderSoundBtn();
 
 // ===== 初期化 =====
 $('startBtn').onclick = startGame;
+$('goBtn').onclick = goCount;
+$('readyBack').onclick = quitGame;
+$('resumeBtn').onclick = resumeGame;
+$('restartBtn').onclick = () => { bgm.stop(); replay.reset(); startGame(); };
+$('quitBtn').onclick = quitGame;
+$('replayShare').onclick = () => replay.share();
+$('replaySave').onclick = () => replay.save();
 $('againBtn').onclick = startGame;
 $('shareBtn').onclick = share;
 $('nameBtn').onclick = submitName;

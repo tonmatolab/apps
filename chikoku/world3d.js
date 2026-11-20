@@ -221,7 +221,8 @@
     // ホーム（電車つき）
     floor(-WALL, WALL, -30, STAIR0, TOP, TX.tile);
     part('box', '#f2c200', .3, .02, 34, -WALL + .25, TOP + .01, -(-30 + STAIR0) / 2, S);
-    const train = new T.Group(); train.position.set(-WALL - 1.7, TOP, 12); S.add(train);
+    const train = new T.Group(); train.userData.dyn = true; train.position.set(-WALL - 1.7, TOP, 6); S.add(train); W.train = train;
+    floor(-WALL - 3.4, -WALL, -30, STAIR0, TOP - 1.2, null, 1, '#6a6460');
     part('box', '#e9edf0', 3, 3.3, 22, 0, 1.75, 0, train); part('box', '#2e9e5b', 3.02, .35, 22.02, 0, 1.2, 0, train);
     for (let i = 0; i < 6; i++) part('box', '#6c8aa8', 3.04, .9, 1.4, 0, 2.3, -9 + i * 3.6, train);
     // 階段
@@ -235,7 +236,8 @@
     for (const s of [-1, 1]) { const r = part('box', '#c8a060', .08, .08, Math.hypot(STAIR1 - STAIR0, TOP), s * (WALL - .15), TOP / 2 + 1, -(STAIR0 + STAIR1) / 2, S); r.rotation.x = -Math.atan2(TOP, STAIR1 - STAIR0); }
     // 駅の壁・天井
     for (const s of [-1, 1]) {
-      const w = new T.Mesh(G.box, new T.MeshLambertMaterial({ map: wallTex(88, 12) })); w.scale.set(.3, 12, 88); w.position.set(s * (WALL + .15), 6, -(58 - 30) / 2 - 1); w.receiveShadow = true; S.add(w);
+      const d0 = s < 0 ? STAIR0 : -30, len = 58 - d0;
+      const w = new T.Mesh(G.box, new T.MeshLambertMaterial({ map: wallTex(len, 12) })); w.scale.set(.3, 12, len); w.position.set(s * (WALL + .15), 6, -(d0 + 58) / 2); w.receiveShadow = true; S.add(w);
     }
     for (let d = -30; d < 58; d += 2) {
       const y = Math.max(gy(d), gy(d + 2)) + 3.8;
@@ -506,11 +508,20 @@
       // エレベーター
       const open = ctx.elevatorOpen(S.t) && S.elevator === null;
       for (const e of this.elev) { const k = open ? .55 : 0; e.d1.position.z += ((-239.6 + k) - e.d1.position.z) * .2; e.d2.position.z += ((-240.4 - k) - e.d2.position.z) * .2; e.ind.material.opacity = open ? 1 : .35; }
+      // 電車：走り出したら発車して離れていく
+      if (this.train) { const k = S.phase === 'ready' || S.phase === 'count' || !S.runStart ? 0 : Math.max(0, S.t - S.runStart); this.train.position.z = 6 + k * k * 1.6; this.train.visible = d < 30; }
       // カメラ
       const cy = gy(d) + 2.4;
       this.camY = this.camY == null ? cy : this.camY + (cy - this.camY) * Math.min(1, dt * 5);
       const cam = this.cam;
-      if (this.hero) {
+      if (S.phase === 'goal') {
+        const k = Math.min(1, S.goalT / .7), e = 1 - Math.pow(1 - k, 3);
+        cam.position.set(px * .45 * (1 - e) + 2.4 * e, this.camY * (1 - e) + 2.2 * e, (-d + 3.6) * (1 - e) + (-256.1) * e);
+        cam.lookAt(px * .3 * (1 - e) - .3 * e, (this.camY - 2.9) * (1 - e) + 1.25 * e, (-d - 7) * (1 - e) + (-259.3) * e);
+        p.position.x = px * (1 - e) - .45 * e; // タイムカードの横に立つ
+        cam.fov = 72 - 14 * e;
+        P.armR.rotation.x = -1.5 + (S.goalT > .5 ? .2 : 0); P.armR.rotation.z = 0; P.armL.rotation.x = .3; P.legL.rotation.x = 0; P.legR.rotation.x = 0; P.torso.rotation.x = .1;
+      } else if (this.hero) {
         const sway = Math.sin(S.t * .4);
         const side = px > .3 ? -1 : 1, camX = Math.max(-2.5, Math.min(2.5, px + side * (1.8 + sway * .3)));
         cam.position.set(camX, gy(d) + 1.45, -d - 3.1);

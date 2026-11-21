@@ -1,5 +1,6 @@
 // 全アプリの一覧（一覧ページと「次はこれで遊ぼう」で使う）。新しいアプリはここに1行足す
 window.TONMATO_APPS = [
+  { id: 'soccer-online', path: 'soccer-online/', title: 'サッカー人生 オンラインリーグ', desc: 'みんなが同じリーグの選手。1時間に1節、自動で試合が進む', icon: '🌍', key: 'soccer-online-play', added: '2026-11-21', tag: 'オンライン' },
   { id: 'soccer', path: 'soccer-life/', title: 'サッカー人生', desc: '18歳でプロ入り。移籍、海外、W杯…引退したら子どもへ', icon: '⚽', key: 'soccer-play', added: '2026-11-21', tag: '育成' },
   { id: 'nobiru', path: 'nobiru/', title: 'のびーるトルコアイス', desc: '指で引っ張ってどこまで伸ばせる？欲張るとプツン', icon: '🍦', key: 'nobiru-play', added: '2026-11-18', tag: 'バカゲー' },
   { id: 'bushou', path: 'bushou/', title: '名将ガチャ', desc: '名前で生まれる戦国武将。友達の名前と合戦させよう', icon: '🏯', key: 'bushou-play', added: '2026-11-17', tag: '戦国' },

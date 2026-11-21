@@ -186,7 +186,7 @@ const SL = (() => {
       addLog(s, 'join', `${s.year}年、${s.p.age}歳で${c.name}に入団。`);
       // ライバルは別のクラブへ
       if (s.rival && s.rival.club === offer.club) s.rival.club = s.clubs.filter((x) => x.lg === 1 && x.id !== offer.club).sort((a, b) => b.str - a.str)[3].id;
-      addLog(s, 'rival', `同期の${s.rival.name}は${s.clubs[s.rival.club].name}に入団し、「同世代最高の才能」と呼ばれた。`);
+      if (s.rival) addLog(s, 'rival', `同期の${s.rival.name}は${s.clubs[s.rival.club].name}に入団し、「同世代最高の才能」と呼ばれた。`);
     }
   }
 
@@ -909,6 +909,8 @@ const SL = (() => {
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     migrate, inheritBonus, lastMatchInfo, playLastMatch, familyTitle, POLICY, autoDraft, autoYear, autoLastMatch, lastName,
+    // オンライン版のサーバーが同じルールで試合を回すための部品
+    _: { train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp, sig, roundRobin, wageFor, rookieOffers, newPlayer, assignNumber, goalHow, assistHow, CLUB_SEED, rankLetter, legendTitle },
   };
 })();
 

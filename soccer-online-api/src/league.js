@@ -1,0 +1,188 @@
+// ===== リーグ本体（Durable Object） =====
+// リーグ全体を1つのオブジェクトが持ち、アラームで一定時間ごとに1節ずつ進める。
+// 無料枠の「1日の書き込み行数」を守るため、書き込みは「1節につき 世界1行＋現役プレイヤー1人1行」だけ。
+// 読み込みは起動時に全部メモリへ載せ、以後のリクエストはメモリから返す。
+import { DurableObject } from 'cloudflare:workers';
+import * as G from './sim.js';
+
+const MAX_PLAYERS = 3000;      // 無料枠を守るための上限
+const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限
+const NG_WORDS = ['死ね', 'しね', '殺す', 'ころす', 'fuck', 'shit', 'ちんこ', 'まんこ', 'ちんぽ', 'sex'];
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function cleanName(raw) {
+  let s = String(raw || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').replace(/\s+/g, ' ').trim();
+  s = [...s].slice(0, 12).join('');
+  if (!s) return null;
+  const low = s.toLowerCase();
+  return NG_WORDS.some((w) => low.includes(w)) ? null : s;
+}
+function newCode() {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  const c = [...b].map((x) => CODE_CHARS[x % CODE_CHARS.length]).join('');
+  return `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8, 12)}-${c.slice(12, 16)}`;
+}
+async function sha(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s).toUpperCase().replace(/[^A-Z0-9]/g, '')));
+  return [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+const err = (e, status = 400) => json({ error: e }, status);
+
+export class League extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.sql = ctx.storage.sql;
+    this.signups = new Map();
+    ctx.blockConcurrencyWhile(() => this.boot());
+  }
+
+  async boot() {
+    this.sql.exec('CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, hash TEXT UNIQUE, created INTEGER)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, account TEXT, active INTEGER, data TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS world (k TEXT PRIMARY KEY, v TEXT)');
+    const row = this.sql.exec("SELECT v FROM world WHERE k = 'w'").toArray()[0];
+    this.w = row ? JSON.parse(row.v) : G.newWorldState();
+    this.accounts = new Map(); // hash -> account id
+    for (const r of this.sql.exec('SELECT id, hash FROM accounts')) this.accounts.set(r.hash, r.id);
+    this.members = new Map(); // player id -> member
+    this.byAccount = new Map(); // account -> player id（現役中または引退直後の1人）
+    for (const r of this.sql.exec('SELECT id, account, data FROM players WHERE active = 1')) {
+      const m = JSON.parse(r.data); this.members.set(r.id, m); this.byAccount.set(r.account, r.id);
+    }
+    if (!row) this.saveWorld();
+    if (!(await this.ctx.storage.getAlarm())) await this.schedule();
+  }
+
+  tickMs() { return Math.max(1, Number(this.env.TICK_MINUTES || 60)) * 60000; }
+  async schedule() { this.w.nextAt = Date.now() + this.tickMs(); this.saveWorld(); await this.ctx.storage.setAlarm(this.w.nextAt); }
+  saveWorld() { this.sql.exec("INSERT OR REPLACE INTO world (k, v) VALUES ('w', ?)", JSON.stringify(this.w)); }
+  saveMember(m, active = 1) { this.sql.exec('INSERT OR REPLACE INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', m.id, m.account, active, JSON.stringify(m)); }
+
+  async alarm() { this.tick(); await this.schedule(); }
+
+  // 1節すすめる（オフシーズン中はオフの残りを1つ減らす）
+  tick() {
+    const w = this.w, all = [...this.members.values()];
+    if (w.phase === 'season') {
+      G.playMatchday(w, all);
+      if (w.week >= G.SEASON_WEEKS) G.endSeason(w, all);
+      for (const m of all) if (m.status === 'active' || m.status === 'off') this.saveMember(m);
+    } else {
+      w.offLeft--;
+      if (w.offLeft <= 0) { G.finishOffseason(w, all); for (const m of all) this.saveMember(m); }
+    }
+    this.saveWorld();
+  }
+
+  async me(req) {
+    const code = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!code) return null;
+    const acc = this.accounts.get(await sha(code));
+    if (!acc) return null;
+    return this.members.get(this.byAccount.get(acc)) || null;
+  }
+
+  async fetch(req) {
+    const url = new URL(req.url), path = url.pathname.replace(/^\/api/, '');
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    try {
+      if (req.method === 'GET' && path === '/public') return json(this.publicView());
+      if (req.method === 'POST' && path === '/signup') return this.signup(req, body);
+      if (req.method === 'POST' && path === '/dev/tick') {
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        const n = Math.min(40, Number(body.n) || 1); for (let i = 0; i < n; i++) this.tick();
+        return json({ ok: true, world: this.worldView() });
+      }
+      const m = await this.me(req);
+      if (!m) return err('unauthorized', 401);
+      if (req.method === 'GET' && path === '/state') return json(this.stateView(m));
+      if (req.method === 'POST' && path === '/join') {
+        if (m.status !== 'draft') return err('not_now');
+        if (!G.join(m, this.w, Number(body.i))) return err('bad_choice');
+        this.saveMember(m); return json(this.stateView(m));
+      }
+      if (req.method === 'POST' && path === '/training') {
+        if (!(body.k in G.SL.TRAINING) || (body.k === 'gk' && m.pl.pos !== 'GK')) return err('bad_training');
+        m.training = body.k; this.saveMember(m); return json({ ok: true });
+      }
+      if (req.method === 'POST' && path === '/decide') {
+        const e = G.decide(m, this.w, body.choice); if (e) return err(e);
+        this.saveMember(m); return json(this.stateView(m));
+      }
+      if (req.method === 'POST' && path === '/nextgen') {
+        if (m.status !== 'retired') return err('not_now');
+        const name = cleanName(body.name); if (!name) return err('bad_name');
+        if (!G.POS[body.pos]) return err('bad_pos');
+        const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w);
+        this.saveMember(m, 0); this.members.delete(m.id);
+        this.members.set(nm.id, nm); this.byAccount.set(nm.account, nm.id); this.saveMember(nm);
+        return json(this.stateView(nm));
+      }
+      return err('not_found', 404);
+    } catch (e) {
+      console.error(e && e.stack || e);
+      return err('server_error', 500);
+    }
+  }
+
+  async signup(req, body) {
+    const name = cleanName(body.name); if (!name) return err('bad_name');
+    if (!G.POS[body.pos]) return err('bad_pos');
+    if (this.members.size >= MAX_PLAYERS) return err('full', 503);
+    const ip = req.headers.get('CF-Connecting-IP') || 'local';
+    const now = Date.now(), hits = (this.signups.get(ip) || []).filter((t) => now - t < 3600000);
+    if (hits.length >= SIGNUP_PER_HOUR) return err('too_many', 429);
+    hits.push(now); this.signups.set(ip, hits);
+    const code = newCode(), hash = await sha(code), acc = crypto.randomUUID();
+    this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', acc, hash, now);
+    this.accounts.set(hash, acc);
+    const m = G.newMember(crypto.randomUUID(), acc, name, body.pos);
+    m.draft = G.draftOffers(m, this.w);
+    this.members.set(m.id, m); this.byAccount.set(acc, m.id); this.saveMember(m);
+    return json({ code, state: this.stateView(m) });
+  }
+
+  // ----- 画面に返す形 -----
+  worldView() {
+    const w = this.w;
+    return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, now: Date.now(), tickMin: this.tickMs() / 60000, players: this.members.size };
+  }
+  clubsView() {
+    const count = new Map();
+    for (const m of this.members.values()) if (m.pl.club != null && m.status !== 'retired') count.set(m.pl.club, (count.get(m.pl.club) || 0) + 1);
+    return this.w.clubs.map((c) => ({ id: c.id, name: c.name, city: c.city, lg: c.lg, str: c.str, color: c.color, humans: count.get(c.id) || 0 }));
+  }
+  ranking(lg, key) {
+    return [...this.members.values()].filter((m) => m.status !== 'retired' && m.status !== 'draft' && m.pl.club != null && (lg == null || this.w.clubs[m.pl.club].lg === lg) && m.season[key] > 0)
+      .sort((a, b) => b.season[key] - a.season[key] || b.season.apps - a.season.apps).slice(0, 10)
+      .map((m) => ({ name: m.pl.name, club: this.w.clubs[m.pl.club].name, pos: m.pl.pos, v: m.season[key] }));
+  }
+  publicView() {
+    return { world: this.worldView(), scorers: this.ranking(null, 'goals'), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
+  }
+  stateView(m) {
+    const w = this.w, p = m.pl, lg = p.club != null ? w.clubs[p.club].lg : 1;
+    const tables = G.LEAGUES.map((L) => G.standings(w, L.id).map((x) => ({ id: x.c.id, ...x.t })));
+    const mates = p.club == null ? [] : [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft')
+      .map((x) => ({ name: x.pl.name, pos: x.pl.pos, age: x.pl.age, ovr: G.ovr(x.pl), gen: x.gen, apps: x.season.apps, goals: x.season.goals, assists: x.season.assists }));
+    let next = null;
+    if (w.phase === 'season' && p.club != null && w.schedule[lg][w.week]) {
+      const pair = w.schedule[lg][w.week].find(([h, a]) => h === p.club || a === p.club);
+      if (pair) next = { home: pair[0] === p.club, opp: pair[0] === p.club ? pair[1] : pair[0] };
+    }
+    const offer = m.offer ? { ...m.offer, list: G.offerList(m), res: undefined, expiring: m.offer.res.expiring, released: m.offer.res.released } : null;
+    return {
+      world: this.worldView(), clubs: this.clubsView(), tables, next,
+      results: w.last ? { week: w.last.week, year: w.last.year, list: w.last.results.filter((r) => r.lg === lg || r.goals.some((g) => g.who || g.assist)) } : null,
+      scorers: this.ranking(lg, 'goals'), assisters: this.ranking(lg, 'assists'), mates, seasonHistory: w.history.slice(-3),
+      me: {
+        id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
+        grow: p.growKnown ? p.grow : null, cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
+        club: p.club, salary: p.salary, contract: p.contract, number: p.number,
+        season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
+        caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, lineage: m.lineage, log: m.log.slice(-12),
+      },
+    };
+  }
+}

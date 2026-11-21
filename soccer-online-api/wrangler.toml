@@ -1,0 +1,19 @@
+# サッカー人生 オンラインリーグ（無料プランの範囲で動かす設定）
+# デプロイ: apps/ で npx wrangler@4 deploy --config soccer-online-api/wrangler.toml
+# ローカル: npx wrangler@4 dev --config soccer-online-api/wrangler.toml --var DEV:1
+name = "tonmatolab-soccer"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "LEAGUE"
+class_name = "League"
+
+# 無料プランでは SQLite 版の Durable Object だけが使える
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["League"]
+
+[vars]
+TICK_MINUTES = "60"   # 何分ごとに1節すすめるか
+DEV = "0"             # 1 にすると /api/dev/tick が使える（本番では 0）

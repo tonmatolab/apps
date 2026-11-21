@@ -1,0 +1,307 @@
+// ===== オンラインリーグのルール =====
+// 1人用の soccer-life/core.js のルール（成長・衰え・評価・契約・引退）をそのまま使い、
+// 「同じリーグに本物のプレイヤーが何人もいる」ところだけをここで扱う。
+import SL from '../../soccer-life/core.js';
+
+const { train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp, roundRobin, rookieOffers, newPlayer, goalHow, assistHow, CLUB_SEED } = SL._;
+const { POS, GROW, LEAGUES, SEASON_WEEKS, mainStats, ovr, startChance } = SL;
+
+export const OFF_TICKS = 3; // オフシーズンの長さ（試合の何回分か）。この間に契約を選ぶ
+
+// ----- 世界（クラブ・日程・順位表） -----
+export function newWorldState() {
+  const w = { v: 1, year: SL.START_YEAR, season: 1, week: 0, phase: 'season', offLeft: 0, clubs: newWorld(), last: null, nextAt: 0, history: [] };
+  startSeason(w);
+  return w;
+}
+function startSeason(w) {
+  w.week = 0; w.phase = 'season'; w.schedule = {}; w.table = {};
+  for (const L of LEAGUES) {
+    const ids = w.clubs.filter((c) => c.lg === L.id).map((c) => c.id).sort(() => Math.random() - .5);
+    w.schedule[L.id] = roundRobin(ids);
+  }
+  for (const c of w.clubs) w.table[c.id] = { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 };
+}
+export function standings(w, lg) {
+  return w.clubs.filter((c) => c.lg === lg).map((c) => ({ c, t: w.table[c.id] }))
+    .sort((a, b) => b.t.p - a.t.p || (b.t.gf - b.t.ga) - (a.t.gf - a.t.ga) || b.t.gf - a.t.gf || b.c.str - a.c.str);
+}
+function record(w, h, a, gh, ga) {
+  const th = w.table[h], ta = w.table[a];
+  th.gf += gh; th.ga += ga; ta.gf += ga; ta.ga += gh;
+  if (gh > ga) { th.w++; th.p += 3; ta.l++; } else if (gh < ga) { ta.w++; ta.p += 3; th.l++; } else { th.d++; ta.d++; th.p++; ta.p++; }
+}
+
+// ----- プレイヤー -----
+const emptySeason = () => ({ apps: 0, starts: 0, goals: 0, assists: 0, cs: 0, mins: 0, ratings: [] });
+const emptyTotals = () => ({ apps: 0, starts: 0, goals: 0, assists: 0, cs: 0, rating: 0, mins: 0 });
+
+export function newMember(id, account, name, pos, opt = {}) {
+  const pl = newPlayer(name, pos, opt.bonus || 0);
+  const m = {
+    id, account, gen: opt.gen || 1, lineage: opt.lineage || [], parent: opt.parent || null,
+    pl, status: 'draft', training: pos === 'GK' ? 'gk' : mainStats(pos)[0],
+    season: emptySeason(), totals: emptyTotals(), history: [], awards: [], trophies: [], caps: 0, natGoals: 0, wc: [], log: [],
+    last: null, offer: null, summary: null, created: Date.now(),
+  };
+  return m;
+}
+
+// core.js の関数は「1人用のセーブデータ」を受け取るので、その形に見せかける
+export function adapter(m, w) {
+  return {
+    p: m.pl, clubs: w.clubs, history: m.history, totals: m.totals, trophies: m.trophies, awards: m.awards, caps: m.caps, natGoals: m.natGoals,
+    wc: m.wc, year: w.year, log: m.log, papers: [], news: [], family: { combo: 0, jointApps: 0, jointGoals: 0 }, rival: null, mode: 'online',
+    gen: m.gen, lineage: m.lineage, parent: m.parent, season: m.season, lastMatch: null,
+  };
+}
+function trimLog(m) { if (m.log.length > 60) m.log.splice(0, m.log.length - 60); }
+
+export function draftOffers(m, w) {
+  return rookieOffers({ p: m.pl, clubs: w.clubs });
+}
+export function join(m, w, i) {
+  const o = m.draft[i]; if (!o) return false;
+  SL.joinClub(adapter(m, w), o);
+  m.draft = null; m.season = emptySeason();
+  m.status = w.phase === 'season' ? 'active' : 'decided';
+  trimLog(m);
+  return true;
+}
+
+// ----- 1週間：練習 → 試合 -----
+function weeklyTraining(m) {
+  const p = m.pl;
+  if (p.injury > 0) { p.fatigue = Math.max(0, p.fatigue - 20); return; }
+  if (m.training === 'rest') { p.fatigue = Math.max(0, p.fatigue - 32); if (chance(.45)) p.cond = clamp(p.cond + 1, -2, 2); return; }
+  if (m.training === 'hard') {
+    for (const k of mainStats(p.pos)) train(p, k, .5);
+    p.fatigue = clamp(p.fatigue + 24, 0, 100);
+    if (chance(.04 + p.fatigue / 900)) { p.injury = ri(1, 3); m.note = '猛練習中に足を痛めた'; }
+    return;
+  }
+  const k = m.training in p.stats ? m.training : mainStats(p.pos)[0];
+  train(p, k, 1.7);
+  p.fatigue = clamp(p.fatigue + 9, 0, 100);
+}
+function weeklyAfter(m, mins, rating, wasInjured) {
+  const p = m.pl;
+  if (mins > 0) for (const k of mainStats(p.pos)) train(p, k, .14 * mins / 90);
+  const over = p.age - GROW[p.grow].peak;
+  if (over > 0) for (const k of Object.keys(p.stats)) decay(p, k, ((k === 'spd' || k === 'phy') ? .06 : k === 'gk' ? .032 : .024) * Math.min(over, 7));
+  p.fatigue = Math.max(0, p.fatigue - 6);
+  if (wasInjured && p.injury > 0) p.injury--;
+  if (rating) {
+    if (rating >= 7.5 && chance(.6)) p.cond = clamp(p.cond + 1, -2, 2);
+    if (rating < 5.5 && chance(.5)) p.cond = clamp(p.cond - 1, -2, 2);
+  }
+  if (chance(.18)) p.cond = clamp(p.cond + (chance(.5) ? 1 : -1), -2, 2);
+}
+
+// 1試合：両クラブの本物のプレイヤー全員を出場判定し、ゴールを割り振る
+function clubMatch(w, h, a, byClub) {
+  const sides = [h, a].map((cid, si) => {
+    const c = w.clubs[cid];
+    let gk = false;
+    const roles = (byClub.get(cid) || []).map((m) => {
+      const p = m.pl; const r = { m, role: 'bench', mins: 0, goals: 0, assists: 0, wasInjured: p.injury > 0 };
+      if (p.injury > 0) r.role = 'injured';
+      else if (chance(startChance(p, c, true)) && !(p.pos === 'GK' && gk)) { r.role = 'start'; r.mins = chance(.82) ? 90 : ri(60, 85); if (p.pos === 'GK') gk = true; }
+      else if (p.pos !== 'GK' && chance(.55)) { r.role = 'sub'; r.mins = ri(10, 35); }
+      return r;
+    });
+    const boost = clamp(roles.filter((r) => r.role === 'start').reduce((s, r) => s + (ovr(r.m.pl) - c.str) * .3 + r.m.pl.cond * .4, 0)
+      + roles.filter((r) => r.role === 'sub').reduce((s, r) => s + (ovr(r.m.pl) - c.str) * .06, 0), -8, 10);
+    return { c, roles, home: si === 0, boost };
+  });
+  const [H, A] = sides;
+  const sh = H.c.str + H.boost + gauss() * 3, sa = A.c.str + A.boost + gauss() * 3;
+  const gh = poisson(lambda(sh, sa, true)), ga = poisson(lambda(sa, sh, false));
+  const evs = [];
+  for (let i = 0; i < gh; i++) evs.push({ min: ri(1, 90), side: 0 });
+  for (let i = 0; i < ga; i++) evs.push({ min: ri(1, 90), side: 1 });
+  evs.sort((x, y) => x.min - y.min);
+  const onPitch = (r, min) => r.role === 'start' ? min <= r.mins : r.role === 'sub' ? min > 90 - r.mins : false;
+  for (const e of evs) {
+    const on = sides[e.side].roles.filter((r) => onPitch(r, e.min)).sort(() => Math.random() - .5);
+    for (const r of on) {
+      const p = r.m.pl;
+      if (chance(POS[p.pos].goal * clamp(1 + (p.stats.sht - 62) / 40, .35, 1.7))) { e.scorer = r; r.goals++; e.how = goalHow(p); break; }
+    }
+    for (const r of on) {
+      if (r === e.scorer) continue;
+      const p = r.m.pl;
+      if (chance(POS[p.pos].assist * clamp(1 + ((p.stats.pas + p.stats.drb) / 2 - 58) / 40, .6, 2))) { e.assist = r; r.assists++; break; }
+    }
+  }
+  record(w, h, a, gh, ga);
+
+  // 評価点と成績
+  for (const [si, side] of sides.entries()) {
+    const gf = si === 0 ? gh : ga, gc = si === 0 ? ga : gh;
+    for (const r of side.roles) {
+      const m = r.m, p = m.pl, S = m.season;
+      if (r.mins > 0) {
+        let x = 6 + r.goals * .95 + r.assists * .6 + (gf > gc ? .35 : gf < gc ? -.35 : 0) + (ovr(p) - side.c.str) * .03 + p.cond * .15 + gauss() * .45;
+        if (p.pos === 'GK' || p.pos === 'DF') x += gc === 0 ? .75 : -gc * .2;
+        if (p.pos === 'FW' && !r.goals) x -= .25;
+        if (r.role === 'sub') x = 6 + (x - 6) * .7;
+        r.rating = Math.round(clamp(x, 4, 10) * 10) / 10;
+        r.cs = gc === 0 && r.role === 'start' && (p.pos === 'GK' || p.pos === 'DF');
+        S.apps++; if (r.role === 'start') S.starts++;
+        S.goals += r.goals; S.assists += r.assists; S.mins += r.mins; if (r.cs) S.cs++;
+        S.ratings.push(r.rating);
+        if (r.role === 'start') p.fatigue = clamp(p.fatigue + 10, 0, 100);
+        if (chance(.012 + (p.fatigue > 70 ? .03 : 0))) { p.injury = Math.max(p.injury, ri(1, 5)); m.note = '試合中に接触プレーで負傷'; }
+        p.fame = clamp(p.fame + r.goals * .6 + r.assists * .3 + (r.rating >= 8 ? 1 : 0) + (side.c.lg === 0 ? .2 : 0), 0, 100);
+        if (m.totals.apps + S.apps === 1) m.log.push({ y: w.year, age: p.age, k: 'debut', t: `${w.year}年、第${w.week + 1}節の${sides[1 - si].c.name}戦でプロデビュー。` });
+      }
+      weeklyAfter(m, r.mins, r.rating, r.wasInjured);
+      // 自分向けの試合レポート
+      m.last = {
+        year: w.year, week: w.week + 1, home: si === 0, club: side.c.id, opp: sides[1 - si].c.id, gf, gc, role: r.role, mins: r.mins,
+        goals: r.goals, assists: r.assists, rating: r.rating || null, cs: !!r.cs, note: m.note || null, injury: p.injury,
+        events: evs.map((e) => ({
+          min: e.min, us: e.side === si,
+          who: e.scorer ? (e.scorer === r ? 'me' : e.scorer.m.pl.name) : null, how: e.scorer === r ? e.how : null,
+          assist: e.assist ? (e.assist === r ? 'me' : e.assist.m.pl.name) : null,
+        })),
+      };
+      m.note = null;
+      trimLog(m);
+    }
+  }
+  // 全員向けの結果（本物のプレイヤーのゴールだけ名前を出す）
+  return {
+    lg: H.c.lg, h, a, gh, ga,
+    goals: evs.filter((e) => e.scorer || e.assist).map((e) => ({ min: e.min, side: e.side, who: e.scorer ? e.scorer.m.pl.name : null, assist: e.assist ? e.assist.m.pl.name : null })),
+  };
+}
+
+export function playMatchday(w, members) {
+  const active = members.filter((m) => m.status === 'active' && m.pl.club != null);
+  for (const m of active) weeklyTraining(m);
+  const byClub = new Map();
+  for (const m of active) { if (!byClub.has(m.pl.club)) byClub.set(m.pl.club, []); byClub.get(m.pl.club).push(m); }
+  const results = [];
+  for (const L of LEAGUES) for (const [h, a] of w.schedule[L.id][w.week]) results.push(clubMatch(w, h, a, byClub));
+  w.week++;
+  w.last = { year: w.year, week: w.week, at: Date.now(), results };
+  return results;
+}
+
+// ----- シーズン終了 -----
+const avg = (a) => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 100) / 100 : 0;
+
+export function endSeason(w, members) {
+  const active = members.filter((m) => m.status === 'active' && m.pl.club != null);
+  const rankOf = (cid) => standings(w, w.clubs[cid].lg).findIndex((x) => x.c.id === cid) + 1;
+  // 得点王・アシスト王は「NPCの最多」と「本物のプレイヤーの最多」の両方を上回った人
+  const npc = LEAGUES.map((L) => ({ g: ri(...L.npcGoals), a: ri(...L.npcAssists) }));
+  const best = LEAGUES.map((L) => {
+    const inL = active.filter((m) => w.clubs[m.pl.club].lg === L.id);
+    return { g: Math.max(0, ...inL.map((m) => m.season.goals)), a: Math.max(0, ...inL.map((m) => m.season.assists)) };
+  });
+  const champions = LEAGUES.map((L) => standings(w, L.id)[0].c.name);
+  for (const m of active) {
+    const p = m.pl, S = m.season, c = w.clubs[p.club], L = LEAGUES[c.lg], rank = rankOf(c.id), avgR = avg(S.ratings);
+    const aw = [];
+    if (rank === 1 && S.apps >= 5) aw.push(`${L.short}リーグ優勝`);
+    if (S.goals > npc[c.lg].g && S.goals === best[c.lg].g) aw.push(`${L.short}得点王`);
+    if (S.assists > npc[c.lg].a && S.assists === best[c.lg].a) aw.push(`${L.short}アシスト王`);
+    if (S.apps >= 14 && avgR >= 7.25 && (rank <= 3 || S.goals > npc[c.lg].g)) aw.push(`${L.short}MVP`);
+    if (S.apps >= 12 && avgR >= 6.85) aw.push(`${L.short}ベストイレブン`);
+    if (c.lg !== 0 && m.history.length === 0 && S.apps >= 8 && avgR >= 6.5) aw.push('新人王');
+    p.money += p.salary;
+    p.fame = clamp(p.fame + aw.length * 4 + (avgR >= 7 ? 3 : 0), 0, 100);
+    p.contract--;
+    m.history.push({ year: w.year, age: p.age, club: c.name, clubId: c.id, lg: L.short, number: p.number, apps: S.apps, starts: S.starts, goals: S.goals, assists: S.assists, cs: S.cs, rating: avgR, rank, awards: aw, ovr: ovr(p), salary: p.salary });
+    const T = m.totals;
+    T.apps += S.apps; T.starts += S.starts; T.goals += S.goals; T.assists += S.assists; T.cs += S.cs; T.mins += S.mins; T.rating += S.ratings.reduce((x, y) => x + y, 0);
+    for (const x of aw) (x.includes('優勝') || x.includes('昇格') ? m.trophies : m.awards).push(`${w.year} ${x}`);
+    if (aw.length) m.log.push({ y: w.year, age: p.age, k: 'award', t: `${w.year}年、${c.name}で${aw.join('・')}。` });
+    m.seasonAwards = aw;
+  }
+  // 昇格・降格とクラブ力の変動
+  const r1 = standings(w, 1).slice(-2).map((x) => x.c), p2 = standings(w, 2).slice(0, 2).map((x) => x.c);
+  r1.forEach((x) => { x.lg = 2; }); p2.forEach((x) => { x.lg = 1; });
+  for (const m of active) if (p2.some((x) => x.id === m.pl.club) && m.season.apps >= 5) { m.trophies.push(`${w.year} 1部昇格`); m.seasonAwards.push('1部昇格'); }
+  for (const x of w.clubs) x.str = clamp(Math.round(x.str + (CLUB_SEED[x.id][3] - x.str) * .3 + gauss() * 1.5 + (p2.includes(x) ? 3 : 0) - (r1.includes(x) ? 2 : 0)), 44, 90);
+  w.history.push({ year: w.year, champions, moves: [...r1.map((x) => `${x.name} が2部へ降格`), ...p2.map((x) => `${x.name} が1部へ昇格`)] });
+  if (w.history.length > 30) w.history.shift();
+
+  // 代表（W杯は全員で同じ大会にしたいので、最小構成ではまだやらない）
+  for (const m of active) {
+    const o = ovr(m.pl), line = 70 - (w.clubs[m.pl.club].lg === 0 ? 3 : 0);
+    if (o >= line || (o >= line - 3 && chance(.4))) {
+      if (!m.caps) m.log.push({ y: w.year, age: m.pl.age, k: 'nat', t: `${w.year}年、${m.pl.age}歳で日本代表に初選出。` });
+      const n = ri(4, 7); m.caps += n; m.natCalled = n;
+      for (let i = 0; i < n; i++) if (chance(POS[m.pl.pos].goal * 1.1)) m.natGoals++;
+    } else m.natCalled = 0;
+  }
+  // 年をとって、オファーが届く
+  for (const m of active) {
+    const s = adapter(m, w);
+    const notes = SL.ageUp(s);
+    const res = SL.offers(s);
+    m.offer = { res, notes, forced: SL.mustRetire(s, res), canRetire: SL.canRetire(s), year: w.year, awards: m.seasonAwards, nat: m.natCalled };
+    m.status = 'off';
+    trimLog(m);
+  }
+  w.year++; w.season++;
+  w.phase = 'off'; w.offLeft = OFF_TICKS;
+}
+
+// オフの選択肢： 'stay' / 'retire' / オファーの番号
+export function offerList(m) {
+  const res = m.offer.res; const list = [];
+  if (res.contract) list.push({ ...res.contract, stay: true });
+  for (const t of res.transfers) list.push(t);
+  return list;
+}
+export function decide(m, w, choice) {
+  if (m.status !== 'off' || !m.offer) return 'not_now';
+  const o = m.offer, res = o.res;
+  if (choice === 'retire') { if (!o.forced && !o.canRetire) return 'too_young'; retire(m, w); return null; }
+  if (o.forced) return 'must_retire';
+  if (choice === 'stay') { if (res.expiring || res.released) return 'no_contract'; }
+  else {
+    const offer = offerList(m)[Number(choice)];
+    if (!offer) return 'bad_choice';
+    SL.accept(adapter(m, w), offer);
+  }
+  m.status = 'decided'; m.offer = null; trimLog(m);
+  return null;
+}
+function autoDecide(m, w) {
+  const o = m.offer, res = o.res;
+  if (o.forced) return retire(m, w);
+  if (!res.expiring && !res.released) { m.status = 'decided'; m.offer = null; return; }
+  const list = offerList(m).sort((a, b) => (b.stay ? 1 : 0) - (a.stay ? 1 : 0) || b.salary - a.salary);
+  if (!list.length) return retire(m, w);
+  SL.accept(adapter(m, w), list[0]);
+  m.status = 'decided'; m.offer = null;
+}
+export function finishOffseason(w, members) {
+  for (const m of members) if (m.status === 'off') autoDecide(m, w);
+  startSeason(w);
+  for (const m of members) if (m.status === 'decided') { m.status = 'active'; m.season = emptySeason(); m.last = null; }
+}
+
+// ----- 引退と次の世代 -----
+export function retire(m, w) {
+  const s = adapter(m, w);
+  s.caps = m.caps; s.natGoals = m.natGoals;
+  m.summary = SL.retire(s);
+  m.status = 'retired'; m.offer = null; m.pl.club = null;
+  return m.summary;
+}
+export function nextGeneration(old, id, name, pos, w) {
+  const sm = old.summary;
+  const lineage = old.lineage.concat([{ gen: old.gen, name: sm.name, pos: sm.pos, title: sm.title, letter: sm.letter, score: sm.score, apps: sm.apps, goals: sm.goals, cs: sm.cs, years: `${sm.startYear}-${sm.endYear}` }]);
+  const m = newMember(id, old.account, name, pos, { gen: old.gen + 1, lineage, bonus: SL.inheritBonus(sm), parent: { name: sm.name, title: sm.title } });
+  m.draft = draftOffers(m, w);
+  return m;
+}
+
+export { SL, ovr, POS, LEAGUES, SEASON_WEEKS, avg, pick };

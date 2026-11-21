@@ -23,6 +23,8 @@ const GAMES = {
   iai: { min: 100, max: 1000 },
   chikoku: { min: 60000, max: 800000 }, // 8:57からの経過ミリ秒（ゲーム内時間・遅刻も含む）
   nobiru: { min: 10, max: 40000000000, desc: true }, // 伸ばした長さ（cm）。大きいほど上位。月まで約384億cm
+  soccer: { min: 1, max: 100000, desc: true, anon: '名無しの選手' }, // サッカー人生の生涯スコア。大きいほど上位
+  soccerq: { min: 1, max: 100000, desc: true, anon: '名無しの選手' }, // サッカー人生・60秒モード（おまかせ）は別ランキング
 };
 const TOP_N = 10;
 // 日替わりランキング：'chikoku-d20261118' のように、元のゲーム名＋日付で受け付ける
@@ -134,7 +136,7 @@ export default {
       if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
       const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, TOP_N).all();
       const total = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?').bind(game).first()).n;
-      return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || DEFAULT_NAME, ms: r.ms })) });
+      return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || gameRule(game).anon || DEFAULT_NAME, ms: r.ms })) });
     }
 
     // ===== 名将ガチャ：天下統一 =====

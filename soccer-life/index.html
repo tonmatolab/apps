@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>サッカー人生｜入団から引退、そして次の世代へ</title>
+<meta name="description" content="プロサッカー選手として入団から引退まで。練習で能力を伸ばし、試合は自動で進む。移籍・海外挑戦・ワールドカップ、引退したら子どもに夢を託そう。無料・登録なし。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="サッカー人生⚽ 入団から引退、そして次の世代へ">
+<meta property="og:description" content="18歳でプロ入り。得点王、海外移籍、ワールドカップ…あなたはどんな選手人生を送る？">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/soccer-life/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/soccer-life/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e9f2e6; --bg2: #d6ead0; --paper: #ffffff; --ink: #1d2a21; --sub: #67786b; --line: #dbe8d6; --chip: #f1f7ee;
+    --green: #17924c; --green-d: #0d6b36; --gold: #f2b300; --red: #e5483a; --blue: #2c6fd6;
+    --shadow: 0 5px 0 var(--line), 0 16px 30px -18px rgba(20, 60, 30, .45);
+    --num: "Outfit", system-ui, sans-serif; --head: "Dela Gothic One", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #101712; --bg2: #16241a; --paper: #1b261e; --ink: #ecf5ec; --sub: #9db1a1; --line: #2a3a2e; --chip: #223026;
+      --green: #2fc06c; --green-d: #1b8d4b; --gold: #ffc93a; --red: #ff6b5c; --blue: #5b9bff;
+      --shadow: 0 5px 0 #0a100c, 0 16px 30px -18px rgba(0, 0, 0, .8); }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; color: var(--ink); font-family: "M PLUS Rounded 1c", system-ui, sans-serif; line-height: 1.6;
+    background: radial-gradient(circle at 15% 0%, var(--bg2), var(--bg) 55%) fixed, var(--bg); min-height: 100vh; }
+  main { max-width: 520px; margin: 0 auto; padding: 12px 16px 60px; }
+  button { font: inherit; color: inherit; }
+  .hidden { display: none !important; }
+  .card { background: var(--paper); border-radius: 22px; box-shadow: var(--shadow); padding: 16px; margin-top: 14px; }
+  h2 { font-size: 1rem; margin: 0 0 10px; display: flex; align-items: center; gap: 6px; }
+  .sub { color: var(--sub); font-size: .8rem; }
+  .num { font-family: var(--num); font-variant-numeric: tabular-nums; }
+
+  .btn { display: block; width: 100%; border: none; border-radius: 16px; padding: 14px 16px; font-weight: 800; font-size: 1.02rem; cursor: pointer;
+    background: var(--chip); box-shadow: 0 4px 0 var(--line); transition: transform .06s, box-shadow .06s; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .btn.primary { background: linear-gradient(180deg, #25b360, var(--green)); color: #fff; box-shadow: 0 4px 0 var(--green-d); }
+  .btn.primary:active { box-shadow: 0 1px 0 var(--green-d); }
+  .btn.gold { background: linear-gradient(180deg, #ffd04a, var(--gold)); color: #3a2a00; box-shadow: 0 4px 0 #b88400; }
+  .btn.x { background: #111; color: #fff; box-shadow: 0 4px 0 #000; }
+  .btn.ghost { background: transparent; box-shadow: none; color: var(--sub); font-size: .88rem; padding: 10px; }
+  .btn:disabled { opacity: .5; pointer-events: none; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; min-width: 0; }
+  .stack > * + * { margin-top: 10px; }
+
+  /* タイトル */
+  .hero { border-radius: 26px; overflow: hidden; box-shadow: var(--shadow); background: #1c7a3f; position: relative; }
+  .hero svg { display: block; width: 100%; height: auto; }
+  .logo { text-align: center; margin: 18px 0 4px; }
+  .logo h1 { font-family: var(--head); font-weight: 400; font-size: clamp(2.2rem, 11vw, 3.1rem); line-height: 1.1; margin: 0; letter-spacing: .02em; }
+  .logo h1 span { color: var(--green); }
+  .logo p { margin: 8px 0 0; color: var(--sub); font-weight: 700; font-size: .9rem; }
+  .feats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+  .feats div { background: var(--chip); border-radius: 14px; padding: 9px 10px; font-size: .78rem; font-weight: 700; line-height: 1.4; }
+  .feats b { display: block; font-size: .9rem; }
+  .plays { text-align: center; font-size: .78rem; color: var(--sub); margin-top: 10px; }
+  .board { list-style: none; margin: 0; padding: 0; }
+  .board li { display: grid; grid-template-columns: 2em 1fr auto; gap: 8px; align-items: center; padding: 7px 4px; border-bottom: 1px dashed var(--line); font-size: .88rem; }
+  .board li:last-child { border: none; }
+  .board .no { font-family: var(--num); font-weight: 800; text-align: center; color: var(--sub); }
+  .board li:nth-child(1) .no { color: #d49b00; } .board li:nth-child(2) .no { color: #8e9aa8; } .board li:nth-child(3) .no { color: #b8733a; }
+  .board .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .board .sc { font-family: var(--num); font-weight: 800; }
+  .board .empty { display: block; text-align: center; color: var(--sub); }
+  .lineage { list-style: none; margin: 0; padding: 0; }
+  .lineage li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: .85rem; }
+  .lineage li:last-child { border: none; }
+  .gen { flex: none; width: 46px; text-align: center; font-weight: 800; font-size: .72rem; background: var(--chip); border-radius: 10px; padding: 4px 0; }
+  .letter { font-family: var(--num); font-weight: 800; color: var(--gold); }
+
+  /* 作成 */
+  label.f { display: block; font-weight: 800; font-size: .9rem; margin-bottom: 6px; }
+  input.t { width: 100%; font: inherit; font-size: 1.05rem; font-weight: 700; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--line); background: var(--chip); color: var(--ink); outline: none; }
+  input.t:focus { border-color: var(--green); }
+  .poses { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .pos { text-align: left; border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; background: var(--paper); cursor: pointer; }
+  .pos b { display: flex; align-items: center; gap: 6px; font-size: 1rem; }
+  .tag { display: inline-block; font-family: var(--num); font-weight: 800; font-size: .72rem; line-height: 1.5; padding: 0 7px; border-radius: 6px; color: #fff; vertical-align: 1px; }
+  .pos span { display: block; font-size: .72rem; color: var(--sub); line-height: 1.45; margin-top: 3px; }
+  .pos.on { border-color: var(--green); background: var(--chip); box-shadow: inset 0 0 0 1px var(--green); }
+  .t-FW { background: #e5483a; } .t-MF { background: #17924c; } .t-DF { background: #2c6fd6; } .t-GK { background: #e59a00; }
+
+  /* オファー */
+  .offer { display: flex; gap: 12px; align-items: center; border: 2px solid var(--line); border-radius: 18px; padding: 10px 12px; background: var(--paper); cursor: pointer; text-align: left; width: 100%; }
+  .offer:active { transform: scale(.99); }
+  .offer .crest { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-weight: 800; font-size: .8rem; }
+  .offer .bd { flex: 1; min-width: 0; }
+  .offer .nm { font-weight: 800; font-size: .95rem; line-height: 1.3; }
+  .offer .mt { font-size: .74rem; color: var(--sub); line-height: 1.5; }
+  .offer .pt { flex: none; text-align: center; font-size: .66rem; color: var(--sub); line-height: 1.2; }
+  .offer .pt b { display: block; font-size: 1.3rem; color: var(--ink); }
+  .lg-0 { color: #b8860b; } .lg-1 { color: var(--green); } .lg-2 { color: var(--sub); }
+  .badge { display: inline-block; font-size: .66rem; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: var(--chip); margin-right: 4px; vertical-align: 1px; }
+  .badge.eu { background: #fff1c4; color: #8a6300; } .badge.stay { background: #dff3e6; color: #0d6b36; }
+  @media (prefers-color-scheme: dark) { .badge.eu { background: #4a3c10; color: #ffd76a; } .badge.stay { background: #173b25; color: #7be3a5; } }
+
+  /* メイン */
+  .pc { padding: 0; overflow: hidden; }
+  .pc .band { height: 8px; }
+  .pc .in { display: flex; gap: 12px; padding: 12px 14px 4px; align-items: center; }
+  .pc .av { flex: none; width: 84px; height: 84px; border-radius: 20px; background: var(--chip); overflow: hidden; }
+  .pc .av svg { width: 100%; height: 100%; display: block; }
+  .pc .who { flex: 1; min-width: 0; }
+  .pc .nm { font-weight: 800; font-size: 1.15rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pc .cl { font-size: .78rem; color: var(--sub); line-height: 1.45; }
+  .pc .ov { flex: none; text-align: center; }
+  .pc .ov b { display: block; font-family: var(--num); font-weight: 800; font-size: 2.3rem; line-height: 1; }
+  .pc .ov span { font-size: .62rem; font-weight: 800; color: var(--sub); letter-spacing: .08em; }
+  .meters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px 14px 14px; }
+  .meters div { background: var(--chip); border-radius: 12px; padding: 5px 6px; text-align: center; font-size: .64rem; color: var(--sub); font-weight: 700; line-height: 1.3; }
+  .meters b { display: block; font-size: .95rem; color: var(--ink); }
+  .bar { height: 6px; border-radius: 9px; background: var(--line); overflow: hidden; margin-top: 3px; }
+  .bar i { display: block; height: 100%; border-radius: 9px; }
+
+  .statwrap { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: center; }
+  .statwrap svg { width: 100%; height: auto; display: block; }
+  .stl { list-style: none; margin: 0; padding: 0; font-size: .8rem; }
+  .stl li { display: grid; grid-template-columns: 5.4em 1fr 2.6em; white-space: nowrap; gap: 6px; align-items: center; padding: 2px 0; }
+  .stl li.main { font-weight: 800; }
+  .stl li .v { font-family: var(--num); font-weight: 800; text-align: right; }
+  .stl .bar { margin: 0; height: 7px; }
+  .stl .up { color: var(--green); font-size: .7rem; font-weight: 800; }
+
+  .season { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+  .season div { background: var(--chip); border-radius: 12px; padding: 6px 2px; font-size: .64rem; color: var(--sub); font-weight: 700; }
+  .season b { display: block; font-family: var(--num); font-size: 1.25rem; color: var(--ink); line-height: 1.2; }
+  .nextm { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: var(--chip); font-size: .82rem; font-weight: 700; }
+  .nextm .vs { font-family: var(--num); font-weight: 800; color: var(--sub); }
+  .prog { height: 8px; border-radius: 9px; background: var(--line); overflow: hidden; margin-top: 10px; }
+  .prog i { display: block; height: 100%; background: var(--green); border-radius: 9px; transition: width .3s; }
+
+  .trains { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tr { border: 2px solid var(--line); background: var(--paper); border-radius: 14px; padding: 8px 4px; cursor: pointer; text-align: center; font-size: .74rem; font-weight: 800; line-height: 1.3; }
+  .tr i { display: block; font-style: normal; font-size: 1.3rem; }
+  .tr.on { border-color: var(--green); background: var(--chip); box-shadow: inset 0 0 0 1px var(--green); }
+  .tr.main::after { content: '得意'; display: block; font-size: .58rem; color: var(--green); }
+  .trdesc { font-size: .74rem; color: var(--sub); margin: 8px 0 0; min-height: 1.2em; }
+  .actions { position: sticky; bottom: 0; padding: 12px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 30%); z-index: 5; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button { flex: 1; border: none; background: var(--chip); border-radius: 12px; padding: 8px 4px; font-weight: 800; font-size: .82rem; cursor: pointer; }
+  .tabs button.on { background: var(--green); color: #fff; }
+  table.tb { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  .tb th { font-size: .66rem; color: var(--sub); font-weight: 700; padding: 4px 2px; text-align: center; }
+  .tb td { padding: 5px 2px; text-align: center; border-top: 1px solid var(--line); font-family: var(--num); font-weight: 600; }
+  .tb td.l { text-align: left; font-family: inherit; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9.5em; }
+  .tb tr.me td { background: var(--chip); font-weight: 800; }
+  .tb tr.up td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+  .tb tr.dn td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+  .tbwrap { overflow-x: auto; margin: 0 -4px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 0; }
+  .ach { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .ach li { background: var(--chip); border-radius: 99px; padding: 3px 10px; font-size: .74rem; font-weight: 700; }
+  .ach li.tr { border: none; }
+  .ach li.gold { background: #fff1c4; color: #7a5600; }
+  @media (prefers-color-scheme: dark) { .ach li.gold { background: #4a3c10; color: #ffd76a; } }
+
+  /* シート（試合結果など） */
+  .ov-bg { position: fixed; inset: 0; background: rgba(5, 20, 10, .55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .2s; }
+  .sheet { width: 100%; max-width: 520px; max-height: 92vh; overflow: auto; background: var(--paper); border-radius: 26px 26px 0 0; padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); animation: up .28s cubic-bezier(.2, .9, .3, 1.1); }
+  @media (min-width: 560px) { .ov-bg { align-items: center; } .sheet { border-radius: 26px; } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  .sheet h3 { margin: 0 0 4px; font-size: 1.1rem; text-align: center; }
+  .sheet .kick { text-align: center; font-size: .74rem; font-weight: 800; color: var(--sub); letter-spacing: .06em; }
+  .sbtns { margin-top: 16px; }
+  .score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin: 10px 0 4px; }
+  .score .tm { text-align: center; font-weight: 800; font-size: .8rem; line-height: 1.3; }
+  .score .tm .cr { width: 40px; height: 40px; border-radius: 12px; margin: 0 auto 4px; display: grid; place-items: center; font-size: .72rem; }
+  .score .sc { font-family: var(--num); font-weight: 800; font-size: 2.6rem; line-height: 1; white-space: nowrap; }
+  .res { text-align: center; margin: 6px 0; }
+  .res span { display: inline-block; font-weight: 800; font-size: .84rem; padding: 2px 14px; border-radius: 99px; color: #fff; }
+  .rW { background: var(--green); } .rD { background: #8a96a0; } .rL { background: var(--red); }
+  .timeline { margin: 8px 0; }
+  .timeline svg { width: 100%; height: auto; display: block; }
+  .me-row { display: flex; align-items: center; gap: 12px; background: var(--chip); border-radius: 16px; padding: 10px 12px; margin-top: 8px; }
+  .rating { flex: none; width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; font-family: var(--num); font-weight: 800; font-size: 1.5rem; color: #fff; }
+  .me-row .t { font-size: .82rem; font-weight: 700; line-height: 1.5; }
+  .me-row .role { font-size: .7rem; color: var(--sub); }
+  .hl { list-style: none; margin: 8px 0 0; padding: 0; font-size: .82rem; }
+  .hl li { padding: 5px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 8px; }
+  .hl li:last-child { border: none; }
+  .hl .m { flex: none; width: 2.6em; font-family: var(--num); font-weight: 800; color: var(--sub); text-align: right; }
+  .hl li.mine { font-weight: 800; }
+  .grow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; justify-content: center; }
+  .grow span { background: #dff3e6; color: #0d6b36; border-radius: 99px; padding: 2px 10px; font-size: .76rem; font-weight: 800; }
+  .grow span.dn { background: #fde3df; color: #a8281c; }
+  @media (prefers-color-scheme: dark) { .grow span { background: #173b25; color: #7be3a5; } .grow span.dn { background: #4a1d18; color: #ffaaa0; } }
+  .note { font-size: .82rem; text-align: center; margin-top: 8px; font-weight: 700; }
+  .ev { text-align: center; padding: 8px 4px; }
+  .ev .ic { font-size: 3rem; line-height: 1.2; }
+  .ev p { font-weight: 700; margin: 6px 0 0; }
+  .ev .rs { margin-top: 10px; color: var(--green); font-weight: 800; }
+  .stamp { display: inline-block; margin: 4px; padding: 6px 14px; border: 3px solid var(--gold); color: #b07c00; border-radius: 12px; font-weight: 800; font-size: .9rem; transform: rotate(-3deg); animation: stamp .4s ease both; background: #fffbea; }
+  @media (prefers-color-scheme: dark) { .stamp { background: #2c2610; color: #ffd76a; } }
+  @keyframes stamp { from { transform: scale(2) rotate(-12deg); opacity: 0; } }
+  .bigstat { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; margin: 10px 0; }
+  .bigstat div { background: var(--chip); border-radius: 12px; padding: 6px 2px; font-size: .64rem; color: var(--sub); font-weight: 700; }
+  .bigstat b { display: block; font-family: var(--num); font-size: 1.3rem; color: var(--ink); }
+  .wc { list-style: none; margin: 8px 0 0; padding: 0; font-size: .84rem; }
+  .wc li { display: grid; grid-template-columns: 6.5em 1fr auto; gap: 6px; padding: 6px 0; border-bottom: 1px dashed var(--line); align-items: center; }
+  .wc li b { font-family: var(--num); }
+
+  /* 引退 */
+  .ceremony { text-align: center; padding: 22px 16px; position: relative; overflow: hidden; }
+  .ceremony .k { font-size: .76rem; font-weight: 800; color: var(--sub); letter-spacing: .1em; }
+  .ceremony .tt { font-family: var(--head); font-size: clamp(1.7rem, 8vw, 2.3rem); line-height: 1.25; margin: 8px 0 4px; color: var(--green); }
+  .ceremony .dd { font-weight: 700; color: var(--sub); font-size: .9rem; }
+  .ceremony .rank { display: inline-flex; align-items: baseline; gap: 6px; margin-top: 12px; font-family: var(--num); font-weight: 800; }
+  .ceremony .rank b { font-size: 3.4rem; line-height: 1; color: var(--gold); text-shadow: 0 3px 0 rgba(0,0,0,.12); }
+  .ceremony .rank span { font-size: 1.1rem; }
+  .rankmsg { text-align: center; font-weight: 800; margin-top: 10px; }
+  .toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 18px; border-radius: 99px; font-weight: 800; font-size: .86rem; z-index: 99; animation: fade .2s; }
+  .foot { text-align: center; font-size: .66rem; color: var(--sub); margin-top: 24px; line-height: 1.6; }
+
+  /* ライバル・家族 */
+  .rivalrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 12px; border-radius: 14px; background: #fdecea; font-size: .78rem; font-weight: 700; line-height: 1.45; }
+  .rivalrow.kid { background: #e8f1ff; }
+  .rivalrow .ic { font-size: 1.3rem; flex: none; }
+  .rivalrow .h2h { margin-left: auto; flex: none; font-family: var(--num); font-weight: 800; text-align: right; font-size: .74rem; }
+  @media (prefers-color-scheme: dark) { .rivalrow { background: #3a1f1c; } .rivalrow.kid { background: #1c2a40; } }
+  .hl li.rival { color: var(--red); }
+  .hl li.kid { color: var(--blue); font-weight: 800; }
+  .banner { text-align: center; margin: 8px 0 0; font-weight: 800; font-size: .86rem; padding: 6px; border-radius: 12px; background: #fdecea; color: #b0251a; }
+  .banner.kid { background: #e8f1ff; color: #1e4fa8; }
+  @media (prefers-color-scheme: dark) { .banner { background: #3a1f1c; color: #ffaaa0; } .banner.kid { background: #1c2a40; color: #9cc2ff; } }
+
+  /* モード選択 */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .pols .pos span { font-size: .66rem; }
+
+  /* 引退試合 */
+  .scene { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; border: 2px solid var(--line); background: var(--paper); border-radius: 16px; padding: 10px 14px; cursor: pointer; font-weight: 800; }
+  .scene span { font-size: .72rem; color: var(--sub); font-weight: 700; }
+  .meter { position: relative; height: 54px; border-radius: 16px; background: var(--chip); overflow: hidden; margin: 18px 0 10px; box-shadow: inset 0 2px 6px rgba(0,0,0,.12); }
+  .meter .zone { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, #3fd17f, var(--green)); }
+  .meter .needle { position: absolute; top: -4px; bottom: -4px; width: 6px; margin-left: -3px; background: var(--ink); border-radius: 3px; }
+  .bigtap { font-size: 1.3rem; padding: 20px; }
+  .finale { text-align: center; }
+  .finale .ic { font-size: 3.4rem; animation: stamp .5s ease both; }
+  .finale p { font-weight: 800; font-size: 1.02rem; margin: 6px 0 0; }
+
+  /* 新聞 */
+  .paperimg { display: block; width: 100%; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.25); margin-top: 8px; }
+  .scrap { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .scrap button { width: 100%; text-align: left; border: none; background: #f4efe3; color: #222; border-radius: 10px; padding: 8px 10px; cursor: pointer; font-weight: 800; font-size: .8rem; line-height: 1.35; box-shadow: 0 2px 0 rgba(0,0,0,.1); }
+  .scrap button span { display: block; font-size: .64rem; color: #7a6a5c; font-weight: 700; }
+
+  /* 家系図 */
+  .tree { list-style: none; margin: 0; padding: 0 0 0 4px; position: relative; }
+  .tree li { position: relative; padding: 0 0 14px 34px; }
+  .tree li::before { content: ''; position: absolute; left: 11px; top: 26px; bottom: -2px; width: 3px; background: var(--line); border-radius: 2px; }
+  .tree li:last-child::before { display: none; }
+  .tree .gn { position: absolute; left: 0; top: 2px; width: 25px; height: 25px; border-radius: 50%; background: var(--green); color: #fff; font-family: var(--num); font-weight: 800; font-size: .78rem; display: grid; place-items: center; }
+  .tree li.now .gn { background: var(--gold); color: #3a2a00; }
+  .tree .nd { background: var(--chip); border-radius: 14px; padding: 8px 12px; }
+  .tree .nd b { font-size: .95rem; }
+  .tree .nd .t { font-size: .74rem; color: var(--sub); font-weight: 700; line-height: 1.5; }
+  .tree .nd .lt { float: right; font-family: var(--num); font-weight: 800; color: var(--gold); font-size: 1.2rem; line-height: 1.2; }
+  .tree .link { font-size: .68rem; font-weight: 800; color: var(--blue); margin: 4px 0 0; }
+  .famtitle { display: inline-block; margin-left: 6px; font-size: .7rem; padding: 1px 9px; border-radius: 99px; background: var(--gold); color: #3a2a00; }
+
+  /* 選手名鑑（百科事典ふう） */
+  .wiki { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; color: #202122; background: #fff; line-height: 1.75; font-size: .9rem; }
+  .wiki .wtop { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #a2a9b1; padding-bottom: 4px; }
+  .wiki .wtop b { font-family: "M PLUS Rounded 1c", sans-serif; font-size: .74rem; color: #54595d; letter-spacing: .1em; }
+  .wiki h1 { font-weight: 400; font-size: 1.6rem; margin: 8px 0 2px; border-bottom: 1px solid #a2a9b1; padding-bottom: 2px; }
+  .wiki .from { font-size: .72rem; color: #54595d; margin-bottom: 8px; }
+  .wiki h2 { font-family: inherit; font-weight: 400; font-size: 1.25rem; border-bottom: 1px solid #a2a9b1; margin: 18px 0 6px; display: block; }
+  .wiki h3 { font-size: 1rem; margin: 12px 0 2px; }
+  .wiki p { margin: 6px 0; }
+  .wiki .ib { float: right; width: 52%; margin: 0 0 10px 12px; border: 1px solid #a2a9b1; background: #f8f9fa; font-size: .74rem; line-height: 1.45; }
+  .wiki .ib .ibh { background: #cee0f2; text-align: center; font-weight: 700; padding: 4px; font-size: .86rem; }
+  .wiki .ib .ibav { background: #fff; padding: 6px; }
+  .wiki .ib .ibav svg { display: block; width: 70%; margin: 0 auto; border-radius: 8px; }
+  .wiki .ib table { width: 100%; border-collapse: collapse; }
+  .wiki .ib th { text-align: left; padding: 3px 5px; vertical-align: top; white-space: nowrap; width: 38%; }
+  .wiki .ib td { padding: 3px 5px; }
+  .wiki .ib .sec { background: #eaecf0; text-align: center; font-weight: 700; }
+  .wiki ul { padding-left: 1.3em; margin: 4px 0; }
+  .wiki a, .wiki .lk { color: #3366cc; }
+  .wiki table.st { width: 100%; border-collapse: collapse; font-size: .72rem; margin-top: 6px; clear: both; }
+  .wiki table.st th, .wiki table.st td { border: 1px solid #a2a9b1; padding: 3px 4px; text-align: center; }
+  .wiki table.st th { background: #eaecf0; }
+  .wiki .note { font-size: .7rem; color: #54595d; text-align: left; font-weight: 400; }
+  @media (max-width: 420px) { .wiki .ib { float: none; width: 100%; margin: 0 0 10px; } }
+
+  /* 60秒モード */
+  .montage { text-align: center; }
+  .montage .yr { font-family: var(--num); font-weight: 800; font-size: .9rem; color: var(--sub); }
+  .montage .ag { font-family: var(--num); font-weight: 800; font-size: 3.4rem; line-height: 1; }
+  .montage .ag small { font-size: 1rem; }
+  .montage .cl { font-weight: 800; margin-top: 6px; }
+  .montage .ovb { height: 12px; border-radius: 9px; background: var(--line); overflow: hidden; margin: 10px 0 4px; }
+  .montage .ovb i { display: block; height: 100%; background: linear-gradient(90deg, var(--green), var(--gold)); transition: width .6s; }
+  .ticker { list-style: none; margin: 10px 0 0; padding: 0; text-align: left; font-size: .8rem; font-weight: 700; max-height: 230px; overflow: hidden; }
+  .ticker li { padding: 4px 0; border-bottom: 1px dashed var(--line); animation: up .35s ease both; }
+</style>
+</head>
+<body>
+<main>
+  <!-- ===== タイトル ===== -->
+  <section id="scrTitle">
+    <div class="hero" id="heroArt"></div>
+    <div class="logo">
+      <h1>サッカー<span>人生</span></h1>
+      <p>入団から引退、そして次の世代へ</p>
+    </div>
+    <div class="stack" style="margin-top:14px">
+      <button class="btn primary" id="contBtn">▶ つづきから</button>
+      <button class="btn" id="newBtn">⚽ はじめから</button>
+    </div>
+    <div class="card">
+      <div class="feats">
+        <div><b>🏃 練習で成長</b>伸ばす能力は自分で選ぶ</div>
+        <div><b>⚡ 試合は自動</b>1タップで1試合。評価点も出る</div>
+        <div><b>✈️ 移籍と海外挑戦</b>オファーを選んで欧州へ</div>
+        <div><b>👶 次の世代へ</b>引退したら子どもに才能を継ぐ</div>
+      </div>
+      <div class="plays">これまで <b class="num" id="sPlays">-</b> 人がプロになりました</div>
+    </div>
+    <div class="card">
+      <h2>🏆 生涯スコア 全国ランキング</h2>
+      <ol class="board" id="boardTitle"><li class="empty">読み込み中…</li></ol>
+    </div>
+    <div class="card hidden" id="lineageCard">
+      <h2 id="lineageHead">🌳 一族の歴史</h2>
+      <ul class="tree" id="lineageList"></ul>
+    </div>
+  </section>
+
+  <!-- ===== 選手作成 ===== -->
+  <section id="scrCreate" class="hidden">
+    <div class="card">
+      <div class="sub" id="createKick" style="font-weight:800">新しい選手を作る</div>
+      <h2 style="font-size:1.25rem;margin-top:4px" id="createTitle">あなたの名前は？</h2>
+      <input class="t" id="nameIn" maxlength="12" placeholder="例：山田 蓮" autocomplete="off">
+      <p class="sub" style="margin:6px 0 0">苗字と名前の間にスペースを入れると、子どもに苗字が受け継がれます</p>
+    </div>
+    <div class="card">
+      <h2>ポジション</h2>
+      <div class="poses" id="poses"></div>
+      <p class="sub hidden" id="inheritNote" style="margin:10px 0 0;font-weight:800;color:var(--green)"></p>
+    </div>
+    <div class="card">
+      <h2>遊び方</h2>
+      <div class="modes" id="modes">
+        <button class="pos on" data-m="normal"><b>⚽ じっくり</b><span>毎週の練習を選んで、一生を自分で歩む（15分〜）</span></button>
+        <button class="pos" data-m="quick"><b>⏱️ 60秒でおまかせ</b><span>方針だけ決めたら、一生を早送りで見届ける</span></button>
+      </div>
+      <div class="pols hidden" id="pols"></div>
+    </div>
+    <div class="stack" style="margin-top:16px">
+      <button class="btn primary" id="toDraftBtn">入団テストを受ける ▶</button>
+      <button class="btn ghost" id="createBack">もどる</button>
+    </div>
+  </section>
+
+  <!-- ===== 入団先 ===== -->
+  <section id="scrDraft" class="hidden">
+    <div class="card">
+      <div class="sub" style="font-weight:800">入団テスト合格！</div>
+      <h2 style="font-size:1.2rem;margin-top:4px">3クラブからオファーが届いた</h2>
+      <p class="sub" style="margin:0 0 10px">強いクラブほどレギュラー争いは厳しい。若いうちは試合に出たほうが伸びる…かも？</p>
+      <div class="stack" id="draftList"></div>
+    </div>
+  </section>
+
+  <!-- ===== ゲーム ===== -->
+  <section id="scrGame" class="hidden">
+    <div class="card pc" id="pCard"></div>
+    <div class="card">
+      <h2>📊 能力</h2>
+      <div class="statwrap"><div id="radar"></div><ul class="stl" id="statList"></ul></div>
+    </div>
+    <div class="card">
+      <h2 id="seasonHead">今シーズン</h2>
+      <div class="season" id="seasonBox"></div>
+      <div class="prog"><i id="progBar"></i></div>
+      <div class="nextm" id="nextMatch"></div>
+      <div id="rivalRow"></div>
+      <div id="kidRow"></div>
+    </div>
+    <div class="card">
+      <h2>🏋️ 今週の練習</h2>
+      <div class="trains" id="trains"></div>
+      <p class="trdesc" id="trDesc"></p>
+    </div>
+    <div class="actions">
+      <div class="row">
+        <button class="btn primary" id="weekBtn" style="flex:1.6">練習して試合へ ▶</button>
+        <button class="btn" id="autoBtn">シーズン終了まで ⏩</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tabs" id="tabs">
+        <button data-t="table" class="on">順位表</button><button data-t="career">経歴</button><button data-t="ach">実績</button>
+      </div>
+      <div id="tabBody"></div>
+    </div>
+    <button class="btn ghost" id="menuBtn" style="margin-top:12px">タイトルへもどる（自動セーブ済み）</button>
+  </section>
+
+  <!-- ===== 引退 ===== -->
+  <section id="scrEnd" class="hidden">
+    <div class="card ceremony" id="ceremony"></div>
+    <div class="card">
+      <h2>📋 通算成績</h2>
+      <div class="bigstat" id="endStats"></div>
+      <ul class="ach" id="endAch"></ul>
+    </div>
+    <div class="card">
+      <h2>🏆 全国ランキング</h2>
+      <div class="rankmsg" id="rankMsg">集計中…</div>
+      <div id="nameBox" class="hidden" style="margin-top:10px">
+        <p class="sub" style="margin:0 0 6px;text-align:center">トップ10入り！ランキングに名前を載せよう</p>
+        <div class="row"><input class="t" id="rankName" maxlength="12" style="flex:2"><button class="btn gold" id="rankNameBtn">登録</button></div>
+        <p class="sub" id="rankNameMsg" style="text-align:center;margin:6px 0 0"></p>
+      </div>
+      <ol class="board" id="boardEnd" style="margin-top:10px"></ol>
+    </div>
+    <div class="stack" style="margin-top:16px">
+      <button class="btn x" id="shareBtn">𝕏 で引退を報告</button>
+      <div class="row"><button class="btn" id="wikiBtn">📖 選手名鑑</button><button class="btn" id="paperBtn">📰 引退の号外</button></div>
+      <button class="btn" id="imgBtn">📸 引退記念カードを保存</button>
+      <button class="btn primary" id="nextGenBtn">👶 子どもに夢を託す</button>
+      <button class="btn ghost" id="endTitleBtn">タイトルへ</button>
+    </div>
+    <div class="card">
+      <h2 id="endTreeHead">🌳 一族の歴史</h2>
+      <ul class="tree" id="endTree"></ul>
+    </div>
+    <div class="card">
+      <h2>📜 年度別成績</h2>
+      <div class="tbwrap" id="endCareer"></div>
+    </div>
+  </section>
+
+  <div class="tonmato-next" data-current="soccer"></div>
+  <p class="foot">このゲームに登場するクラブ・リーグ・選手はすべて架空のものです。</p>
+</main>
+
+<script src="core.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const APP_TITLE = 'サッカー人生';
+const HASHTAGS = ['サッカー人生'];
+const SITE = 'tonmatolab.github.io/apps/soccer-life';
+const store = {
+  get(k) { try { return localStorage.getItem('soccer-' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('soccer-' + k, v); } catch {} },
+  del(k) { try { localStorage.removeItem('soccer-' + k); } catch {} },
+};
+let S = null; // ゲームの状態（core.js のルールで動く。そのまま保存する）
+let busy = false;
+const save = () => { if (S) store.set('save', JSON.stringify(S)); };
+function loadSave() { try { const j = JSON.parse(store.get('save')); return j && j.v === 1 ? SL.migrate(j) : null; } catch { return null; } }
+
+// ===== 共通 counter-api =====
+const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+async function api(path, method = 'GET', data) {
+  try {
+    const opt = { method, signal: AbortSignal.timeout(8000) };
+    if (data) { opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(data); }
+    const res = await fetch(API + path, opt);
+    const j = await res.json().catch(() => null);
+    return res.ok ? j : (j && j.error ? { error: j.error } : null);
+  } catch { return null; }
+}
+
+// ===== 見た目の部品 =====
+function textOn(hex) {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (r * .299 + g * .587 + b * .114) > 170 ? '#1d2433' : '#ffffff';
+}
+const crest = (c) => `<div class="crest cr" style="background:${c.color};color:${textOn(c.color)}">${esc(c.city.slice(0, 2))}</div>`;
+const posTag = (pos) => `<span class="tag t-${pos}">${pos}</span>`;
+const condFace = (c) => ['↓ 絶不調', '↘ 不調', '→ 普通', '↗ 好調', '↑ 絶好調'][c + 2];
+const condColor = (c) => ['#e5483a', '#f28c28', '#8a96a0', '#2fa85e', '#17924c'][c + 2];
+const ratingColor = (r) => r >= 8 ? '#e0a100' : r >= 7 ? '#17924c' : r >= 6 ? '#5f8f6c' : r >= 5 ? '#8a96a0' : '#e5483a';
+const man = (v) => v >= 10000 ? `${(v / 10000).toFixed(v >= 100000 ? 0 : 1)}億円` : `${v.toLocaleString()}万円`;
+
+function avatar(color, number, age, pos) {
+  const tc = textOn(color);
+  const hair = age >= 34 ? '#8d8d8d' : '#2b2118';
+  const glove = pos === 'GK' ? `<circle cx="22" cy="92" r="8" fill="#ffd166"/><circle cx="98" cy="92" r="8" fill="#ffd166"/>` : '';
+  return `<svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#7fc98f"/><path d="M0 92 Q60 80 120 92 V120 H0Z" fill="#5cb06f"/>
+    <path d="M24 120 V96 Q24 74 60 72 Q96 74 96 96 V120Z" fill="${color}"/>
+    <path d="M24 96 Q24 78 40 74 L34 104Z M96 96 Q96 78 80 74 L86 104Z" fill="rgba(0,0,0,.12)"/>
+    <text x="60" y="108" text-anchor="middle" font-family="Outfit,sans-serif" font-weight="800" font-size="24" fill="${tc}">${number}</text>
+    <rect x="52" y="60" width="16" height="14" rx="5" fill="#f2c9a0"/>
+    <circle cx="60" cy="44" r="21" fill="#f6d2ad"/>
+    <path d="M39 42 Q38 20 60 20 Q83 20 81 42 Q76 30 60 31 Q46 30 39 42Z" fill="${hair}"/>
+    <circle cx="52" cy="46" r="2.6" fill="#2b2118"/><circle cx="68" cy="46" r="2.6" fill="#2b2118"/>
+    <path d="M53 55 Q60 60 67 55" stroke="#2b2118" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <circle cx="46" cy="53" r="3" fill="#ff9a8a" opacity=".5"/><circle cx="74" cy="53" r="3" fill="#ff9a8a" opacity=".5"/>${glove}</svg>`;
+}
+
+function heroSVG() {
+  let stripes = '';
+  for (let i = 0; i < 8; i++) stripes += `<rect x="${i * 50}" y="0" width="25" height="220" fill="rgba(255,255,255,.05)"/>`;
+  return `<svg viewBox="0 0 400 220">
+    <rect width="400" height="220" fill="#1f8a47"/>${stripes}
+    <g stroke="rgba(255,255,255,.75)" stroke-width="2.5" fill="none">
+      <rect x="10" y="12" width="380" height="196" rx="2"/><line x1="200" y1="12" x2="200" y2="208"/><circle cx="200" cy="110" r="34"/>
+      <rect x="10" y="62" width="44" height="96"/><rect x="346" y="62" width="44" height="96"/></g>
+    <g transform="translate(330 70)"><rect x="0" y="0" width="52" height="80" fill="none" stroke="#fff" stroke-width="4"/>
+      <path d="M0 0 L16 12 V68 L0 80 M52 0 L36 12 V68 L52 80 M16 12 H36" stroke="rgba(255,255,255,.6)" stroke-width="1.5" fill="none"/></g>
+    <path d="M110 150 Q220 40 335 105" stroke="rgba(255,255,255,.5)" stroke-width="3" fill="none" stroke-dasharray="2 8" stroke-linecap="round"/>
+    <g transform="translate(335 104)"><circle r="12" fill="#fff"/><path d="M0 -5 L5 -1 L3 5 L-3 5 L-5 -1Z" fill="#222"/>
+      <path d="M0 -12 V-5 M11 -4 L5 -1 M7 10 L3 5 M-7 10 L-3 5 M-11 -4 L-5 -1" stroke="#222" stroke-width="1.6"/></g>
+    <g transform="translate(70 70)">
+      <circle cx="40" cy="20" r="15" fill="#f6d2ad"/><path d="M25 18 Q26 3 40 4 Q55 4 55 18 Q50 10 40 11 Q30 10 25 18Z" fill="#2b2118"/>
+      <path d="M22 40 Q40 30 58 40 L62 82 H20Z" fill="#e5483a"/><text x="41" y="68" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="20" fill="#fff">10</text>
+      <path d="M22 44 L4 30" stroke="#f6d2ad" stroke-width="9" stroke-linecap="round"/><path d="M58 44 L78 58" stroke="#f6d2ad" stroke-width="9" stroke-linecap="round"/>
+      <path d="M28 82 L18 118" stroke="#1d2433" stroke-width="12" stroke-linecap="round"/><path d="M52 82 L80 96" stroke="#1d2433" stroke-width="12" stroke-linecap="round"/>
+      <path d="M18 118 L8 122" stroke="#fff" stroke-width="9" stroke-linecap="round"/><path d="M80 96 L92 88" stroke="#fff" stroke-width="9" stroke-linecap="round"/></g>
+  </svg>`;
+}
+
+function radarSVG(p) {
+  const keys = p.pos === 'GK' ? ['gk', 'phy', 'pas', 'def', 'spd', 'sht'] : ['spd', 'sht', 'pas', 'drb', 'def', 'phy'];
+  const lab = { ...SL.STATS, gk: 'セーブ', phy: 'フィジカル' };
+  const cx = 85, cy = 72, R = 48;
+  const pt = (i, r) => { const a = -Math.PI / 2 + i * Math.PI * 2 / keys.length; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+  let grid = '';
+  for (const f of [.25, .5, .75, 1]) grid += `<polygon points="${keys.map((_, i) => pt(i, R * f).join(',')).join(' ')}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+  const shape = keys.map((k, i) => pt(i, R * p.stats[k] / 99).join(',')).join(' ');
+  const labels = keys.map((k, i) => { const [x, y] = pt(i, R + 13); return `<text x="${x}" y="${y + 3}" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--sub)">${lab[k]}</text>`; }).join('');
+  return `<svg viewBox="0 0 170 145">${grid}<polygon points="${shape}" fill="rgba(23,146,76,.32)" stroke="var(--green)" stroke-width="2" stroke-linejoin="round"/>${labels}</svg>`;
+}
+
+const playChance = (p, c) => { const x = SL.startChance(p, c); return x > .75 ? ['◎', 'レギュラー'] : x > .45 ? ['○', '出場多め'] : x > .2 ? ['△', '控え'] : ['✕', '厳しい']; };
+
+function offerCard(o, extra = '') {
+  const c = S.clubs[o.club], L = SL.LEAGUES[c.lg], pc = playChance(S.p, c);
+  return `<button class="offer" data-i="${o._i}">${crest(c)}<div class="bd"><div class="nm">${extra}${esc(c.name)}</div>
+    <div class="mt"><b class="lg-${c.lg}">${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>・${o.years}年契約${o.trial ? '（テスト入団）' : ''}</div></div>
+    <div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
+}
+
+// ===== シート（下から出るカード） =====
+function sheet(html, btns = [{ label: '次へ', cls: 'primary' }]) {
+  return new Promise((resolve) => {
+    const bg = document.createElement('div'); bg.className = 'ov-bg';
+    bg.innerHTML = `<div class="sheet">${html}<div class="sbtns stack">${btns.map((b, i) => `<button class="btn ${b.cls || ''}" data-i="${i}">${b.label}</button>`).join('')}</div></div>`;
+    document.body.appendChild(bg);
+    bg.querySelectorAll('.sbtns .btn, .sheet .offer').forEach((b) => b.addEventListener('click', () => {
+      const i = b.classList.contains('offer') ? 'o' + b.dataset.i : +b.dataset.i;
+      bg.remove(); resolve(i);
+    }));
+  });
+}
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
+function show(id) { for (const s of ['scrTitle', 'scrCreate', 'scrDraft', 'scrGame', 'scrEnd']) $(s).classList.toggle('hidden', s !== id); window.scrollTo(0, 0); }
+
+/// ===== タイトル =====
+const boardGame = (mode) => mode === 'quick' ? 'soccerq' : 'soccer';
+async function loadBoard(el, mine, mode = 'normal') {
+  const j = await api('/board?game=' + boardGame(mode));
+  if (!j || j.error) { el.innerHTML = '<li class="empty">ランキングを読み込めませんでした</li>'; return; }
+  if (!j.top.length) { el.innerHTML = '<li class="empty">まだ誰も引退していません。一番乗りを狙え！</li>'; return; }
+  el.innerHTML = j.top.map((r) => `<li${mine && r.rank === mine ? ' style="background:var(--chip)"' : ''}><span class="no">${r.rank}</span><span class="nm">${esc(r.name)}</span><span class="sc">${r.ms.toLocaleString()}</span></li>`).join('');
+}
+
+// ----- 家系図 -----
+function lineEntry(sm) {
+  return { gen: sm.gen, name: sm.name, pos: sm.pos, title: sm.title, letter: sm.letter, score: sm.score, goals: sm.goals, assists: sm.assists, cs: sm.cs, apps: sm.apps, caps: sm.caps,
+    years: `${sm.startYear}-${sm.endYear}`, clubs: sm.clubs, combo: sm.family?.combo || 0, jointApps: sm.family?.jointApps || 0, child: sm.child?.name || '', wc: sm.wc.some((w) => w.reached === '優勝') };
+}
+function treeHTML(entries, live) {
+  const rows = entries.map((l, i) => {
+    const big = l.pos === 'GK' || l.pos === 'DF' ? `${l.apps || 0}試合・無失点${l.cs || 0}` : `${l.apps || 0}試合${l.goals || 0}得点`;
+    const next = entries[i + 1] || (live ? { name: live.p.name } : null);
+    const kidName = esc(l.child || (next ? next.name : ''));
+    const link = l.combo ? `👨‍👧 子の${kidName}と親子ゴール${l.combo}回` : l.jointApps ? `👨‍👧 子の${kidName}と同じピッチに${l.jointApps}試合` : '';
+    return `<li><span class="gn">${l.gen}</span><div class="nd"><span class="lt">${l.letter || ''}</span><b>${esc(l.name)}</b> ${l.pos ? posTag(l.pos) : ''}
+      <div class="t">「${esc(l.title)}」${l.wc ? '🏆' : ''}<br>${l.years}・${big}${l.caps ? `・代表${l.caps}` : ''}</div>${link ? `<div class="link">${link}</div>` : ''}</div></li>`;
+  });
+  if (live) rows.push(`<li class="now"><span class="gn">${live.gen}</span><div class="nd"><b>${esc(live.p.name)}</b> ${posTag(live.p.pos)}<div class="t">現役・${live.p.age}歳・${live.p.club != null ? esc(SL.clubOf(live).name) : '入団前'}</div></div></li>`);
+  return rows.join('');
+}
+function treeHead(gen) {
+  const t = SL.familyTitle(gen);
+  return `🌳 一族の歴史${t ? `<span class="famtitle">${t}</span>` : ''}`;
+}
+
+function renderTitle() {
+  $('heroArt').innerHTML = heroSVG();
+  const sv = loadSave();
+  $('contBtn').classList.toggle('hidden', !sv || sv.phase === 'retired');
+  if (sv && sv.phase !== 'retired') $('contBtn').innerHTML = `▶ つづきから <span style="font-size:.78rem;opacity:.85">（${esc(sv.p.name)}・${sv.p.age}歳）</span>`;
+  const lin = sv ? sv.lineage.concat(sv.phase === 'retired' && sv.summary ? [lineEntry(sv.summary)] : []) : [];
+  $('lineageCard').classList.toggle('hidden', !lin.length);
+  if (lin.length) {
+    const live = sv.phase !== 'retired' ? sv : null;
+    $('lineageHead').innerHTML = treeHead(live ? sv.gen : lin.at(-1).gen);
+    $('lineageList').innerHTML = treeHTML(lin, live);
+  }
+  show('scrTitle');
+  loadBoard($('boardTitle'));
+  api('/get?keys=soccer-play').then((j) => { $('sPlays').textContent = j ? (j['soccer-play'] || 0).toLocaleString() : '-'; });
+}
+
+// ===== 選手作成 =====
+let createCtx = null; // 次の世代のときは { child: true }
+let selPos = 'FW', selMode = 'normal', selPol = 'challenge';
+function renderCreate(ctx = null) {
+  createCtx = ctx;
+  const sm = ctx ? S.summary : null;
+  const kid = sm ? (sm.child || (sm.kidNames.length ? { name: sm.kidNames[0] } : null)) : null;
+  selPos = (sm && sm.child && sm.child.pos) || ctx?.pos || 'FW';
+  selMode = ctx ? (S.mode || 'normal') : (store.get('mode') || 'normal');
+  $('createKick').textContent = ctx ? `${S.gen + 1}代目` : '新しい選手を作る';
+  $('createTitle').textContent = ctx ? (kid ? '子どもの名前は？' : 'あなたに憧れた子の名前は？') : 'あなたの名前は？';
+  $('nameIn').value = ctx ? (kid ? kid.name : SL.childName(S.p.name)) : (store.get('lastName') || '');
+  $('inheritNote').classList.toggle('hidden', !ctx);
+  if (ctx) {
+    const b = SL.inheritBonus(sm);
+    const home = sm.child ? `${sm.child.age}歳、すでに${sm.child.club}にいるところから続きが始まる。` : '';
+    $('inheritNote').textContent = home + (b ? `親の活躍で才能ボーナス +${b}！` : '才能ボーナスはなし。自分の手でつかめ！');
+  }
+  $('poses').innerHTML = Object.entries(SL.POS).map(([k, v]) => `<button class="pos${k === selPos ? ' on' : ''}" data-p="${k}"><b>${posTag(k)}${v.name}</b><span>${v.desc}</span></button>`).join('');
+  $('poses').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPos = b.dataset.p; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); });
+  $('pols').innerHTML = Object.entries(SL.POLICY).map(([k, v]) => `<button class="pos${k === selPol ? ' on' : ''}" data-k="${k}"><b>${v.name}</b><span>${v.desc}</span></button>`).join('');
+  $('pols').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPol = b.dataset.k; $('pols').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); });
+  const setMode = (m) => {
+    selMode = m;
+    $('modes').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x.dataset.m === m));
+    $('pols').classList.toggle('hidden', m !== 'quick');
+    $('toDraftBtn').textContent = m === 'quick' ? '⏱️ 60秒で一生を見る ▶' : sm && sm.child ? 'プロ契約へ ▶' : '入団テストを受ける ▶';
+  };
+  $('modes').querySelectorAll('.pos').forEach((b) => b.onclick = () => setMode(b.dataset.m));
+  setMode(selMode);
+  show('scrCreate');
+}
+function toDraft() {
+  const name = [...$('nameIn').value.normalize('NFKC').replace(/[<>&"'`\\]/g, '').trim()].slice(0, 12).join('') || '名無しの選手';
+  if (createCtx) S = SL.nextGeneration(S, name, selPos);
+  else { store.set('lastName', name); S = SL.newGame(name, selPos); }
+  S.mode = selMode; store.set('mode', selMode);
+  save();
+  if (!store.get('played')) { store.set('played', '1'); api('/hit/soccer-play', 'POST'); }
+  if (selMode === 'quick') return quickLife(selPol);
+  renderDraft();
+}
+function renderDraft() {
+  S.draft.forEach((o, i) => o._i = i);
+  $('draftList').innerHTML = S.draft.map((o) => offerCard(o, o.home ? '<span class="badge stay">親のクラブ</span>' : '')).join('');
+  $('draftList').querySelectorAll('.offer').forEach((b) => b.onclick = () => {
+    SL.joinClub(S, S.draft[+b.dataset.i]); delete S.draft;
+    SL.startSeason(S); save(); renderGame();
+    toast(`${SL.clubOf(S).name} に入団！`);
+  });
+  show('scrDraft');
+}
+
+// ===== メイン画面 =====
+let tab = 'table';
+let lastGrowth = {};
+function renderGame() {
+  const p = S.p, c = SL.clubOf(S), L = SL.LEAGUES[c.lg], o = SL.ovr(p);
+  $('pCard').innerHTML = `<div class="band" style="background:${c.color}"></div>
+    <div class="in"><div class="av">${avatar(c.color, p.number, p.age, p.pos)}</div>
+      <div class="who"><div class="nm">${esc(p.name)}</div>
+        <div class="cl">${posTag(p.pos)} 背番号<b>${p.number}</b>・${p.age}歳${S.gen > 1 ? `・${S.gen}代目` : ''}<br><b>${esc(c.name)}</b><br><span class="lg-${c.lg}" style="font-weight:800">${L.name}</span>・年俸 ${man(p.salary)}</div></div>
+      <div class="ov"><b style="color:${o >= 80 ? 'var(--gold)' : 'var(--ink)'}">${o}</b><span>総合力</span></div></div>
+    <div class="meters">
+      <div>調子<b style="color:${condColor(p.cond)}">${condFace(p.cond).split(' ')[0]}</b>${condFace(p.cond).split(' ')[1]}</div>
+      <div>疲労<b>${Math.round(p.fatigue)}</b><div class="bar"><i style="width:${p.fatigue}%;background:${p.fatigue > 65 ? 'var(--red)' : '#f2b300'}"></i></div></div>
+      <div>人気<b>${Math.round(p.fame)}</b><div class="bar"><i style="width:${p.fame}%;background:var(--blue)"></i></div></div>
+      <div>${p.injury ? 'ケガ' : '貯金'}<b style="font-size:${p.injury ? '.95rem' : '.78rem'}">${p.injury ? `🚑 ${p.injury}週` : man(p.money)}</b></div>
+    </div>`;
+  $('radar').innerHTML = radarSVG(p);
+  const main = SL.mainStats(p.pos);
+  const order = Object.keys(SL.STATS).filter((k) => k !== 'gk' || p.pos === 'GK').sort((a, b) => main.includes(b) - main.includes(a));
+  $('statList').innerHTML = order.map((k) => `<li class="${main.includes(k) ? 'main' : ''}"><span>${SL.STATS[k]}</span><div class="bar"><i style="width:${p.stats[k]}%;background:${main.includes(k) ? 'var(--green)' : '#9fb3a3'}"></i></div><span class="v">${p.stats[k]}${lastGrowth[k] > 0 ? `<span class="up">+${lastGrowth[k]}</span>` : ''}</span></li>`).join('');
+  // シーズン
+  const se = S.season, rank = SL.rankOf(S, c.id), avgR = SL.avg(se.ratings);
+  $('seasonHead').innerHTML = `📅 ${S.year}年シーズン <span class="sub" style="margin-left:auto">第${Math.min(S.week + 1, SL.SEASON_WEEKS)}節 / ${SL.SEASON_WEEKS}</span>`;
+  const big = { FW: ['ゴール', se.goals], MF: ['アシスト', se.assists], DF: ['無失点', se.cs], GK: ['無失点', se.cs] }[p.pos];
+  $('seasonBox').innerHTML = `<div>順位<b>${rank}位</b></div><div>出場<b>${se.apps}</b></div><div>${big[0]}<b>${big[1]}</b></div><div>平均評価<b>${avgR ? avgR.toFixed(2) : '-'}</b></div>`;
+  $('progBar').style.width = (S.week / SL.SEASON_WEEKS * 100) + '%';
+  if (S.phase === 'season') {
+    const [h, a] = S.schedule[c.lg][S.week].find(([x, y]) => x === c.id || y === c.id);
+    const opp = S.clubs[h === c.id ? a : h];
+    $('nextMatch').innerHTML = `<span>次節・${h === c.id ? "ホーム" : "アウェイ"}</span><span class="vs">VS</span><span><span class="dot" style="background:${opp.color}"></span>${esc(opp.name)} <span class="sub">${SL.rankOf(S, opp.id)}位</span></span>`;
+  } else $('nextMatch').innerHTML = '<span>シーズン終了</span>';
+  // ライバル・子ども
+  const rv = S.rival, keeper = p.pos === 'GK' || p.pos === 'DF';
+  $('rivalRow').innerHTML = rv ? `<div class="rivalrow"><span class="ic">🔥</span><span>ライバル <b>${esc(rv.name)}</b><br><span class="sub">${rv.retired ? `${rv.retiredYear}年に引退` : `${esc(S.clubs[rv.club].name)}・総合力 ${rv.ovr}`}</span></span>
+    <span class="h2h">対戦 ${rv.h2h.w}勝${rv.h2h.d}分${rv.h2h.l}敗<br><span class="sub">${keeper ? `通算 ${rv.totals.apps}試合 / あなた ${S.totals.apps + se.apps}` : `通算 ${rv.totals.goals}G / あなた ${S.totals.goals + se.goals}G`}</span></span></div>` : '';
+  const kp = S.childPro, kb = p.kidsBorn[0];
+  $('kidRow').innerHTML = kp ? `<div class="rivalrow kid"><span class="ic">👨‍👧</span><span>子ども <b>${esc(kp.name)}</b>（${kp.age}歳・${kp.pos}）<br><span class="sub">${kp.club === p.club ? '同じチーム' : esc(S.clubs[kp.club].name)}・総合力 ${kp.ovr}</span></span><span class="h2h">共演 ${S.family.jointApps}試合<br><span class="sub">親子弾 ${S.family.combo}</span></span></div>`
+    : kb ? `<div class="rivalrow kid"><span class="ic">👶</span><span>子ども <b>${esc(kb.name)}</b>（${S.year - kb.year}歳）<br><span class="sub">16歳になる${kb.year + 16}年まで現役なら、同じチームに入団！</span></span></div>` : '';
+  // 練習
+  const T = SL.TRAINING;
+  $('trains').innerHTML = Object.entries(T).filter(([k, t]) => !t.gkOnly || p.pos === 'GK').map(([k, t]) => `<button class="tr${S.training === k ? ' on' : ''}${t.stats && t.stats.length === 1 && main.includes(t.stats[0]) ? ' main' : ''}" data-k="${k}"><i>${t.icon}</i>${t.name}</button>`).join('');
+  $('trains').querySelectorAll('.tr').forEach((b) => b.onclick = () => { S.training = b.dataset.k; save(); renderGame(); });
+  const t = T[S.training];
+  $('trDesc').textContent = p.injury ? '🚑 ケガの間は練習できません（リハビリ）' : t.desc || (t.stats ? `${SL.STATS[t.stats[0]]}が伸びる${p.fatigue > 65 ? '（疲れていて効率が落ちている…休養も考えよう）' : ''}` : '');
+  $('weekBtn').disabled = $('autoBtn').disabled = S.phase !== 'season';
+  renderTab();
+  show('scrGame');
+}
+
+function renderTab() {
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
+  const c = SL.clubOf(S);
+  if (tab === 'table') {
+    const tb = SL.standings(S, c.lg);
+    const zone = (i) => c.lg === 2 && i < 2 ? 'up' : c.lg === 1 && i >= tb.length - 2 ? 'dn' : '';
+    $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${c.lg === 1 ? '（下位2チームは2部へ降格）' : c.lg === 2 ? '（上位2チームが1部へ昇格）' : ''}</div>
+    <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>試</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
+    ${tb.map((x, i) => `<tr class="${x.c.id === c.id ? 'me' : ''} ${zone(i)}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${x.c.color}"></span>${esc(x.c.name)}</td><td>${x.t.w + x.t.d + x.t.l}</td><td>${x.t.w}</td><td>${x.t.d}</td><td>${x.t.l}</td><td>${x.t.gf - x.t.ga > 0 ? '+' : ''}${x.t.gf - x.t.ga}</td><td><b>${x.t.p}</b></td></tr>`).join('')}</table></div>`;
+  } else if (tab === 'career') {
+    $('tabBody').innerHTML = S.history.length ? careerTable(S.history) : '<p class="sub" style="text-align:center">1年目のシーズン中。ここに年度別成績がたまっていきます</p>';
+  } else {
+    const items = S.trophies.map((t) => `<li class="gold">🏆 ${esc(t)}</li>`).concat(S.awards.map((t) => `<li class="gold">🏅 ${esc(t)}</li>`));
+    const wc = S.wc.map((w) => `<li>🌏 ${w.year} W杯 ${w.reached}${w.goals ? `（${w.goals}点）` : ''}</li>`);
+    $('tabBody').innerHTML = `<div class="bigstat"><div>通算出場<b>${S.totals.apps}</b></div><div>通算G<b>${S.totals.goals}</b></div><div>通算A<b>${S.totals.assists}</b></div><div>代表<b>${S.caps}</b></div></div>
+      ${items.length + wc.length ? `<ul class="ach">${items.concat(wc).join('')}</ul>` : '<p class="sub" style="text-align:center">まだタイトルはありません。最初の栄冠を目指そう</p>'}
+      ${S.news.length ? `<p class="sub" style="margin:10px 0 0">${S.news.map(esc).join('　')}</p>` : ''}${scrapHTML()}`;
+  }
+}
+function careerTable(h) {
+  return `<table class="tb"><tr><th>年</th><th>歳</th><th style="text-align:left">クラブ</th><th>試</th><th>G</th><th>A</th><th>評価</th></tr>
+  ${h.map((r) => `<tr><td>${String(r.year).slice(2)}</td><td>${r.age}</td><td class="l"><span class="lg-${['欧州', '1部', '2部'].indexOf(r.lg)}" style="font-size:.66rem">${r.lg}</span> ${esc(r.club)}${r.awards.length ? ' 🏅'.repeat(Math.min(3, r.awards.length)) : ''}</td><td>${r.apps}</td><td>${r.goals}</td><td>${r.assists}</td><td>${r.rating ? r.rating.toFixed(2) : '-'}</td></tr>`).join('')}</table>`;
+}
+
+// ===== 1週間 =====
+function timelineSVG(m, us, them) {
+  const x = (min) => 14 + (min / 90) * 292;
+  let marks = '';
+  for (const e of m.events) {
+    if (e.side === 'save') { marks += `<text x="${x(e.min)}" y="25" text-anchor="middle" font-size="13">🧤</text>`; continue; }
+    const top = e.side === 'us';
+    const y = top ? 12 : 44;
+    const col = top ? us.color : them.color;
+    marks += `<circle cx="${x(e.min)}" cy="${y}" r="7" fill="${col}" stroke="${e.who ? 'var(--gold)' : 'var(--paper)'}" stroke-width="${e.who ? 3 : 2}"/>`;
+    if (e.who === 'goal' || e.who === 'assist') marks += `<text x="${x(e.min)}" y="${y + 3.5}" text-anchor="middle" font-size="9" font-weight="800" fill="${textOn(col)}">${e.who === 'goal' ? 'G' : 'A'}</text>`;
+  }
+  let on = '';
+  if (m.role === 'start') on = `<rect x="14" y="26" width="${x(m.mins) - 14}" height="4" rx="2" fill="var(--green)"/>`;
+  if (m.role === 'sub') on = `<rect x="${x(90 - m.mins)}" y="26" width="${306 - x(90 - m.mins)}" height="4" rx="2" fill="var(--green)"/>`;
+  return `<svg viewBox="0 0 320 58"><rect x="14" y="26" width="292" height="4" rx="2" fill="var(--line)"/>${on}
+    <line x1="${x(45)}" y1="20" x2="${x(45)}" y2="36" stroke="var(--sub)" stroke-width="1" stroke-dasharray="2 2"/>
+    <text x="14" y="56" font-size="8" fill="var(--sub)">0'</text><text x="${x(45)}" y="56" font-size="8" fill="var(--sub)" text-anchor="middle">HT</text><text x="306" y="56" font-size="8" fill="var(--sub)" text-anchor="end">90'</text>${marks}</svg>`;
+}
+
+function matchHTML(w) {
+  const m = w.match, me = SL.clubOf(S), opp = S.clubs[m.opp];
+  const H = m.home ? me : opp, A = m.home ? opp : me;
+  const res = m.gf > m.gc ? ['W', '勝利'] : m.gf < m.gc ? ['L', '敗戦'] : ['D', '引き分け'];
+  const roleTxt = { start: `先発出場（${m.mins}分）`, sub: `途中出場（${m.mins}分）`, bench: 'ベンチで出番なし', injured: 'ケガで欠場', out: '' }[m.role];
+  let line = '';
+  if (m.mins > 0) {
+    const bits = [];
+    if (m.goals) bits.push(`⚽ ${m.goals}ゴール`);
+    if (m.assists) bits.push(`👟 ${m.assists}アシスト`);
+    if (m.cs) bits.push('🧱 無失点');
+    if (m.motm) bits.push('⭐ マン・オブ・ザ・マッチ');
+    line = bits.join('　') || (m.rating >= 6.5 ? '堅実なプレーで貢献' : m.rating < 5.5 ? '見せ場を作れず…' : 'まずまずの出来');
+  } else line = m.role === 'bench' ? '監督の信頼をつかめなかった…練習で能力を上げよう' : 'リハビリに専念した';
+  const hl = m.events.map((e) => {
+    if (e.side === 'save') return `<li class="mine"><span class="m">${e.min}'</span><span>🧤 ${esc(e.how)}</span></li>`;
+    if (e.side === 'us' && e.kid) return `<li class="kid"><span class="m">${e.min}'</span><span>⚽ ${esc(me.city)}ゴール！ 子の<b>${esc(m.kid.name)}</b>が決めた${e.combo ? `（<b>${esc(S.p.name)}</b>のアシスト）👨‍👧 親子弾！` : ''}</span></li>`;
+    if (e.side === 'them' && e.rival) return `<li class="rival"><span class="m">${e.min}'</span><span>🔥 ライバル<b>${esc(m.rival.name)}</b>にゴールを決められる</span></li>`;
+    if (e.side === 'us') return `<li class="${e.who ? 'mine' : ''}"><span class="m">${e.min}'</span><span>⚽ ${esc(me.city)}ゴール${e.who === 'goal' ? `！ <b>${esc(S.p.name)}</b>の${esc(e.how)}` : e.who === 'assist' ? `！ <b>${esc(S.p.name)}</b>が${esc(e.how)}` : ''}</span></li>`;
+    return `<li><span class="m">${e.min}'</span><span style="color:var(--sub)">${esc(opp.city)}にゴールを許す</span></li>`;
+  }).join('');
+  const gr = Object.entries(w.growth).map(([k, v]) => `<span class="${v < 0 ? 'dn' : ''}">${SL.STATS[k]} ${v > 0 ? '+' : ''}${v}</span>`).join('');
+  return `<div class="kick">第${w.week}節・${m.home ? 'ホーム' : 'アウェイ'}</div>
+    <div class="score"><div class="tm"><div class="cr" style="background:${H.color};color:${textOn(H.color)}">${esc(H.city.slice(0, 2))}</div>${esc(H.name)}</div>
+      <div class="sc">${m.gh} - ${m.ga}</div>
+      <div class="tm"><div class="cr" style="background:${A.color};color:${textOn(A.color)}">${esc(A.city.slice(0, 2))}</div>${esc(A.name)}</div></div>
+    <div class="res"><span class="r${res[0]}">${res[1]}</span></div>
+    ${m.rival ? `<div class="banner">🔥 ライバル ${esc(m.rival.name)} との対決${m.rival.played ? (m.mins > 0 ? `：${res[0] === 'W' ? '勝った！' : res[0] === 'L' ? '負けた…' : '引き分け'}` : '（あなたは出番なし）') : '（ライバルは欠場）'}</div>` : ''}
+    ${m.kid ? `<div class="banner kid">👨‍👧 親子でピッチに立った！${m.combo ? ' 親子弾が決まった！！' : m.kid.goals ? ` ${esc(m.kid.name)}がゴール！` : ''}</div>` : ''}
+    <div class="timeline">${timelineSVG(m, me, opp)}</div>
+    <div class="me-row"><div class="rating" style="background:${m.rating ? ratingColor(m.rating) : '#b9c3bb'}">${m.rating ? m.rating.toFixed(1) : '-'}</div>
+      <div><div class="role">${roleTxt}</div><div class="t">${line}</div></div></div>
+    ${hl ? `<ul class="hl">${hl}</ul>` : '<p class="note sub">スコアレスドロー</p>'}
+    ${gr ? `<div class="grow">${gr}</div>` : ''}
+    ${w.notes.map((n) => `<p class="note">${esc(n)}</p>`).join('')}`;
+}
+
+async function doEvent(id) {
+  const e = SL.eventById(id);
+  const icon = { coach: '📣', letter: '💌', slump: '😣', senpai: '🍖', cm: '📺', sns: '📱', legend: '👴', date: '💐', marry: '💍', baby: '👶', tweak: '🤕', jersey: '👕', grow: '📈' }[id] || '❗';
+  if (e.choices) {
+    const ci = await sheet(`<div class="ev"><div class="ic">${icon}</div><p>${esc(e.text)}</p></div>`, e.choices.map((c, i) => ({ label: c.label, cls: i === 0 ? 'primary' : '' })));
+    const r = SL.resolveEvent(S, id, ci); save();
+    await sheet(`<div class="ev"><div class="ic">${icon}</div><p>${esc(e.choices[ci].label)}</p><div class="rs">${esc(r)}</div></div>`, [{ label: 'OK', cls: 'primary' }]);
+  } else {
+    const r = SL.resolveEvent(S, id, 0); save();
+    await sheet(`<div class="ev"><div class="ic">${icon}</div><p>${esc(e.text)}</p><div class="rs">${esc(r)}</div></div>`, [{ label: 'OK', cls: 'primary' }]);
+  }
+}
+
+function sumGrowth(ws) {
+  const g = {};
+  for (const w of ws) for (const [k, v] of Object.entries(w.growth)) g[k] = (g[k] || 0) + v;
+  return g;
+}
+
+async function nextWeek() {
+  if (busy || S.phase !== 'season') return; busy = true;
+  try {
+    const w = SL.playWeek(S); save();
+    lastGrowth = w.growth;
+    await sheet(matchHTML(w), [{ label: '次へ', cls: 'primary' }]);
+    if (w.event) await doEvent(w.event);
+    await showNewPapers();
+    renderGame();
+    if (S.phase === 'seasonEnd') await offseason();
+  } finally { busy = false; }
+}
+
+function digestHTML(ws) {
+  const me = SL.clubOf(S);
+  let W = 0, D = 0, L = 0, g = 0, a = 0, cs = 0; const rs = [];
+  for (const w of ws) { const m = w.match; if (m.gf > m.gc) W++; else if (m.gf < m.gc) L++; else D++; g += m.goals; a += m.assists; if (m.cs) cs++; if (m.rating) rs.push(m.rating); }
+  const best = ws.filter((w) => w.match.rating).sort((x, y) => y.match.rating - x.match.rating)[0];
+  const gr = Object.entries(sumGrowth(ws)).map(([k, v]) => `<span class="${v < 0 ? 'dn' : ''}">${SL.STATS[k]} ${v > 0 ? '+' : ''}${v}</span>`).join('');
+  const notes = ws.flatMap((w) => w.notes.concat(w.evText ? [`${w.evText} → ${w.evResult}`] : []));
+  const rows = ws.map((w) => { const m = w.match, o = S.clubs[m.opp]; const r = m.gf > m.gc ? 'W' : m.gf < m.gc ? 'L' : 'D';
+    return `<tr><td>${w.week}</td><td class="l"><span class="dot" style="background:${o.color}"></span>${esc(o.city)}</td><td><span class="res"><span class="r${r}" style="padding:0 7px;font-size:.7rem">${m.gf}-${m.gc}</span></span></td><td>${m.rating ? m.rating.toFixed(1) : '-'}</td><td>${m.goals ? '⚽'.repeat(Math.min(m.goals, 4)) : ''}${m.assists ? '👟'.repeat(Math.min(m.assists, 3)) : ''}${m.cs ? '🧱' : ''}</td></tr>`; }).join('');
+  return `<div class="kick">第${ws[0].week}節〜第${ws.at(-1).week}節</div><h3>ダイジェスト</h3>
+    <div class="bigstat"><div>戦績<b style="font-size:1rem">${W}勝${D}分${L}敗</b></div><div>ゴール<b>${g}</b></div><div>アシスト<b>${a}</b></div><div>平均評価<b>${SL.avg(rs) ? SL.avg(rs).toFixed(2) : '-'}</b></div></div>
+    ${best ? `<p class="note">⭐ ベストゲーム：第${best.week}節 vs ${esc(S.clubs[best.match.opp].city)}（評価 ${best.match.rating.toFixed(1)}）</p>` : ''}
+    <div class="tbwrap"><table class="tb"><tr><th>節</th><th style="text-align:left">相手</th><th>結果</th><th>評価</th><th></th></tr>${rows}</table></div>
+    ${gr ? `<div class="grow">${gr}</div>` : ''}
+    ${notes.map((n) => `<p class="note">${esc(n)}</p>`).join('')}
+    <p class="note sub">現在 ${SL.rankOf(S, me.id)}位</p>`;
+}
+
+async function autoSeason() {
+  if (busy || S.phase !== 'season') return; busy = true;
+  try {
+    let acc = [];
+    while (S.phase === 'season') {
+      const w = SL.playWeek(S); acc.push(w);
+      if (w.event) {
+        const e = SL.eventById(w.event);
+        if (!e.choices) { w.evText = e.text; w.evResult = SL.resolveEvent(S, w.event, 0); }
+        else { save(); await sheet(digestHTML(acc), [{ label: '次へ', cls: 'primary' }]); acc = []; await doEvent(w.event); }
+      }
+    }
+    lastGrowth = sumGrowth(acc);
+    save();
+    if (acc.length) await sheet(digestHTML(acc), [{ label: 'シーズン終了へ', cls: 'primary' }]);
+    await showNewPapers();
+    renderGame();
+    await offseason();
+  } finally { busy = false; }
+}
+
+// ===== オフシーズン =====
+async function offseason() {
+  // 計算はまとめて先にやって保存（途中で閉じても二重に計算しない）
+  if (S.phase === 'seasonEnd') {
+    const review = SL.endSeason(S);
+    const nat = SL.nationalYear(S);
+    const notes = SL.ageUp(S);
+    const off = SL.offers(S);
+    S.off = { review, nat, notes, off, step: 0 };
+    save();
+  }
+  const O = S.off;
+  if (O.step === 0) { await sheet(reviewHTML(O.review), [{ label: '次へ', cls: 'primary' }]); O.step = 1; save(); }
+  if (O.step === 1) { if (O.nat.called) await natSheets(O.nat); O.step = 2; save(); }
+  await showNewPapers();
+  await contractStep();
+}
+
+function reviewHTML(r) {
+  const me = SL.clubOf(S, r.row.clubId);
+  const st = r.awards.map((a, i) => `<span class="stamp" style="animation-delay:${.2 + i * .25}s">${esc(a)}</span>`).join('');
+  const top = r.table.slice(0, 3).map((t, i) => `${['🥇', '🥈', '🥉'][i]} ${esc(t.name)}`).join('<br>');
+  const big = { FW: ['ゴール', r.row.goals], MF: ['アシスト', r.row.assists], DF: ['無失点', r.row.cs], GK: ['無失点', r.row.cs] }[S.p.pos];
+  return `<div class="kick">${r.row.year}年シーズン終了</div><h3>${esc(me.name)} は <span style="color:var(--green)">${r.row.rank}位</span></h3>
+    <div class="bigstat"><div>出場<b>${r.row.apps}</b></div><div>${big[0]}<b>${big[1]}</b></div><div>${S.p.pos === 'FW' ? 'アシスト' : 'ゴール'}<b>${S.p.pos === 'FW' ? r.row.assists : r.row.goals}</b></div><div>平均評価<b>${r.row.rating ? r.row.rating.toFixed(2) : '-'}</b></div></div>
+    <div style="text-align:center;margin:8px 0">${st || '<p class="sub">今季はタイトルなし。来季こそ！</p>'}</div>
+    <p class="note sub" style="font-weight:700">得点王争い：リーグ最多 ${r.npcG}点（あなた ${r.row.goals}点）</p>
+    <div class="card" style="box-shadow:none;background:var(--chip);margin-top:10px;font-size:.84rem;font-weight:700">${top}</div>
+    ${r.rival ? `<div class="rivalrow"><span class="ic">🔥</span><span>ライバル <b>${esc(S.rival.name)}</b><br><span class="sub">${esc(r.rival.club)}・${r.rival.apps}試合 ${r.rival.goals}G ${r.rival.assists}A</span></span><span class="h2h">${r.rival.awards.length ? r.rival.awards.map(esc).join('<br>') : ''}</span></div>` : ''}
+    ${r.moves.length ? `<p class="note sub">${r.moves.map(esc).join('<br>')}</p>` : ''}
+    <p class="note">💰 年俸 ${man(r.row.salary)} を受け取った</p>`;
+}
+
+async function natSheets(nat) {
+  await sheet(`<div class="ev"><div class="ic">🇯🇵</div><p>日本代表に選ばれた！</p><div class="rs">今年の代表戦 ${nat.caps}試合${nat.goals ? `・${nat.goals}ゴール` : ''}</div><p class="sub">通算 ${S.caps}キャップ${nat.rivalCalled ? `<br>🔥 ライバルの${esc(S.rival.name)}も選ばれた。今度は仲間だ` : ''}</p></div>`, [{ label: nat.wc ? 'ワールドカップへ ✈️' : '次へ', cls: 'primary' }]);
+  if (!nat.wc) return;
+  const w = nat.wc;
+  const rows = w.matches.map((m) => { const win = m.a > m.b || (m.a === m.b && m.pk === true); const lose = m.a < m.b || (m.a === m.b && m.pk === false);
+    return `<li><span class="sub" style="font-size:.74rem">${m.stage}</span><span>vs ${m.foe}${m.goals ? ` <span style="color:var(--green);font-weight:800">⚽×${m.goals}</span>` : ''}</span><b style="color:${win ? 'var(--green)' : lose ? 'var(--red)' : 'var(--sub)'}">${m.a}-${m.b}${m.pk != null ? (m.pk ? ' PK勝' : ' PK負') : ''}</b></li>`; }).join('');
+  await sheet(`<div class="kick">${S.year - 1}年 ワールドカップ</div><h3>日本代表は <span style="color:${w.reached === '優勝' ? 'var(--gold)' : 'var(--green)'}">${w.reached}</span>${w.reached === '優勝' ? '！！！' : ''}</h3>
+    <p class="note sub">${w.starter ? '先発メンバーとして出場' : '控えメンバーとして帯同'}${w.goals ? `・大会${w.goals}ゴール` : ''}</p>
+    <ul class="wc">${rows}</ul>${w.reached === '優勝' ? '<div style="text-align:center;margin-top:10px"><span class="stamp">🏆 世界一</span></div>' : ''}`, [{ label: '次へ', cls: 'primary' }]);
+}
+
+async function contractStep() {
+  const O = S.off, off = O.off, p = S.p, c = SL.clubOf(S);
+  const forced = SL.mustRetire(S, off);
+  const opts = [];
+  if (off.contract) opts.push({ ...off.contract, stay: true });
+  off.transfers.forEach((t) => opts.push(t));
+  opts.forEach((o, i) => o._i = i);
+  let head = `<div class="kick">${S.year - 1}年オフ・${p.age}歳に</div>`;
+  let msg = '';
+  if (forced && p.age >= 40) msg = '40歳。体が限界を迎えた…ユニフォームを脱ぐときが来た。';
+  else if (forced) msg = `${esc(c.name)} から戦力外通告…どのクラブからも声がかからなかった。`;
+  else if (off.released) msg = `${esc(c.name)} から戦力外通告を受けた…${opts.length ? '他のクラブから声がかかっている！' : ''}`;
+  else if (off.expiring) msg = `${esc(c.name)} との契約が切れた。`;
+  else msg = `${esc(c.name)} との契約はあと${p.contract}年。${opts.length ? '他のクラブからオファーが届いた！' : ''}`;
+  const notes = O.notes.map((n) => `<p class="note sub">${esc(n)}</p>`).join('');
+  const cards = opts.map((o) => offerCard(o, o.stay ? '<span class="badge stay">残留</span>' : S.clubs[o.club].lg === 0 ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('');
+  const btns = [];
+  if (!forced && !off.expiring && !off.released) btns.push({ label: `${esc(c.city)}に残る（契約あと${p.contract}年）`, cls: 'primary', act: 'keep' });
+  if (forced || SL.canRetire(S)) btns.push({ label: forced ? '引退セレモニーへ' : '👋 引退する', cls: forced ? 'primary' : 'ghost', act: 'retire' });
+  if (!forced && !btns.length && !opts.length) btns.push({ label: '引退セレモニーへ', cls: 'primary', act: 'retire' });
+  const ans = await sheet(`${head}<h3>契約とオファー</h3><p class="note">${msg}</p>${notes}
+    ${forced ? '' : `<div class="stack" style="margin-top:12px">${cards}</div>`}
+    ${!forced && opts.length ? '<p class="sub" style="text-align:center;margin:8px 0 0">タップで契約する</p>' : ''}`, btns);
+  if (typeof ans === 'string') {
+    const o = opts[+ans.slice(1)];
+    SL.accept(S, o); save();
+    await showNewPapers();
+  } else {
+    const act = btns[ans].act;
+    if (act === 'retire') {
+      if (!forced) {
+        const ok = await sheet(`<div class="ev"><div class="ic">👋</div><p>本当に引退しますか？</p><p class="sub">最後に引退試合があります</p></div>`, [{ label: '引退する', cls: 'primary' }, { label: 'やっぱり続ける', cls: 'ghost' }]);
+        if (ok !== 0) return contractStep();
+      }
+      return doRetire();
+    }
+  }
+  delete S.off;
+  SL.startSeason(S); lastGrowth = {}; save(); renderGame();
+  toast(`${S.year}年シーズン開幕！`);
+}
+
+// ===== 引退 =====
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+async function doRetire() {
+  delete S.off;
+  if (!S.lastMatch) {
+    S.phase = 'retiring'; save();
+    if (S.mode === 'quick') SL.autoLastMatch(S); else await lastMatchFlow();
+  }
+  SL.retire(S); S.papers.forEach((x) => { x.seen = true; }); save();
+  renderEnd();
+  // ランキングに送る（1回だけ）
+  const sm = S.summary;
+  if (!sm.sent) {
+    const r = await api('/score', 'POST', { game: boardGame(sm.mode), ms: sm.score });
+    sm.sent = true; sm.rankInfo = r && !r.error ? r : null; save();
+  }
+  renderRank();
+}
+
+// ----- 引退試合：見せ場を選んで、タイミングよくタップ -----
+async function lastMatchFlow() {
+  const info = SL.lastMatchInfo(S);
+  const ans = await sheet(`<div class="kick">現役最後の試合</div><h3>引退試合</h3>
+    <p class="note">相手は${esc(info.vs)}。<br>満員のスタジアム。最後の見せ場を選ぼう</p>
+    <div class="stack" style="margin-top:12px">${info.scenes.map((sc) => `<button class="scene offer" data-i="${sc.i}">${esc(sc.name)}<span>${sc.stat} ${sc.val}</span></button>`).join('')}</div>`, []);
+  const sc = info.scenes[+String(ans).slice(1)];
+  const hit = await timingGame(sc);
+  const r = SL.playLastMatch(S, sc.i, hit); save();
+  await sheet(`<div class="finale"><div class="ic">${hit ? '🎉' : '👏'}</div><p>${esc(r.text)}</p><p class="sub" style="margin-top:8px">${hit ? 'スタジアムが涙に包まれた' : '最後まで、あなたらしいプレーだった'}</p></div>`, [{ label: '引退セレモニーへ', cls: 'primary' }]);
+}
+function timingGame(sc) {
+  return new Promise((resolve) => {
+    const bg = document.createElement('div'); bg.className = 'ov-bg';
+    const zw = sc.zone * 100, zx = 12 + Math.random() * (76 - zw);
+    bg.innerHTML = `<div class="sheet"><div class="kick">${esc(sc.name)}</div><h3>緑のゾーンでタップ！</h3>
+      <div class="meter"><div class="zone" style="left:${zx}%;width:${zw}%"></div><div class="needle"></div></div>
+      <button class="btn primary bigtap">今だ！</button><p class="note sub">${sc.stat}が高いほどゾーンが広い</p></div>`;
+    document.body.appendChild(bg);
+    const nd = bg.querySelector('.needle'); const t0 = performance.now(); let raf = 0, done = false;
+    const pos = (t) => { const ph = ((t - t0) / 1000 * 1.15) % 2; return ph < 1 ? ph : 2 - ph; };
+    const loop = (t) => { nd.style.left = (pos(t) * 100) + '%'; raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+    const fire = () => {
+      if (done) return; done = true; cancelAnimationFrame(raf);
+      const x = pos(performance.now()) * 100, hit = x >= zx && x <= zx + zw;
+      nd.style.left = x + '%'; nd.style.background = hit ? 'var(--gold)' : 'var(--red)';
+      setTimeout(() => { bg.remove(); resolve(hit); }, 750);
+    };
+    bg.querySelector('.bigtap').onclick = fire; bg.querySelector('.meter').onclick = fire;
+  });
+}
+
+function renderEnd() {
+  const sm = S.summary;
+  const lm = sm.lastMatch;
+  $('ceremony').innerHTML = `<div class="k">${sm.gen > 1 ? `${sm.gen}代目・` : ''}${sm.retireAge}歳で現役引退${sm.mode === 'quick' ? '・60秒モード' : ''}</div>
+    <div style="width:110px;height:110px;margin:12px auto 0;border-radius:28px;overflow:hidden">${avatar(SL.clubOf(S).color, S.p.number, sm.retireAge, sm.pos)}</div>
+    <div style="font-weight:800;margin-top:8px">${esc(sm.name)}</div>
+    <div class="tt">${esc(sm.title)}</div><div class="dd">${esc(sm.titleDesc)}</div>
+    <div class="rank"><span>生涯ランク</span><b>${sm.letter}</b><span class="num">${sm.score.toLocaleString()}pt</span></div>
+    ${lm ? `<p class="sub" style="margin:10px 0 0;font-weight:700">${lm.hit ? '🎉' : '👏'} 引退試合：${esc(lm.scene)}の場面で、${esc(lm.text)}</p>` : ''}`;
+  $('endStats').innerHTML = `<div>シーズン<b>${sm.years}</b></div><div>出場<b>${sm.apps}</b></div><div>ゴール<b>${sm.goals}</b></div><div>アシスト<b>${sm.assists}</b></div>
+    <div>${sm.pos === 'GK' || sm.pos === 'DF' ? '無失点' : '平均評価'}<b>${sm.pos === 'GK' || sm.pos === 'DF' ? sm.cs : sm.avg.toFixed(2)}</b></div><div>代表<b>${sm.caps}</b></div><div>代表G<b>${sm.natGoals}</b></div><div>生涯年俸<b style="font-size:.85rem">${man(sm.earned)}</b></div>`;
+  const rv = sm.rival;
+  const items = sm.trophies.map((t) => `<li class="gold">🏆 ${esc(t)}</li>`).concat(sm.awards.map((t) => `<li class="gold">🏅 ${esc(t)}</li>`), sm.wc.map((w) => `<li>🌏 ${w.year} W杯 ${w.reached}</li>`), [`<li>👕 ${sm.clubs.map(esc).join(' → ')}</li>`],
+    rv ? [`<li>🔥 ライバル${esc(rv.name)}：対戦${rv.h2h.w}勝${rv.h2h.d}分${rv.h2h.l}敗（ライバル通算${rv.goals}G）</li>`] : [],
+    sm.family.jointApps ? [`<li>👨‍👧 子の${esc(sm.child?.name || '')}と共演${sm.family.jointApps}試合・親子弾${sm.family.combo}</li>`] : []);
+  $('endAch').innerHTML = items.join('');
+  $('endCareer').innerHTML = careerTable(S.history);
+  const lin = S.lineage.concat([lineEntry(sm)]);
+  $('endTreeHead').innerHTML = treeHead(sm.gen);
+  $('endTree').innerHTML = treeHTML(lin, null);
+  $('nextGenBtn').textContent = sm.child ? `👨‍👧 ${sm.child.name}の物語へ（${S.gen + 1}代目）` : sm.kids ? `👶 子どもに夢を託す（${S.gen + 1}代目）` : `👶 次の世代へ（あなたに憧れた子が${S.gen + 1}代目に）`;
+  $('nameBox').classList.add('hidden');
+  show('scrEnd');
+}
+function renderRank() {
+  const sm = S.summary, r = sm.rankInfo;
+  if (!r) { $('rankMsg').textContent = 'ランキングに接続できませんでした'; loadBoard($('boardEnd'), null, sm.mode); return; }
+  $('rankMsg').innerHTML = `${sm.mode === 'quick' ? '60秒モード ' : ''}全国 <b class="num" style="font-size:1.4rem;color:var(--green)">${r.rank}</b> 位 <span class="sub">/ ${r.total.toLocaleString()}人中</span>`;
+  if (r.top10 && !sm.named) { $('nameBox').classList.remove('hidden'); $('rankName').value = sm.name; }
+  loadBoard($('boardEnd'), r.rank, sm.mode);
+}
+async function submitName() {
+  const sm = S.summary, r = sm.rankInfo; if (!r) return;
+  $('rankNameBtn').disabled = true;
+  const j = await api('/name', 'POST', { game: boardGame(sm.mode), id: r.id, token: r.token, name: $('rankName').value });
+  $('rankNameBtn').disabled = false;
+  if (j && j.ok) { sm.named = true; save(); $('nameBox').classList.add('hidden'); loadBoard($('boardEnd'), j.rank, sm.mode); toast('登録しました！'); return; }
+  const why = j && j.error;
+  $('rankNameMsg').textContent = why === 'bad_name' ? 'その名前は使えません' : why === 'not_top' ? 'トップ10から外れてしまいました…' : why === 'already' ? '登録済みです' : '登録できませんでした';
+}
+
+function share() {
+  const sm = S.summary;
+  const posName = SL.POS[sm.pos].name;
+  const big = sm.pos === 'GK' || sm.pos === 'DF' ? `無失点${sm.cs}試合` : `${sm.goals}ゴール${sm.assists}アシスト`;
+  const extra = [sm.wc.some((w) => w.reached === '優勝') ? 'W杯優勝🏆' : '', sm.family.combo ? '親子弾👨‍👧' : '', sm.lastMatch?.hit ? '引退試合で有終の美🎉' : ''].filter(Boolean).join('｜');
+  const text = `⚽ サッカー人生を終えました${sm.mode === 'quick' ? '（60秒モード）' : ''}\n${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${posName}）${sm.retireAge}歳で引退\n称号「${sm.title}」ランク${sm.letter}\n${sm.years}年・${sm.apps}試合・${big}｜代表${sm.caps}試合${extra ? `\n${extra}` : ''}${sm.rankInfo ? `\n全国${sm.rankInfo.rank}位` : ''}\n\nあなたはどんな選手人生を送る？`;
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', text);
+  u.searchParams.set('url', location.origin + location.pathname);
+  u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+
+// ===== 新聞（号外） =====
+const PAPER_NAME = '蹴球日報';
+const PAPER_ORDER = ['wc', 'world', 'combo', 'family', 'europe', 'title', 'scorer', 'mvp', 'hat', 'retire'];
+async function showNewPapers() {
+  const fresh = S.papers.filter((x) => !x.seen);
+  if (!fresh.length) return;
+  fresh.forEach((x) => { x.seen = true; }); save();
+  if (S.mode === 'quick') return;
+  const pp = fresh.slice().sort((a, b) => PAPER_ORDER.indexOf(a.kind) - PAPER_ORDER.indexOf(b.kind))[0];
+  await paperSheet(pp, fresh.length > 1 ? `ほか${fresh.length - 1}件の記事は「実績」タブの新聞スクラップに` : '');
+}
+async function paperSheet(pp, note = '') {
+  const c = await paperCanvas(pp);
+  const i = await sheet(`<div class="kick">📰 号外！</div><img class="paperimg" src="${c.toDataURL('image/jpeg', .88)}" alt="${esc(pp.head)}">${note ? `<p class="note sub">${esc(note)}</p>` : ''}`,
+    [{ label: '📸 保存・シェア', cls: 'gold' }, { label: '閉じる', cls: 'primary' }]);
+  if (i === 0) await shareCanvas(c, 'soccer-life-news.png');
+}
+function svgImage(svg) {
+  return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')); });
+}
+function wrapLines(g, text, maxW) {
+  const lines = []; let cur = '';
+  for (const ch of text) { if (g.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; } else cur += ch; }
+  if (cur) lines.push(cur);
+  return lines;
+}
+function fitFont(g, text, maxW, size, family, weight = '') {
+  let fs = size; g.font = `${weight} ${fs}px ${family}`;
+  while (g.measureText(text).width > maxW && fs > 30) { fs -= 6; g.font = `${weight} ${fs}px ${family}`; }
+  return fs;
+}
+async function paperCanvas(pp) {
+  const G = '"Dela Gothic One", sans-serif', M = '"M PLUS Rounded 1c", sans-serif';
+  // 日本語フォントは文字ごとに分割配信されるので、使う文字を渡して読み込む
+  const txt = PAPER_NAME + pp.head + pp.sub + pp.lead + '号外年（本紙記者）▲サッカー人生0123456789' + S.p.name;
+  await Promise.all([document.fonts.load(`60px ${G}`, txt), document.fonts.load(`700 40px ${M}`, txt), document.fonts.load(`800 40px ${M}`, txt)]);
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f3eee2'; g.fillRect(0, 0, W, H);
+  // 題字
+  g.fillStyle = '#d7261e'; g.fillRect(0, 0, W, 150);
+  g.fillStyle = '#fff'; g.font = `86px ${G}`; g.textAlign = 'left'; g.fillText(PAPER_NAME, 50, 110);
+  g.textAlign = 'right'; g.font = `800 34px ${M}`; g.fillText(`${pp.y}年`, W - 50, 66); g.font = `800 44px ${M}`; g.fillText('号外', W - 50, 120);
+  // 大見出し
+  g.fillStyle = '#111'; g.fillRect(40, 180, W - 80, 300);
+  g.fillStyle = '#ffe100'; g.textAlign = 'center';
+  const fs = fitFont(g, pp.head, W - 140, 210, G);
+  g.fillText(pp.head, W / 2, 330 + fs * .36);
+  // 小見出し
+  g.fillStyle = '#d7261e'; fitFont(g, pp.sub, W - 100, 70, G); g.fillText(pp.sub, W / 2, 590);
+  g.fillStyle = '#111'; g.fillRect(40, 625, W - 80, 4);
+  // 写真
+  const club = SL.clubOf(S);
+  const img = await svgImage(avatar(club.color, S.p.number, pp.age, S.p.pos));
+  const px = W - 470, py = 660, ps = 420;
+  g.fillStyle = '#222'; g.fillRect(px - 6, py - 6, ps + 12, ps + 12);
+  if (img) g.drawImage(img, px, py, ps, ps);
+  g.fillStyle = '#333'; g.font = `700 26px ${M}`; g.textAlign = 'center'; g.fillText(`▲${S.p.name}（${pp.age}）`, px + ps / 2, py + ps + 44);
+  // 本文
+  g.textAlign = 'left'; g.fillStyle = '#222'; g.font = `700 34px ${M}`;
+  const lines = wrapLines(g, `${pp.lead}（本紙記者）`, 470);
+  lines.slice(0, 10).forEach((l, i) => g.fillText(l, 50, 690 + i * 52));
+  // 本文っぽい罫
+  g.fillStyle = 'rgba(0,0,0,.13)';
+  for (let col = 0; col < 3; col++) for (let r = 0; r < 4; r++) g.fillRect(50 + col * 335, 1170 + r * 30, 300 - ((r * 37 + col * 53) % 90), 12);
+  g.fillStyle = '#d7261e'; g.fillRect(0, H - 70, W, 70);
+  g.fillStyle = '#fff'; g.font = `800 28px ${M}`; g.textAlign = 'center'; g.fillText(`サッカー人生 ｜ ${SITE}`, W / 2, H - 25);
+  return c;
+}
+async function shareCanvas(c, name) {
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const file = new File([blob], name, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function scrapHTML() {
+  if (!S.papers.length) return '';
+  return `<h2 style="margin-top:14px">📰 新聞スクラップ</h2><ul class="scrap">${S.papers.map((pp, i) => `<li><button data-paper="${i}"><span>${pp.y}年・${PAPER_NAME}</span>${esc(pp.head)}</button></li>`).reverse().join('')}</ul>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-paper]'); if (!b || !S) return;
+  paperSheet(S.papers[+b.dataset.paper]);
+});
+
+// ===== 選手名鑑（架空の百科事典「サカペディア」） =====
+function stints(h) {
+  const out = [];
+  for (const r of h) {
+    const last = out.at(-1);
+    if (last && last.club === r.club) { last.y2 = r.year; last.apps += r.apps; last.goals += r.goals; last.assists += r.assists; last.cs += r.cs; last.awards.push(...r.awards); last.lgs.add(r.lg); }
+    else out.push({ club: r.club, y1: r.year, y2: r.year, age: r.age, apps: r.apps, goals: r.goals, assists: r.assists, cs: r.cs, awards: r.awards.slice(), lgs: new Set([r.lg]), number: r.number });
+  }
+  return out;
+}
+function wikiHTML() {
+  const sm = S.summary, h = S.history, P = SL.POS[sm.pos];
+  const born = h[0].year - h[0].age;
+  const st = stints(h);
+  const parent = S.parent || (S.lineage.length ? { name: S.lineage.at(-1).name, title: S.lineage.at(-1).title } : null);
+  const keeper = sm.pos === 'GK' || sm.pos === 'DF';
+  const logs = (kinds, y1 = 0, y2 = 9999) => [...new Set(S.log.filter((l) => kinds.includes(l.k) && l.y >= y1 && l.y <= y2).map((l) => l.t))].map(esc).join('');
+  const lead = `<p><b>${esc(sm.name)}</b>（${born}年 - ）は、日本の元プロサッカー選手。ポジションは${P.name}。${parent ? `元プロサッカー選手・<span class="lk">${esc(parent.name)}</span>の子。` : ''}
+    ${st.slice(0, 3).map((x) => `<span class="lk">${esc(x.club)}</span>`).join('、')}${st.length > 3 ? 'など' : ''}でプレーし、「${esc(sm.title)}」と呼ばれた。${sm.wc.some((w) => w.reached === '優勝') ? 'ワールドカップ優勝メンバー。' : ''}</p>`;
+  const career = st.map((x, i) => {
+    const yrs = x.y1 === x.y2 ? `${x.y1}年` : `${x.y1}年 - ${x.y2}年`;
+    const intro = i === 0 ? `${x.y1}年、${x.age}歳で入団。` : `${x.y1}年、移籍により加入。`;
+    const rec = `在籍${x.y2 - x.y1 + 1}シーズンで公式戦${x.apps}試合に出場し、${x.goals}得点${x.assists}アシスト${keeper ? `、無失点試合${x.cs}` : ''}を記録した。`;
+    const aw = x.awards.length ? `在籍中には${[...new Set(x.awards)].join('、')}を経験している。` : '';
+    return `<h3>${esc(x.club)}（${yrs}）</h3><p>${intro}${rec}${aw}${logs(['debut', 'firstgoal', 'hat', 'injury', 'europe', 'family'], x.y1, i === st.length - 1 ? x.y2 + 1 : x.y2)}</p>`;
+  }).join('');
+  const nat = sm.caps ? `<h2>日本代表</h2><p>${logs(['nat'])}国際Aマッチ通算${sm.caps}試合出場${sm.natGoals}得点。${logs(['wc'])}</p>` : '';
+  const retire = `<h2>引退</h2><p>${sm.endYear + 1}年、${sm.retireAge}歳で現役引退を発表。${sm.lastMatch ? `引退試合では${esc(sm.lastMatch.vs)}と対戦し、${esc(sm.lastMatch.scene)}の場面で${esc(sm.lastMatch.text)}。` : ''}</p>`;
+  const rv = sm.rival;
+  const rivalP = rv ? `<h3>ライバル</h3><p>同期で同じポジションの<span class="lk">${esc(rv.name)}</span>とは、デビュー当時から比較され続けた。直接対決の成績は${rv.h2h.w}勝${rv.h2h.d}分${rv.h2h.l}敗。${esc(rv.name)}は通算${rv.apps}試合${rv.goals}得点${rv.retired ? 'で引退している' : ''}。${logs(['rival']).replace(/^[^。]*「同世代最高の才能」と呼ばれた。/, '')}</p>` : '';
+  const kidsP = sm.kidNames.length ? `子どもは${sm.kidNames.map(esc).join('、')}。` : '';
+  const person = `<h2>人物</h2><p>${logs(['marry', 'baby'])}${kidsP}${logs(['cm', 'sns'])}${sm.earned ? `現役時代の年俸総額は推定${man(sm.earned)}。` : ''}</p>${rivalP}`;
+  const titles = sm.trophies.length + sm.awards.length ? `<h2>タイトル</h2>${sm.trophies.length ? `<h3>チーム</h3><ul>${sm.trophies.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}${sm.awards.length ? `<h3>個人</h3><ul>${sm.awards.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}` : '';
+  const table = `<h2>個人成績</h2><table class="st"><tr><th>年</th><th>クラブ</th><th>リーグ</th><th>背番号</th><th>試合</th><th>得点</th><th>${keeper ? '無失点' : 'アシスト'}</th></tr>
+    ${h.map((r) => `<tr><td>${r.year}</td><td>${esc(r.club)}</td><td>${r.lg}</td><td>${r.number}</td><td>${r.apps}</td><td>${r.goals}</td><td>${keeper ? r.cs : r.assists}</td></tr>`).join('')}
+    <tr><th colspan="4">通算</th><th>${sm.apps}</th><th>${sm.goals}</th><th>${keeper ? sm.cs : sm.assists}</th></tr></table>`;
+  const family = S.lineage.length || sm.child ? `<h2>家族</h2><p>${S.lineage.map((l) => `${l.gen}代目・<span class="lk">${esc(l.name)}</span>（${esc(l.title)}）`).join(' → ')}${S.lineage.length ? ` → ${sm.gen}代目・${esc(sm.name)}` : ''}${sm.child ? `。子の<span class="lk">${esc(sm.child.name)}</span>も${esc(sm.child.club)}でプロ選手となった` : ''}。${SL.familyTitle(sm.gen) ? `一族は「${SL.familyTitle(sm.gen)}」として知られる。` : ''}</p>` : '';
+  const ib = `<div class="ib"><div class="ibh">${esc(sm.name)}</div><div class="ibav">${avatar(SL.clubOf(S).color, S.p.number, sm.retireAge, sm.pos)}</div>
+    <table><tr><td colspan="2" class="sec">基本情報</td></tr><tr><th>生年</th><td>${born}年</td></tr><tr><th>ポジション</th><td>${P.name}</td></tr><tr><th>背番号</th><td>${[...new Set(h.map((r) => r.number))].join(' → ')}</td></tr>
+    <tr><td colspan="2" class="sec">クラブ</td></tr>${st.map((x) => `<tr><th>${x.y1}${x.y2 !== x.y1 ? `-${String(x.y2).slice(2)}` : ''}</th><td>${esc(x.club)}（${x.apps}/${x.goals}）</td></tr>`).join('')}
+    ${sm.caps ? `<tr><td colspan="2" class="sec">代表歴</td></tr><tr><th>日本</th><td>${sm.caps}試合 ${sm.natGoals}得点</td></tr>` : ''}
+    <tr><td colspan="2" class="note">（試合数/得点）</td></tr></table></div>`;
+  return `<div class="wiki"><div class="wtop"><span>サカペディア</span><b>架空のサッカー百科事典</b></div><h1>${esc(sm.name)}</h1><div class="from">出典: サカペディア ― ゲーム「サッカー人生」の架空の選手</div>
+    ${ib}${lead}<h2>来歴</h2>${parent ? `<h3>生い立ち</h3><p>${born}年、元プロサッカー選手<span class="lk">${esc(parent.name)}</span>（「${esc(parent.title)}」）の子として生まれる。${parent.combo ? '親が現役のうちにプロ入りし、親子で同じピッチに立った。' : ''}</p>` : ''}
+    ${career}${nat}${retire}${person}${family}${titles}${table}
+    <p class="note" style="margin-top:12px">この記事はゲーム内の架空の人物についての記述です。</p></div>`;
+}
+async function showWiki() {
+  const bg = document.createElement('div'); bg.className = 'ov-bg';
+  bg.innerHTML = `<div class="sheet" style="background:#fff">${wikiHTML()}<div class="sbtns"><button class="btn primary">閉じる</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.querySelector('.sbtns .btn').onclick = () => bg.remove();
+}
+
+// ===== 60秒モード =====
+async function quickLife(policy) {
+  S.policy = policy = policy || S.policy || 'challenge';
+  if (S.draft) SL.autoDraft(S, policy);
+  save();
+  const bg = document.createElement('div'); bg.className = 'ov-bg';
+  bg.innerHTML = `<div class="sheet montage"><div class="kick">⏱️ 60秒の一生・${esc(SL.POLICY[policy].name)}</div>
+    <div class="yr" id="mYr"></div><div class="ag" id="mAge"></div><div class="cl" id="mClub"></div>
+    <div class="ovb"><i id="mOv"></i></div><div class="sub" id="mStat"></div><ul class="ticker" id="mTick"></ul>
+    <div class="sbtns"><button class="btn ghost" id="mSkip">スキップ ⏩</button></div></div>`;
+  document.body.appendChild(bg);
+  let skip = false; bg.querySelector('#mSkip').onclick = () => { skip = true; };
+  const q = (id) => bg.querySelector('#' + id);
+  const tick = (t) => { const li = document.createElement('li'); li.textContent = t; q('mTick').prepend(li); while (q('mTick').children.length > 7) q('mTick').lastChild.remove(); };
+  const paint = () => {
+    const c = SL.clubOf(S), o = SL.ovr(S.p);
+    q('mYr').textContent = `${S.year}年`; q('mAge').innerHTML = `${S.p.age}<small>歳</small>`;
+    q('mClub').innerHTML = `<span class="dot" style="background:${c.color}"></span>${esc(c.name)} <span class="sub">${SL.LEAGUES[c.lg].short}</span>`;
+    q('mOv').style.width = o + '%';
+    q('mStat').textContent = `総合力 ${o}・通算 ${S.totals.apps}試合 ${S.totals.goals}G ${S.totals.assists}A`;
+  };
+  paint();
+  let li = 0;
+  for (; li < S.log.length; li++) tick(S.log[li].t);
+  await wait(skip ? 0 : 1200);
+  for (let i = 0; i < 30; i++) {
+    const o = SL.autoYear(S, policy); save();
+    for (; li < S.log.length; li++) tick(S.log[li].t);
+    const r = o.review.row;
+    if (!r.awards.length) tick(`${r.year}年 ${r.club}：${r.apps}試合 ${r.goals}G ${r.assists}A（評価${r.rating ? r.rating.toFixed(2) : '-'}）`);
+    paint();
+    if (o.retire) break;
+    if (!skip) await wait(2700);
+  }
+  const lm = SL.autoLastMatch(S); save();
+  tick(`👋 引退試合：${lm.scene}の場面で、${lm.text}`);
+  if (!skip) await wait(1800);
+  bg.remove();
+  await doRetire();
+}
+
+async function cardImage() {
+  const sm = S.summary;
+  const G = '"Dela Gothic One", sans-serif', M = '"M PLUS Rounded 1c", sans-serif', N = '"Outfit", sans-serif';
+  const txt = sm.name + sm.title + SL.POS[sm.pos].name + '代目歳で現役引退出場ゴールアシスト無失点代表タイトルサッカー人生0123456789-｜・pt' + SITE;
+  await Promise.all([document.fonts.load(`60px ${G}`, txt), document.fonts.load(`800 40px ${M}`, txt), document.fonts.load(`800 40px ${N}`, txt)]);
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1f8a47'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.03)'; g.fillRect(0, i * 115, W, 115); }
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 6; g.strokeRect(40, 40, W - 80, H - 80);
+  g.beginPath(); g.arc(W / 2, H / 2, 150, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#ffffff'; g.beginPath(); g.roundRect(80, 120, W - 160, H - 240, 48); g.fill();
+  g.textAlign = 'center';
+  g.fillStyle = '#67786b'; g.font = `800 40px ${M}`; g.fillText(`${sm.gen > 1 ? `${sm.gen}代目・` : ''}${sm.retireAge}歳で現役引退`, W / 2, 220);
+  g.fillStyle = '#1d2a21'; g.font = `800 64px ${M}`; g.fillText(sm.name, W / 2, 310);
+  g.fillStyle = '#67786b'; g.font = `800 34px ${M}`; g.fillText(`${SL.POS[sm.pos].name}｜${sm.startYear}-${sm.endYear}`, W / 2, 370);
+  g.fillStyle = '#17924c'; let fs = 110; g.font = `${fs}px ${G}`; while (g.measureText(sm.title).width > W - 240) { fs -= 6; g.font = `${fs}px ${G}`; }
+  g.fillText(sm.title, W / 2, 520);
+  g.fillStyle = '#e0a100'; g.font = `800 200px ${N}`; g.fillText(sm.letter, W / 2, 740);
+  g.fillStyle = '#67786b'; g.font = `800 40px ${N}`; g.fillText(`${sm.score.toLocaleString()} pt`, W / 2, 800);
+  const cells = [['出場', sm.apps], ['ゴール', sm.goals], ['アシスト', sm.assists], [sm.pos === 'GK' || sm.pos === 'DF' ? '無失点' : '代表G', sm.pos === 'GK' || sm.pos === 'DF' ? sm.cs : sm.natGoals], ['代表', sm.caps], ['タイトル', sm.trophies.length + sm.awards.length]];
+  cells.forEach(([k, v], i) => {
+    const x = 220 + (i % 3) * 320, y = 900 + Math.floor(i / 3) * 170;
+    g.fillStyle = '#f1f7ee'; g.beginPath(); g.roundRect(x - 140, y - 60, 280, 140, 28); g.fill();
+    g.fillStyle = '#67786b'; g.font = `800 30px ${M}`; g.fillText(k, x, y - 14);
+    g.fillStyle = '#1d2a21'; g.font = `800 64px ${N}`; g.fillText(String(v), x, y + 56);
+  });
+  g.fillStyle = '#ffffff'; g.font = `44px ${G}`; g.fillText('サッカー人生', W / 2, H - 60 - 20);
+  g.fillStyle = 'rgba(255,255,255,.8)'; g.font = `800 26px ${M}`; g.fillText(SITE, W / 2, H - 48);
+  return c;
+}
+async function saveImage() {
+  const c = await cardImage();
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const file = new File([blob], 'soccer-life.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ===== 再開 =====
+function resume() {
+  S = loadSave(); if (!S) return renderTitle();
+  if (S.mode === 'quick' && S.phase !== 'retired' && S.phase !== 'retiring') return quickLife(S.policy);
+  if (S.phase === 'draft') return renderDraft();
+  if (S.phase === 'retired') { renderEnd(); renderRank(); return; }
+  if (S.phase === 'retiring') return doRetire();
+  renderGame();
+  if (S.phase === 'seasonEnd' || S.phase === 'off') { busy = true; offseason().finally(() => { busy = false; }); }
+}
+
+$('contBtn').onclick = resume;
+$('newBtn').onclick = () => {
+  const sv = loadSave();
+  if (sv && sv.phase !== 'retired' && !confirm(`${sv.p.name}（${sv.p.age}歳）のデータは消えます。はじめからにしますか？`)) return;
+  renderCreate();
+};
+$('createBack').onclick = () => (createCtx ? (renderEnd(), renderRank()) : renderTitle());
+$('toDraftBtn').onclick = toDraft;
+$('nameIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') toDraft(); });
+$('weekBtn').onclick = nextWeek;
+$('autoBtn').onclick = autoSeason;
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; renderTab(); } });
+$('menuBtn').onclick = renderTitle;
+$('shareBtn').onclick = share;
+$('imgBtn').onclick = saveImage;
+$('rankNameBtn').onclick = submitName;
+$('nextGenBtn').onclick = () => renderCreate({ child: true, pos: S.p.pos });
+$('wikiBtn').onclick = showWiki;
+$('paperBtn').onclick = () => { const pp = S.papers.filter((x) => x.kind === 'retire').at(-1); if (pp) paperSheet(pp); };
+$('endTitleBtn').onclick = renderTitle;
+renderTitle();
+</script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/next.js"></script>
+</body>
+</html>

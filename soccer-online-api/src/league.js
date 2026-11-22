@@ -42,13 +42,15 @@ export class League extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, account TEXT, active INTEGER, data TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS world (k TEXT PRIMARY KEY, v TEXT)');
     const row = this.sql.exec("SELECT v FROM world WHERE k = 'w'").toArray()[0];
-    this.w = row ? JSON.parse(row.v) : G.newWorldState();
+    this.w = G.migrateWorld(row ? JSON.parse(row.v) : G.newWorldState());
     this.accounts = new Map(); // hash -> account id
     for (const r of this.sql.exec('SELECT id, hash FROM accounts')) this.accounts.set(r.hash, r.id);
     this.members = new Map(); // player id -> member
     this.byAccount = new Map(); // account -> player id（現役中または引退直後の1人）
     for (const r of this.sql.exec('SELECT id, account, data FROM players WHERE active = 1')) {
       const m = JSON.parse(r.data); this.members.set(r.id, m); this.byAccount.set(r.account, r.id);
+      if (m.pl.potLo == null) Object.assign(m.pl, G.SL._.potRange(m.pl.pot));
+      if (m.status !== 'draft' && m.status !== 'retired' && m.debutYear == null) m.debutYear = (m.history[0] && m.history[0].year) || this.w.year;
     }
     if (!row) this.saveWorld();
     if (!(await this.ctx.storage.getAlarm())) await this.schedule();
@@ -99,22 +101,28 @@ export class League extends DurableObject {
       if (req.method === 'GET' && path === '/state') return json(this.stateView(m));
       if (req.method === 'POST' && path === '/join') {
         if (m.status !== 'draft') return err('not_now');
-        if (!G.join(m, this.w, Number(body.i))) return err('bad_choice');
+        const e = G.join(m, this.w, Number(body.i), [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
+      }
+      if (req.method === 'POST' && path === '/buy') {
+        if (m.status === 'draft' || m.status === 'retired') return err('not_now');
+        const r = G.SL.buy(G.adapter(m, this.w), String(body.id || ''));
+        if (r.error) return err(r.error);
+        this.saveMember(m); return json({ ok: true, text: r.text, state: this.stateView(m) });
       }
       if (req.method === 'POST' && path === '/training') {
         if (!(body.k in G.SL.TRAINING) || (body.k === 'gk' && m.pl.pos !== 'GK')) return err('bad_training');
         m.training = body.k; this.saveMember(m); return json({ ok: true });
       }
       if (req.method === 'POST' && path === '/decide') {
-        const e = G.decide(m, this.w, body.choice); if (e) return err(e);
+        const e = G.decide(m, this.w, body.choice, [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
       }
       if (req.method === 'POST' && path === '/nextgen') {
         if (m.status !== 'retired') return err('not_now');
         const name = cleanName(body.name); if (!name) return err('bad_name');
         if (!G.POS[body.pos]) return err('bad_pos');
-        const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w);
+        const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w, [...this.members.values()]);
         this.saveMember(m, 0); this.members.delete(m.id);
         this.members.set(nm.id, nm); this.byAccount.set(nm.account, nm.id); this.saveMember(nm);
         return json(this.stateView(nm));
@@ -138,7 +146,7 @@ export class League extends DurableObject {
     this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', acc, hash, now);
     this.accounts.set(hash, acc);
     const m = G.newMember(crypto.randomUUID(), acc, name, body.pos);
-    m.draft = G.draftOffers(m, this.w);
+    m.draft = G.draftOffers(m, this.w, [...this.members.values()]);
     this.members.set(m.id, m); this.byAccount.set(acc, m.id); this.saveMember(m);
     return json({ code, state: this.stateView(m) });
   }
@@ -151,7 +159,7 @@ export class League extends DurableObject {
   clubsView() {
     const count = new Map();
     for (const m of this.members.values()) if (m.pl.club != null && m.status !== 'retired') count.set(m.pl.club, (count.get(m.pl.club) || 0) + 1);
-    return this.w.clubs.map((c) => ({ id: c.id, name: c.name, city: c.city, lg: c.lg, str: c.str, color: c.color, humans: count.get(c.id) || 0 }));
+    return this.w.clubs.map((c) => ({ id: c.id, name: c.name, city: c.city, lg: c.lg, str: c.str, color: c.color, humans: count.get(c.id) || 0, cap: G.CLUB_CAP }));
   }
   ranking(lg, key) {
     return [...this.members.values()].filter((m) => m.status !== 'retired' && m.status !== 'draft' && m.pl.club != null && (lg == null || this.w.clubs[m.pl.club].lg === lg) && m.season[key] > 0)
@@ -159,7 +167,7 @@ export class League extends DurableObject {
       .map((m) => ({ name: m.pl.name, club: this.w.clubs[m.pl.club].name, pos: m.pl.pos, v: m.season[key] }));
   }
   publicView() {
-    return { world: this.worldView(), scorers: this.ranking(null, 'goals'), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
+    return { world: this.worldView(), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
   }
   stateView(m) {
     const w = this.w, p = m.pl, lg = p.club != null ? w.clubs[p.club].lg : 1;
@@ -172,16 +180,28 @@ export class League extends DurableObject {
       if (pair) next = { home: pair[0] === p.club, opp: pair[0] === p.club ? pair[1] : pair[0] };
     }
     const offer = m.offer ? { ...m.offer, list: G.offerList(m), res: undefined, expiring: m.offer.res.expiring, released: m.offer.res.released } : null;
+    const all = [...this.members.values()];
+    // 同期（同じ年にデビューした本物のプレイヤー）の今の生涯スコア
+    const cohort = m.debutYear == null ? [] : all.filter((x) => x.debutYear === m.debutYear)
+      .map((x) => ({ name: x.pl.name, pos: x.pl.pos, club: x.pl.club != null ? w.clubs[x.pl.club].name : '引退', retired: x.status === 'retired', goals: x.totals.goals + (x.status === 'retired' ? 0 : x.season.goals), score: G.scoreNow(x, w), me: x === m }))
+      .sort((a, b) => b.score - a.score).slice(0, 30);
+    const cr = p.club != null ? (w.records.clubs[p.club] || null) : null;
     return {
       world: this.worldView(), clubs: this.clubsView(), tables, next,
       results: w.last ? { week: w.last.week, year: w.last.year, list: w.last.results.filter((r) => r.lg === lg || r.goals.some((g) => g.who || g.assist)) } : null,
       scorers: this.ranking(lg, 'goals'), assisters: this.ranking(lg, 'assists'), mates, seasonHistory: w.history.slice(-3),
+      motw: w.motw || null, records: { ...w.records, clubs: undefined }, clubRecord: cr, cohort, debutYear: m.debutYear,
+      cup: w.cup ? { results: w.cup.results, alive: w.cup.alive, winner: w.cup.winner } : null,
+      shop: m.status === 'draft' || m.status === 'retired' ? [] : G.SL.shopList(G.adapter(m, w)),
+      caps: { club: G.CLUB_CAP, gk: G.GK_CAP, salary: G.SALARY_CAP },
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
         grow: p.growKnown ? p.grow : null, cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
         caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, lineage: m.lineage, log: m.log.slice(-12),
+        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0,
+        perks: { trainer: p.trainMul > 1, clinic: !!p.clinic, camp: !!p.camp, house: !!p.house, edu: p.edu || 0 },
       },
     };
   }

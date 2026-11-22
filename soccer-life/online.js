@@ -28,7 +28,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: '満員です。ごめんなさい', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: '満員です。ごめんなさい', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
@@ -53,8 +53,9 @@
   function startChanceTxt(ovr, c, age) { const x = 1 / (1 + Math.exp(-(ovr - (c.str - 4) + (age <= 20 ? 2 : 0)) / 3)); return x > .75 ? ['◎', 'レギュラー'] : x > .45 ? ['○', '出場多め'] : x > .2 ? ['△', '控え'] : ['✕', '厳しい']; }
   function offerCard(o, i, badge = '') {
     const c = club(o.club), L = SL.LEAGUES[c.lg], pc = startChanceTxt(ST.me.ovr, c, ST.me.age);
-    return `<button class="offer" data-i="${i}">${crest(c)}<div class="bd"><div class="nm">${badge}${esc(c.name)}${c.humans ? `<span class="hum">👤${c.humans}</span>` : ''}</div>
-      <div class="mt"><b>${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>・${o.years}年契約${o.trial ? '（テスト入団）' : ''}</div></div><div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
+    const full = !o.stay && c.humans >= c.cap;
+    return `<button class="offer" data-i="${i}"${full ? ' disabled style="opacity:.55"' : ''}>${crest(c)}<div class="bd"><div class="nm">${badge}${esc(c.name)}<span class="hum">👤${c.humans}/${c.cap}</span>${full ? ' <span class="full">満員</span>' : ''}</div>
+      <div class="mt"><b>${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>${o.capped ? '（上限）' : ''}・${o.years}年契約${o.trial ? '（テスト入団）' : ''}</div></div><div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
   }
   function countdown() {
     if (!ST) return '';
@@ -132,6 +133,23 @@
         <div class="ov"><b style="color:${me.ovr >= 80 ? 'var(--gold)' : 'var(--ink)'}">${me.ovr}</b><span>総合力</span></div></div>
       <div class="meters"><div>調子<b>${['↓', '↘', '→', '↗', '↑'][me.cond + 2]}</b></div><div>疲労<b>${me.fatigue}</b></div><div>人気<b>${me.fame}</b></div><div>${me.injury ? 'ケガ' : '貯金'}<b style="font-size:.78rem">${me.injury ? `🚑 ${me.injury}週` : man(me.money)}</b></div></div>`;
     renderStatus();
+    // 今週の最優秀選手
+    const mv = ST.motw;
+    $('motwCard').classList.toggle('hidden', !mv);
+    if (mv) $('motwCard').innerHTML = `<div class="motw"><span class="ic">🏅</span><span>第${mv.week}節の最優秀選手<br><b>${esc(mv.name)}</b> <span class="sub">${esc(club(mv.club).name)}・評価${mv.rating.toFixed(1)}${mv.goals ? `・⚽${mv.goals}` : ''}${mv.assists ? `・👟${mv.assists}` : ''}</span></span>${me.motw ? `<span class="sub" style="margin-left:auto">あなたの受賞 ${me.motw}回</span>` : ''}</div>`;
+    // お金の使い道
+    const shop = ST.shop || [];
+    $('shopCard').classList.toggle('hidden', !shop.length);
+    if (shop.length) {
+      $('shopMoney').textContent = `貯金 ${man(me.money)}`;
+      $('shopList').innerHTML = shop.map((it) => `<button class="shopitem" data-id="${it.id}"${it.ng ? ' disabled' : ''}><i>${it.icon}</i><b>${it.name}</b><span>${it.desc}</span><em>${man(it.price)}${it.ng ? `・${it.ng}` : ''}</em></button>`).join('');
+      $('shopList').querySelectorAll('.shopitem').forEach((b) => b.onclick = async () => {
+        const r = await api('/buy', { id: b.dataset.id });
+        if (r.error) return toast(errMsg(r.error));
+        setState(r.state); toast(r.text); renderHome();
+      });
+    }
+    $('statHead').innerHTML = `📊 能力 <span class="potline">${me.potKnown ? `才能 <b style="color:var(--gold)">${me.potKnown}</b>（見抜いた）` : me.potLo != null ? `才能の見立て ${me.potLo}〜${me.potHi}` : ''}</span>`;
     // 前節
     const L = me.last;
     $('lastCard').classList.toggle('hidden', !L);
@@ -208,7 +226,30 @@
         <div class="bigstat"><div>シーズン<b>${sm.years}</b></div><div>出場<b>${sm.apps}</b></div><div>ゴール<b>${sm.goals}</b></div><div>代表<b>${sm.caps}</b></div></div>
         <button class="btn primary" id="ol-nextGenBtn">👶 次の世代へ（${me.gen + 1}代目）</button></div>`;
       $('nextGenBtn').onclick = () => renderCreate(true);
+      try {
+        const done = JSON.parse(store.get('colIds') || '[]');
+        if (sm.titles && !done.includes(me.id) && typeof loadCol === 'function') {
+          const r = SL.addToCollection(loadCol(), sm, 'online');
+          saveCol(r.col); done.push(me.id); store.set('colIds', JSON.stringify(done));
+          if (r.newTitles.length) toast(`称号を${r.newTitles.length}個手に入れた！（図鑑に記録）`);
+        }
+      } catch {}
+      const ts = (sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean);
+      if (ts.length) el.insertAdjacentHTML('beforeend', `<div class="card"><h2>🎖️ 手に入れた称号 <span class="sub" style="margin-left:auto">${ts.length}個</span></h2><div class="tgrid">${ts.map((t) => `<div class="tcard"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></div>`).join('')}</div></div>`);
     }
+  }
+
+  // カップ戦の結果（全体）
+  function cupResultsHTML() {
+    const cup = ST.cup; if (!cup) return '';
+    const me = ST.me.club, lc = ST.me.lastCup;
+    const rounds = cup.results.map((r) => `<div class="sub" style="margin:8px 0 2px;font-weight:800">${r.round}</div><ul class="list">${r.res.map((x) => {
+      const a = club(x.h), b = club(x.a), mine = x.h === me || x.a === me;
+      return `<li style="${mine ? 'background:var(--chip);' : ''}"><span style="flex:1">${x.win === x.h ? '<b>' : ''}${esc(a.city)}${x.win === x.h ? '</b>' : ''}</span><span class="v">${x.gh}-${x.ga}${x.pk ? ' PK' : ''}</span><span style="flex:1;text-align:right">${x.win === x.a ? '<b>' : ''}${esc(b.city)}${x.win === x.a ? '</b>' : ''}</span></li>`;
+    }).join('')}</ul>`).join('');
+    return `<h2 style="margin-top:12px">🏆 カップ戦</h2><p class="sub" style="margin:0">1部の10クラブと2部の上位6クラブの勝ち抜き戦（第4・8・12・16節）${cup.winner != null ? `。優勝：<b>${esc(club(cup.winner).name)}</b>` : ''}</p>
+      ${lc ? `<p style="font-weight:800;margin:6px 0 0">あなたの直近のカップ戦（${esc(lc.round || '')}）：${lc.gf}-${lc.gc}　${lc.mins ? `評価${lc.rating.toFixed(1)}${lc.goals ? `・⚽${lc.goals}` : ''}` : '出番なし'}</p>` : ''}
+      ${rounds || '<p class="empty">まだ試合がありません</p>'}`;
   }
 
   function renderTab() {
@@ -223,13 +264,34 @@
       body.innerHTML = `<h2>⚽ 得点ランキング（${SL.LEAGUES[lg].short}・プレイヤー）</h2>${list(ST.scorers)}<h2 style="margin-top:12px">👟 アシストランキング</h2>${list(ST.assisters)}`;
     } else if (tab === 'mates') {
       body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>${ST.mates.length ? `<ul class="list">${ST.mates.map((m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`).join('')}</ul>` : '<p class="empty">ほかのプレイヤーはまだいません。友達を誘おう</p>'}`;
+    } else if (tab === 'cohort') {
+      const C = ST.cohort || [];
+      body.innerHTML = `<h2>🎓 ${ST.debutYear != null ? `${ST.debutYear}年デビュー組` : '同期'}のランキング</h2><p class="sub" style="margin:0 0 6px">同じ年にプロ入りした本物のプレイヤー同士の、いまの生涯スコア</p>${C.length ? `<ol class="list">${C.map((r, i) => `<li${r.me ? ' style="background:var(--chip)"' : ''}><span class="no">${i + 1}</span>${posTag(r.pos)}<span class="nm">${esc(r.name)} <span class="sub">${esc(r.club)}・${r.goals}G</span></span><span class="v">${r.score.toLocaleString()}</span></li>`).join('')}</ol>` : '<p class="empty">入団すると同期ランキングに載ります</p>'}`;
+    } else if (tab === 'records') {
+      const R = ST.records || {}, cr = ST.clubRecord, my = me.records || {};
+      const top = (rows, unit, sub) => rows && rows.length ? `<ol class="list">${rows.map((r, i) => `<li><span class="no">${i + 1}</span><span class="nm">${esc(r.name)} <span class="sub">${esc(sub(r))}</span></span><span class="v">${r.v.toLocaleString()}${unit}</span></li>`).join('')}</ol>` : '<p class="empty">まだ記録がありません</p>';
+      body.innerHTML = `<h2>📈 あなたの記録</h2><ul class="list">
+          <li><span class="nm" style="font-weight:700">連続ゴール（いま / 最高）</span><span class="v">${my.goalStreak || 0} / ${my.bestGoalStreak || 0}</span></li>
+          <li><span class="nm" style="font-weight:700">連続出場（いま / 最高）</span><span class="v">${my.playStreak || 0} / ${my.bestPlayStreak || 0}</span></li>
+          <li><span class="nm" style="font-weight:700">1試合の最多得点</span><span class="v">${my.maxGoalsGame || 0}</span></li>
+          <li><span class="nm" style="font-weight:700">週間最優秀選手</span><span class="v">${me.motw || 0}回</span></li></ul>
+        ${cr ? `<h2 style="margin-top:12px">🏟️ ${esc(club(me.club).name)}の歴史</h2>
+          <p class="sub" style="margin:0">優勝 ${cr.titles.length}回${cr.titles.length ? `（${cr.titles.slice(-5).map(esc).join('・')}）` : ''}・カップ優勝 ${cr.cups.length}回</p>
+          <div class="sub" style="margin:8px 0 2px;font-weight:800">歴代のチーム得点王</div>${cr.scorers.length ? `<ul class="list">${cr.scorers.slice().reverse().map((x) => `<li><span class="nm">${x.year}年 ${esc(x.name)}</span><span class="v">${x.goals}G</span></li>`).join('')}</ul>` : '<p class="empty">まだいません</p>'}
+          <div class="sub" style="margin:8px 0 2px;font-weight:800">クラブのレジェンド（出場数）</div>${cr.legends.length ? `<ol class="list">${cr.legends.map((x, i) => `<li><span class="no">${i + 1}</span><span class="nm">${esc(x.name)} <span class="sub">${x.goals}G</span></span><span class="v">${x.apps}</span></li>`).join('')}</ol>` : '<p class="empty">まだいません</p>'}` : ''}
+        <h2 style="margin-top:12px">📜 リーグの全記録</h2>
+        <div class="sub" style="font-weight:800;margin:4px 0 2px">シーズン最多得点</div>${top(R.seasonGoals, '点', (r) => `${r.year}年・${r.club}`)}
+        <div class="sub" style="font-weight:800;margin:8px 0 2px">シーズン最多アシスト</div>${top(R.seasonAssists, '', (r) => `${r.year}年・${r.club}`)}
+        <div class="sub" style="font-weight:800;margin:8px 0 2px">通算得点（引退した選手）</div>${top(R.careerGoals, '点', (r) => r.years)}
+        <div class="sub" style="font-weight:800;margin:8px 0 2px">通算出場（引退した選手）</div>${top(R.careerApps, '', (r) => r.years)}
+        <div class="sub" style="font-weight:800;margin:8px 0 2px">殿堂：生涯スコア</div>${top(R.careerScore, 'pt', (r) => `${r.letter}・「${r.title}」`)}`;
     } else if (tab === 'results') {
       const R = ST.results;
       body.innerHTML = !R ? '<p class="empty">まだ試合がありません</p>' : `<h2>📋 第${R.week}節の結果</h2><ul class="list">${R.list.map((r) => {
         const h = club(r.h), a = club(r.a);
         const g = r.goals.filter((x) => x.who || x.assist).map((x) => `${x.min}' ${esc(x.who || '')}${x.assist ? `（A ${esc(x.assist)}）` : ''}`).join('、');
         return `<li style="display:block"><span class="dot" style="background:${h.color}"></span>${esc(h.city)} <b class="num">${r.gh} - ${r.ga}</b> ${esc(a.city)} <span class="dot" style="background:${a.color};margin-left:4px"></span><span class="sub">${SL.LEAGUES[r.lg].short}</span>${g ? `<div class="sub">⚽ ${g}</div>` : ''}</li>`;
-      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">欧州 ${esc(x.champions[0])}／1部 ${esc(x.champions[1])}／2部 ${esc(x.champions[2])}</span></li>`).join('')}</ul>` : ''}`;
+      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">欧州 ${esc(x.champions[0])}／1部 ${esc(x.champions[1])}／2部 ${esc(x.champions[2])}</span></li>`).join('')}</ul>` : ''}${cupResultsHTML()}`;
     } else {
       const aw = me.trophies.map((t) => `<li>🏆 ${esc(t)}</li>`).concat(me.awards.map((t) => `<li>🏅 ${esc(t)}</li>`));
       body.innerHTML = `<div class="bigstat"><div>通算出場<b>${me.totals.apps}</b></div><div>通算G<b>${me.totals.goals}</b></div><div>通算A<b>${me.totals.assists}</b></div><div>代表<b>${me.caps}</b></div></div>

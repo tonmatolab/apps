@@ -325,8 +325,46 @@
   .ol .empty { text-align: center; color: var(--sub); font-size: .8rem; padding: 6px 0; }
   .ol .ach li { background: #fff1c4; color: #7a5600; }
   .ol .panel { border: 3px solid var(--gold); }
+  .ol .tabs { overflow-x: auto; }
+  .ol .tabs button { flex: 0 0 auto; min-width: 3.6em; padding: 8px 8px; }
+  .ol .full { color: var(--red); font-weight: 800; }
+  .ol .motw { display: flex; align-items: center; gap: 10px; font-size: .82rem; font-weight: 700; }
+  .ol .motw .ic { font-size: 1.6rem; }
   @media (prefers-color-scheme: dark) { .ol .warn { background: #3a3010; color: #ffd76a; } .ol .ach li { background: #4a3c10; color: #ffd76a; } }
   .olentry { border: 3px solid var(--green); }
+
+  /* お金の使い道 */
+  .shop { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .shopitem { text-align: left; border: 2px solid var(--line); background: var(--paper); border-radius: 14px; padding: 8px 10px; cursor: pointer; line-height: 1.35; }
+  .shopitem i { font-style: normal; font-size: 1.1rem; margin-right: 4px; }
+  .shopitem b { font-size: .82rem; }
+  .shopitem span { display: block; font-size: .66rem; color: var(--sub); margin-top: 2px; }
+  .shopitem em { display: block; font-style: normal; font-family: var(--num); font-weight: 800; font-size: .74rem; color: var(--green); margin-top: 3px; }
+  .shopitem:disabled { opacity: .5; cursor: default; }
+  .shopitem:disabled em { color: var(--sub); }
+  .potline { font-size: .74rem; font-weight: 800; color: var(--sub); margin-left: auto; }
+  .chalbadge { display: inline-block; font-size: .66rem; font-weight: 800; padding: 1px 8px; border-radius: 99px; background: #ffe9c7; color: #8a4b00; }
+  @media (prefers-color-scheme: dark) { .chalbadge { background: #4a3210; color: #ffc27a; } }
+  /* カップ戦 */
+  .cupbox { margin-top: 12px; padding: 10px 12px; border-radius: 16px; background: #fff7e0; border: 2px solid var(--gold); }
+  @media (prefers-color-scheme: dark) { .cupbox { background: #2c2610; } }
+  /* 称号図鑑・実績 */
+  .tgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tcard { border-radius: 14px; padding: 8px 10px; background: #fff7e0; border: 2px solid var(--gold); line-height: 1.4; }
+  .tcard b { display: block; font-size: .86rem; }
+  .tcard span { display: block; font-size: .66rem; color: var(--sub); }
+  .tcard.locked { background: var(--chip); border-color: var(--line); }
+  .tcard.locked b { color: var(--sub); letter-spacing: .1em; }
+  .tcard .new { display: inline-block; font-size: .6rem; background: var(--red); color: #fff; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; letter-spacing: 0; }
+  @media (prefers-color-scheme: dark) { .tcard { background: #2c2610; } .tcard.locked { background: var(--chip); } }
+  .achrow { padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .achrow:last-child { border: none; }
+  .achrow .hd { display: flex; justify-content: space-between; gap: 8px; font-size: .84rem; font-weight: 800; }
+  .achrow .hd span { font-family: var(--num); color: var(--sub); flex: none; }
+  .achrow .ds { font-size: .7rem; color: var(--sub); }
+  .achrow.done .hd b::before { content: '✅ '; }
+  .achrow .bar { margin-top: 4px; height: 6px; }
+  .achrow.done .bar i { background: var(--gold); }
 
   /* 60秒モード */
   .montage { text-align: center; }
@@ -359,6 +397,7 @@
       <p class="sub" id="olEntryInfo" style="margin:0 0 10px;font-weight:800;color:var(--green)"></p>
       <button class="btn primary" id="olEntryBtn">オンラインで遊ぶ ▶</button>
     </div>
+    <button class="btn" id="colBtn" style="margin-top:14px">📚 称号図鑑・実績</button>
     <div class="card">
       <div class="feats">
         <div><b>🏃 練習で成長</b>伸ばす能力は自分で選ぶ</div>
@@ -376,6 +415,17 @@
       <h2 id="lineageHead">🌳 一族の歴史</h2>
       <ul class="tree" id="lineageList"></ul>
     </div>
+  </section>
+
+  <!-- ===== 称号図鑑・実績 ===== -->
+  <section id="scrCol" class="hidden">
+    <div class="card">
+      <h2 style="font-size:1.2rem">📚 称号図鑑・実績</h2>
+      <div class="bigstat" id="colStats"></div>
+      <div class="tabs" id="colTabs"><button data-c="titles" class="on">称号</button><button data-c="ach">実績</button></div>
+      <div id="colBody"></div>
+    </div>
+    <button class="btn ghost" id="colBack" style="margin-top:12px">もどる</button>
   </section>
 
   <!-- ===== 選手作成 ===== -->
@@ -399,6 +449,11 @@
       </div>
       <div class="pols hidden" id="pols"></div>
     </div>
+    <div class="card">
+      <h2>🎯 縛りプレイ <span class="sub" style="margin-left:auto">選ばなくてもOK</span></h2>
+      <div class="poses" id="chals"></div>
+      <p class="sub" id="chalNote" style="margin:8px 0 0;font-weight:700"></p>
+    </div>
     <div class="stack" style="margin-top:16px">
       <button class="btn primary" id="toDraftBtn">入団テストを受ける ▶</button>
       <button class="btn ghost" id="createBack">もどる</button>
@@ -419,7 +474,7 @@
   <section id="scrGame" class="hidden">
     <div class="card pc" id="pCard"></div>
     <div class="card">
-      <h2>📊 能力</h2>
+      <h2 id="statHead">📊 能力</h2>
       <div class="statwrap"><div id="radar"></div><ul class="stl" id="statList"></ul></div>
     </div>
     <div class="card">
@@ -435,6 +490,10 @@
       <div class="trains" id="trains"></div>
       <p class="trdesc" id="trDesc"></p>
     </div>
+    <div class="card">
+      <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="shopMoney"></span></h2>
+      <div class="shop" id="shopList"></div>
+    </div>
     <div class="actions">
       <div class="row">
         <button class="btn primary" id="weekBtn" style="flex:1.6">練習して試合へ ▶</button>
@@ -443,7 +502,7 @@
     </div>
     <div class="card">
       <div class="tabs" id="tabs">
-        <button data-t="table" class="on">順位表</button><button data-t="career">経歴</button><button data-t="ach">実績</button>
+        <button data-t="table" class="on">順位表</button><button data-t="cup">カップ</button><button data-t="rec">記録</button><button data-t="career">経歴</button><button data-t="ach">実績</button>
       </div>
       <div id="tabBody"></div>
     </div>
@@ -457,6 +516,11 @@
       <h2>📋 通算成績</h2>
       <div class="bigstat" id="endStats"></div>
       <ul class="ach" id="endAch"></ul>
+    </div>
+    <div class="card">
+      <h2 id="endTitlesHead">🎖️ 手に入れた称号</h2>
+      <div class="tgrid" id="endTitles"></div>
+      <div id="endNewAch"></div>
     </div>
     <div class="card">
       <h2>🏆 全国ランキング</h2>
@@ -562,18 +626,23 @@
   <!-- ===== オンライン：ホーム ===== -->
   <section id="ol-scrHome" class="ol hidden">
     <div class="topbar"><span id="ol-topYear"></span><span class="cd" id="ol-topCd"></span><button class="btn small" id="ol-refreshBtn">🔄</button></div>
+    <div class="card hidden" id="ol-motwCard" style="padding:10px 14px"></div>
     <div class="card pc" id="ol-pCard"></div>
     <div id="ol-statusPanel"></div>
+    <div class="card hidden" id="ol-shopCard">
+      <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="ol-shopMoney"></span></h2>
+      <div class="shop" id="ol-shopList"></div>
+    </div>
     <div class="card hidden" id="ol-lastCard"><h2 id="ol-lastHead">📺 前節の試合</h2><div id="ol-lastBody"></div></div>
     <div class="card" id="ol-seasonCard">
       <h2 id="ol-seasonHead">📅 今シーズン</h2>
       <div class="season" id="ol-seasonBox"></div>
       <p class="sub" id="ol-nextTxt" style="margin:8px 0 0;font-weight:700"></p>
     </div>
-    <div class="card" id="ol-statCard"><h2>📊 能力</h2><ul class="stl" id="ol-statList"></ul></div>
+    <div class="card" id="ol-statCard"><h2 id="ol-statHead">📊 能力</h2><ul class="stl" id="ol-statList"></ul></div>
     <div class="card">
       <div class="tabs" id="ol-tabs">
-        <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="career">経歴</button>
+        <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="cohort">同期</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="records">記録</button><button data-t="career">経歴</button>
       </div>
       <div id="ol-tabBody"></div>
     </div>
@@ -707,7 +776,30 @@ function toast(t) { const d = document.createElement('div'); d.className = 'toas
 function showScreen(id) { document.querySelectorAll('main > section').forEach((s) => s.classList.toggle('hidden', s.id !== id)); window.scrollTo(0, 0); }
 function show(id) { showScreen(id); if (location.hash) history.replaceState(null, '', location.pathname); }
 
-/// ===== タイトル =====
+/// ===== 称号図鑑・実績（この端末に残る） =====
+function loadCol() { try { const c = JSON.parse(store.get('collection')); return c && c.v === 1 ? c : SL.newCollection(); } catch { return SL.newCollection(); } }
+function saveCol(c) { store.set('collection', JSON.stringify(c)); }
+let colTab = 'titles';
+function renderCol() {
+  const col = loadCol(), nT = Object.keys(col.titles).length, nA = Object.keys(col.ach).length;
+  $('colStats').innerHTML = `<div>称号<b>${nT}/${SL.TITLES.length}</b></div><div>実績<b>${nA}/${SL.ACHIEVEMENTS.length}</b></div><div>引退した選手<b>${col.stats.careers}</b></div><div>最高ランク<b>${col.stats.bestLetter || '-'}</b></div>`;
+  document.querySelectorAll('#colTabs button').forEach((b) => b.classList.toggle('on', b.dataset.c === colTab));
+  if (colTab === 'titles') {
+    $('colBody').innerHTML = `<p class="sub" style="margin:0 0 8px">手に入れていない称号は「？？？」。下の小さな文字が取り方のヒント</p><div class="tgrid">${SL.TITLES.map(([id, name, desc, hint]) => {
+      const got = col.titles[id];
+      return got ? `<div class="tcard"><b>${esc(name)}</b><span>${esc(desc)}</span><span>🏃 ${esc(got.by)}</span></div>` : `<div class="tcard locked"><b>？？？</b><span>${esc(hint)}</span></div>`;
+    }).join('')}</div>`;
+  } else {
+    $('colBody').innerHTML = SL.ACHIEVEMENTS.map(([id, name, desc, fn]) => {
+      const [n, g] = fn(col), done = !!col.ach[id];
+      const pct = Math.min(100, Math.round(n / g * 100));
+      return `<div class="achrow${done ? ' done' : ''}"><div class="hd"><b>${esc(name)}</b><span>${g >= 10000 ? man(Math.min(n, g)) + '/' + man(g) : `${Math.min(n, g)}/${g}`}</span></div><div class="ds">${esc(desc)}</div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
+    }).join('');
+  }
+  show('scrCol');
+}
+
+// ===== タイトル =====
 const boardGame = (mode) => mode === 'quick' ? 'soccerq' : 'soccer';
 async function loadBoard(el, mine, mode = 'normal') {
   const j = await api('/board?game=' + boardGame(mode));
@@ -751,6 +843,7 @@ function renderTitle() {
     $('lineageList').innerHTML = treeHTML(lin, live);
   }
   show('scrTitle');
+  { const col = loadCol(); $('colBtn').textContent = `📚 称号図鑑・実績（称号 ${Object.keys(col.titles).length}/${SL.TITLES.length}）`; }
   if (window.OL) OL.entryCard();
   loadBoard($('boardTitle'));
   api('/get?keys=soccer-play').then((j) => { $('sPlays').textContent = j ? (j['soccer-play'] || 0).toLocaleString() : '-'; });
@@ -758,7 +851,7 @@ function renderTitle() {
 
 // ===== 選手作成 =====
 let createCtx = null; // 次の世代のときは { child: true }
-let selPos = 'FW', selMode = 'normal', selPol = 'challenge';
+let selPos = 'FW', selMode = 'normal', selPol = 'challenge', selChal = '';
 function renderCreate(ctx = null) {
   createCtx = ctx;
   const sm = ctx ? S.summary : null;
@@ -786,12 +879,27 @@ function renderCreate(ctx = null) {
   };
   $('modes').querySelectorAll('.pos').forEach((b) => b.onclick = () => setMode(b.dataset.m));
   setMode(selMode);
+  // 縛りプレイ
+  selChal = '';
+  const col = loadCol();
+  const chals = [['', { name: 'なし', icon: '⚽', desc: 'ふつうに遊ぶ', goal: '' }]].concat(Object.entries(SL.CHALLENGES));
+  $('chals').innerHTML = chals.map(([k, c]) => `<button class="pos${k === selChal ? ' on' : ''}" data-ch="${k}"><b>${c.icon} ${c.name}${k && col.stats.challenges.includes(k) ? ' ✅' : ''}</b><span>${c.desc}${c.goal ? `<br>達成：${c.goal}` : ''}</span></button>`).join('');
+  const setChal = (k) => {
+    selChal = k;
+    $('chals').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x.dataset.ch === k));
+    if (k === 'keeper') { selPos = 'GK'; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x.dataset.p === 'GK')); }
+    $('chalNote').textContent = k ? `🎯 縛り「${SL.CHALLENGES[k].name}」：${SL.CHALLENGES[k].goal}で達成。達成すると専用の称号が手に入る` : '';
+  };
+  $('chals').querySelectorAll('.pos').forEach((b) => b.onclick = () => setChal(b.dataset.ch));
+  setChal('');
   show('scrCreate');
 }
 function toDraft() {
   const name = [...$('nameIn').value.normalize('NFKC').replace(/[<>&"'`\\]/g, '').trim()].slice(0, 12).join('') || '名無しの選手';
-  if (createCtx) S = SL.nextGeneration(S, name, selPos);
-  else { store.set('lastName', name); S = SL.newGame(name, selPos); }
+  if (selChal === 'keeper') selPos = 'GK';
+  const extra = selChal ? { challenge: selChal } : {};
+  if (createCtx) S = SL.nextGeneration(S, name, selPos, extra);
+  else { store.set('lastName', name); S = SL.newGame(name, selPos, extra); }
   S.mode = selMode; store.set('mode', selMode);
   save();
   if (!store.get('played')) { store.set('played', '1'); api('/hit/soccer-play', 'POST'); }
@@ -800,7 +908,8 @@ function toDraft() {
 }
 function renderDraft() {
   S.draft.forEach((o, i) => o._i = i);
-  $('draftList').innerHTML = S.draft.map((o) => offerCard(o, o.home ? '<span class="badge stay">親のクラブ</span>' : '')).join('');
+  $('draftList').innerHTML = S.draft.map((o) => offerCard(o, o.home ? '<span class="badge stay">親のクラブ</span>' : '')).join('')
+    + (S.challenge === 'weak' ? '<p class="sub" style="margin:8px 0 0;font-weight:700">🏚️ 縛り「最弱クラブ再建」：入団できるのはリーグ最弱のクラブだけ</p>' : '');
   $('draftList').querySelectorAll('.offer').forEach((b) => b.onclick = () => {
     SL.joinClub(S, S.draft[+b.dataset.i]); delete S.draft;
     SL.startSeason(S); save(); renderGame();
@@ -817,7 +926,7 @@ function renderGame() {
   $('pCard').innerHTML = `<div class="band" style="background:${c.color}"></div>
     <div class="in"><div class="av">${avatar(c.color, p.number, p.age, p.pos)}</div>
       <div class="who"><div class="nm">${esc(p.name)}</div>
-        <div class="cl">${posTag(p.pos)} 背番号<b>${p.number}</b>・${p.age}歳${S.gen > 1 ? `・${S.gen}代目` : ''}<br><b>${esc(c.name)}</b><br><span class="lg-${c.lg}" style="font-weight:800">${L.name}</span>・年俸 ${man(p.salary)}</div></div>
+        <div class="cl">${posTag(p.pos)} 背番号<b>${p.number}</b>・${p.age}歳${S.gen > 1 ? `・${S.gen}代目` : ''}${S.challenge ? ` <span class="chalbadge">${SL.CHALLENGES[S.challenge].icon} ${SL.CHALLENGES[S.challenge].name}</span>` : ''}<br><b>${esc(c.name)}</b><br><span class="lg-${c.lg}" style="font-weight:800">${L.name}</span>・年俸 ${man(p.salary)}</div></div>
       <div class="ov"><b style="color:${o >= 80 ? 'var(--gold)' : 'var(--ink)'}">${o}</b><span>総合力</span></div></div>
     <div class="meters">
       <div>調子<b style="color:${condColor(p.cond)}">${condFace(p.cond).split(' ')[0]}</b>${condFace(p.cond).split(' ')[1]}</div>
@@ -826,6 +935,7 @@ function renderGame() {
       <div>${p.injury ? 'ケガ' : '貯金'}<b style="font-size:${p.injury ? '.95rem' : '.78rem'}">${p.injury ? `🚑 ${p.injury}週` : man(p.money)}</b></div>
     </div>`;
   $('radar').innerHTML = radarSVG(p);
+  $('statHead').innerHTML = `📊 能力 <span class="potline">${p.potLo === p.potHi ? `才能 <b style="color:var(--gold)">${p.pot}</b>（見抜いた）` : `才能の見立て ${p.potLo}〜${p.potHi}`}</span>`;
   const main = SL.mainStats(p.pos);
   const order = Object.keys(SL.STATS).filter((k) => k !== 'gk' || p.pos === 'GK').sort((a, b) => main.includes(b) - main.includes(a));
   $('statList').innerHTML = order.map((k) => `<li class="${main.includes(k) ? 'main' : ''}"><span>${SL.STATS[k]}</span><div class="bar"><i style="width:${p.stats[k]}%;background:${main.includes(k) ? 'var(--green)' : '#9fb3a3'}"></i></div><span class="v">${p.stats[k]}${lastGrowth[k] > 0 ? `<span class="up">+${lastGrowth[k]}</span>` : ''}</span></li>`).join('');
@@ -849,13 +959,25 @@ function renderGame() {
     : kb ? `<div class="rivalrow kid"><span class="ic">👶</span><span>子ども <b>${esc(kb.name)}</b>（${S.year - kb.year}歳）<br><span class="sub">16歳になる${kb.year + 16}年まで現役なら、同じチームに入団！</span></span></div>` : '';
   // 練習
   const T = SL.TRAINING;
-  $('trains').innerHTML = Object.entries(T).filter(([k, t]) => !t.gkOnly || p.pos === 'GK').map(([k, t]) => `<button class="tr${S.training === k ? ' on' : ''}${t.stats && t.stats.length === 1 && main.includes(t.stats[0]) ? ' main' : ''}" data-k="${k}"><i>${t.icon}</i>${t.name}</button>`).join('');
+  $('trains').innerHTML = Object.entries(T).filter(([k, t]) => (!t.gkOnly || p.pos === 'GK') && !(k === 'rest' && S.challenge === 'norest')).map(([k, t]) => `<button class="tr${S.training === k ? ' on' : ''}${t.stats && t.stats.length === 1 && main.includes(t.stats[0]) ? ' main' : ''}" data-k="${k}"><i>${t.icon}</i>${t.name}</button>`).join('');
   $('trains').querySelectorAll('.tr').forEach((b) => b.onclick = () => { S.training = b.dataset.k; save(); renderGame(); });
   const t = T[S.training];
   $('trDesc').textContent = p.injury ? '🚑 ケガの間は練習できません（リハビリ）' : t.desc || (t.stats ? `${SL.STATS[t.stats[0]]}が伸びる${p.fatigue > 65 ? '（疲れていて効率が落ちている…休養も考えよう）' : ''}` : '');
   $('weekBtn').disabled = $('autoBtn').disabled = S.phase !== 'season';
+  renderShop();
   renderTab();
   show('scrGame');
+}
+
+// ----- お金の使い道 -----
+function renderShop() {
+  $('shopMoney').textContent = `貯金 ${man(S.p.money)}`;
+  $('shopList').innerHTML = SL.shopList(S).map((it) => `<button class="shopitem" data-id="${it.id}"${it.ng ? ' disabled' : ''}><i>${it.icon}</i><b>${it.name}</b><span>${it.desc}</span><em>${man(it.price)}${it.ng ? `・${it.ng}` : ''}</em></button>`).join('');
+  $('shopList').querySelectorAll('.shopitem').forEach((b) => b.onclick = () => {
+    const r = SL.buy(S, b.dataset.id);
+    if (r.error) return toast(r.error);
+    save(); toast(r.text); renderGame();
+  });
 }
 
 function renderTab() {
@@ -867,6 +989,18 @@ function renderTab() {
     $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${c.lg === 1 ? '（下位2チームは2部へ降格）' : c.lg === 2 ? '（上位2チームが1部へ昇格）' : ''}</div>
     <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>試</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
     ${tb.map((x, i) => `<tr class="${x.c.id === c.id ? 'me' : ''} ${zone(i)}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${x.c.color}"></span>${esc(x.c.name)}</td><td>${x.t.w + x.t.d + x.t.l}</td><td>${x.t.w}</td><td>${x.t.d}</td><td>${x.t.l}</td><td>${x.t.gf - x.t.ga > 0 ? '+' : ''}${x.t.gf - x.t.ga}</td><td><b>${x.t.p}</b></td></tr>`).join('')}</table></div>`;
+  } else if (tab === 'cup') {
+    $('tabBody').innerHTML = cupTabHTML();
+  } else if (tab === 'rec') {
+    const R = S.records || {}, T = S.totals, se = S.season;
+    const row = (k, v) => `<li><span class="nm" style="font-weight:700">${k}</span><span class="v">${v}</span></li>`;
+    $('tabBody').innerHTML = `<h2>📈 通算（今季を含む）</h2><ul class="list" style="list-style:none;margin:0;padding:0">
+      ${row('通算出場', T.apps + se.apps)}${row('通算ゴール', T.goals + se.goals)}${row('通算アシスト', T.assists + se.assists)}${p_cs()}</ul>
+      <h2 style="margin-top:12px">🔥 連続記録（いま / 自己ベスト）</h2><ul class="list" style="list-style:none;margin:0;padding:0">
+      ${row('連続ゴール', `${R.goalStreak || 0} / ${R.bestGoalStreak || 0}`)}${row('連続出場', `${R.playStreak || 0} / ${R.bestPlayStreak || 0}`)}
+      ${S.p.pos === 'GK' || S.p.pos === 'DF' ? row('連続無失点', `${R.csStreak || 0} / ${R.bestCsStreak || 0}`) : ''}${row('1試合の最多得点', R.maxGoalsGame || 0)}${row('ハットトリック', (S.family && S.family.hats) || 0)}</ul>
+      <p class="sub" style="margin:8px 0 0">通算100点・連続5試合ゴールなどの節目で号外が出ます</p>`;
+    function p_cs() { return S.p.pos === 'GK' || S.p.pos === 'DF' ? row('通算無失点', T.cs + se.cs) : ''; }
   } else if (tab === 'career') {
     $('tabBody').innerHTML = S.history.length ? careerTable(S.history) : '<p class="sub" style="text-align:center">1年目のシーズン中。ここに年度別成績がたまっていきます</p>';
   } else {
@@ -877,6 +1011,29 @@ function renderTab() {
       ${S.news.length ? `<p class="sub" style="margin:10px 0 0">${S.news.map(esc).join('　')}</p>` : ''}${scrapHTML()}`;
   }
 }
+// ----- カップ戦 -----
+function cupTabHTML() {
+  const cup = S.cup, me = S.p.club;
+  if (!cup) return '<p class="sub" style="text-align:center">今季のカップ戦はありません</p>';
+  const inCup = cup.results.length ? cup.results[0].res.some((r) => r.h === me || r.a === me) : cup.alive.includes(me);
+  const alive = cup.winner == null ? cup.alive.includes(me) : cup.winner === me;
+  const head = !inCup ? '所属クラブは今季のカップ戦に出ていません（1部と2部の上位6クラブが出場）'
+    : cup.winner === me ? '🏆 カップ優勝！' : alive ? '勝ち残り中！' : '敗退しました';
+  const rounds = cup.results.map((r) => `<h2 style="margin-top:10px">${r.round}</h2><ul class="list" style="list-style:none;margin:0;padding:0">${r.res.map((x) => {
+    const h = S.clubs[x.h], a = S.clubs[x.a], mine = x.h === me || x.a === me;
+    return `<li style="display:flex;gap:6px;${mine ? 'font-weight:800' : ''}"><span style="flex:1">${x.win === x.h ? '<b>' : ''}${esc(h.city)}${x.win === x.h ? '</b>' : ''}</span><span class="num">${x.gh}-${x.ga}${x.pk ? ' PK' : ''}</span><span style="flex:1;text-align:right">${x.win === x.a ? '<b>' : ''}${esc(a.city)}${x.win === x.a ? '</b>' : ''}</span></li>`;
+  }).join('')}</ul>`).join('');
+  const next = Object.entries(SL.CUP_WEEKS).find(([wk]) => +wk > S.week);
+  return `<p style="font-weight:800;margin:0">${head}</p><p class="sub" style="margin:4px 0 0">1部の10クラブと2部の上位6クラブによる勝ち抜き戦。第4・8・12・16節に開催${next && cup.winner == null ? `（次は第${next[0]}節：${next[1]}）` : ''}</p>${rounds || '<p class="sub">まだ試合はありません</p>'}`;
+}
+function cupHTML(cu) {
+  const m = cu.m, me = SL.clubOf(S), opp = S.clubs[m.opp];
+  const line = m.mins ? `評価 ${m.rating.toFixed(1)}${m.goals ? `・⚽${m.goals}` : ''}${m.assists ? `・👟${m.assists}` : ''}` : m.role === 'injured' ? 'ケガで欠場' : '出番なし';
+  return `<div class="cupbox"><div class="kick">🏆 カップ戦・${cu.round}</div>
+    <div style="text-align:center;font-weight:800">${esc(me.city)} <span class="num" style="font-size:1.4rem">${m.gf} - ${m.gc}</span> ${esc(opp.city)}${cu.pk ? '（PK戦）' : ''}</div>
+    <p class="note" style="margin:4px 0 0">${cu.win ? (cu.final ? '🏆 カップ優勝！！' : '勝ち抜けた！') : '敗退…'}　${line}</p></div>`;
+}
+
 function careerTable(h) {
   return `<table class="tb"><tr><th>年</th><th>歳</th><th style="text-align:left">クラブ</th><th>試</th><th>G</th><th>A</th><th>評価</th></tr>
   ${h.map((r) => `<tr><td>${String(r.year).slice(2)}</td><td>${r.age}</td><td class="l"><span class="lg-${['欧州', '1部', '2部'].indexOf(r.lg)}" style="font-size:.66rem">${r.lg}</span> ${esc(r.club)}${r.awards.length ? ' 🏅'.repeat(Math.min(3, r.awards.length)) : ''}</td><td>${r.apps}</td><td>${r.goals}</td><td>${r.assists}</td><td>${r.rating ? r.rating.toFixed(2) : '-'}</td></tr>`).join('')}</table>`;
@@ -936,6 +1093,7 @@ function matchHTML(w) {
       <div><div class="role">${roleTxt}</div><div class="t">${line}</div></div></div>
     ${hl ? `<ul class="hl">${hl}</ul>` : '<p class="note sub">スコアレスドロー</p>'}
     ${gr ? `<div class="grow">${gr}</div>` : ''}
+    ${w.cup ? cupHTML(w.cup) : ''}
     ${w.notes.map((n) => `<p class="note">${esc(n)}</p>`).join('')}`;
 }
 
@@ -977,7 +1135,7 @@ function digestHTML(ws) {
   for (const w of ws) { const m = w.match; if (m.gf > m.gc) W++; else if (m.gf < m.gc) L++; else D++; g += m.goals; a += m.assists; if (m.cs) cs++; if (m.rating) rs.push(m.rating); }
   const best = ws.filter((w) => w.match.rating).sort((x, y) => y.match.rating - x.match.rating)[0];
   const gr = Object.entries(sumGrowth(ws)).map(([k, v]) => `<span class="${v < 0 ? 'dn' : ''}">${SL.STATS[k]} ${v > 0 ? '+' : ''}${v}</span>`).join('');
-  const notes = ws.flatMap((w) => w.notes.concat(w.evText ? [`${w.evText} → ${w.evResult}`] : []));
+  const notes = ws.flatMap((w) => (w.cup ? [`🏆 カップ戦${w.cup.round}：vs ${S.clubs[w.cup.m.opp].city} ${w.cup.m.gf}-${w.cup.m.gc}${w.cup.pk ? '（PK）' : ''} ${w.cup.win ? (w.cup.final ? '優勝！' : '勝ち抜け') : '敗退'}`] : []).concat(w.notes, w.evText ? [`${w.evText} → ${w.evResult}`] : []));
   const rows = ws.map((w) => { const m = w.match, o = S.clubs[m.opp]; const r = m.gf > m.gc ? 'W' : m.gf < m.gc ? 'L' : 'D';
     return `<tr><td>${w.week}</td><td class="l"><span class="dot" style="background:${o.color}"></span>${esc(o.city)}</td><td><span class="res"><span class="r${r}" style="padding:0 7px;font-size:.7rem">${m.gf}-${m.gc}</span></span></td><td>${m.rating ? m.rating.toFixed(1) : '-'}</td><td>${m.goals ? '⚽'.repeat(Math.min(m.goals, 4)) : ''}${m.assists ? '👟'.repeat(Math.min(m.assists, 3)) : ''}${m.cs ? '🧱' : ''}</td></tr>`; }).join('');
   return `<div class="kick">第${ws[0].week}節〜第${ws.at(-1).week}節</div><h3>ダイジェスト</h3>
@@ -1104,7 +1262,12 @@ async function doRetire() {
     S.phase = 'retiring'; save();
     if (S.mode === 'quick') SL.autoLastMatch(S); else await lastMatchFlow();
   }
-  SL.retire(S); S.papers.forEach((x) => { x.seen = true; }); save();
+  SL.retire(S); S.papers.forEach((x) => { x.seen = true; });
+  if (!S.summary.colAdded) {
+    const r = SL.addToCollection(loadCol(), S.summary);
+    saveCol(r.col); S.summary.colAdded = { t: r.newTitles, a: r.newAch };
+  }
+  save();
   renderEnd();
   // ランキングに送る（1回だけ）
   const sm = S.summary;
@@ -1165,6 +1328,14 @@ function renderEnd() {
     sm.family.jointApps ? [`<li>👨‍👧 子の${esc(sm.child?.name || '')}と共演${sm.family.jointApps}試合・親子弾${sm.family.combo}</li>`] : []);
   $('endAch').innerHTML = items.join('');
   $('endCareer').innerHTML = careerTable(S.history);
+  // 手に入れた称号（NEW は初めて手に入れたもの）
+  const added = sm.colAdded || { t: [], a: [] };
+  const ts = (sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean);
+  $('endTitlesHead').innerHTML = `🎖️ 手に入れた称号 <span class="sub" style="margin-left:auto">${ts.length}個（NEW ${added.t.length}）</span>`;
+  $('endTitles').innerHTML = ts.map((t) => `<div class="tcard"><b>${esc(t.name)}${added.t.includes(t.id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(t.desc)}</span></div>`).join('');
+  const na = added.a.map((id) => SL.ACHIEVEMENTS.find((a) => a[0] === id)).filter(Boolean);
+  $('endNewAch').innerHTML = (sm.challenge ? `<p style="font-weight:800;margin:10px 0 0">${SL.CHALLENGES[sm.challenge.id].icon} 縛り「${esc(sm.challenge.name)}」：${sm.challenge.cleared ? '🎉 達成！' : '未達成…'}</p>` : '')
+    + (na.length ? `<p style="font-weight:800;margin:10px 0 4px">🏅 実績を解除！</p><ul class="ach">${na.map((a) => `<li class="gold">${esc(a[1])}</li>`).join('')}</ul>` : '');
   const lin = S.lineage.concat([lineEntry(sm)]);
   $('endTreeHead').innerHTML = treeHead(sm.gen);
   $('endTree').innerHTML = treeHTML(lin, null);
@@ -1193,7 +1364,7 @@ function share() {
   const sm = S.summary;
   const posName = SL.POS[sm.pos].name;
   const big = sm.pos === 'GK' || sm.pos === 'DF' ? `無失点${sm.cs}試合` : `${sm.goals}ゴール${sm.assists}アシスト`;
-  const extra = [sm.wc.some((w) => w.reached === '優勝') ? 'W杯優勝🏆' : '', sm.family.combo ? '親子弾👨‍👧' : '', sm.lastMatch?.hit ? '引退試合で有終の美🎉' : ''].filter(Boolean).join('｜');
+  const extra = [sm.challenge && sm.challenge.cleared ? `縛り「${sm.challenge.name}」達成🎯` : '', sm.titles ? `称号${sm.titles.length}個` : '', sm.wc.some((w) => w.reached === '優勝') ? 'W杯優勝🏆' : '', sm.family.combo ? '親子弾👨‍👧' : '', sm.lastMatch?.hit ? '引退試合で有終の美🎉' : ''].filter(Boolean).join('｜');
   const text = `⚽ サッカー人生を終えました${sm.mode === 'quick' ? '（60秒モード）' : ''}\n${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${posName}）${sm.retireAge}歳で引退\n称号「${sm.title}」ランク${sm.letter}\n${sm.years}年・${sm.apps}試合・${big}｜代表${sm.caps}試合${extra ? `\n${extra}` : ''}${sm.rankInfo ? `\n全国${sm.rankInfo.rank}位` : ''}\n\nあなたはどんな選手人生を送る？`;
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);
@@ -1204,7 +1375,7 @@ function share() {
 
 // ===== 新聞（号外） =====
 const PAPER_NAME = '蹴球日報';
-const PAPER_ORDER = ['wc', 'world', 'combo', 'family', 'europe', 'title', 'scorer', 'mvp', 'hat', 'retire'];
+const PAPER_ORDER = ['wc', 'world', 'combo', 'family', 'europe', 'title', 'cup', 'milestone', 'scorer', 'mvp', 'streak', 'hat', 'retire'];
 async function showNewPapers() {
   const fresh = S.papers.filter((x) => !x.seen);
   if (!fresh.length) return;
@@ -1455,6 +1626,9 @@ $('imgBtn').onclick = saveImage;
 $('rankNameBtn').onclick = submitName;
 $('nextGenBtn').onclick = () => renderCreate({ child: true, pos: S.p.pos });
 $('wikiBtn').onclick = showWiki;
+$('colBtn').onclick = () => { colTab = 'titles'; renderCol(); };
+$('colBack').onclick = renderTitle;
+$('colTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { colTab = b.dataset.c; renderCol(); } });
 $('paperBtn').onclick = () => { const pp = S.papers.filter((x) => x.kind === 'retire').at(-1); if (pp) paperSheet(pp); };
 $('endTitleBtn').onclick = renderTitle;
 // #online で開かれたときはオンラインリーグから始める（online.js が開く）

@@ -28,7 +28,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { spin_limit: 'この節はもう回せません（1節10回まで）。次の節を待とう',  club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: '満員です。ごめんなさい', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = {  club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: '満員です。ごめんなさい', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
@@ -106,7 +106,16 @@
     $('codeShow').textContent = CODE;
     show('scrCode');
   }
-  function setState(j) { ST = j; skew = j.world.now - Date.now(); fetchedAt = Date.now(); }
+  let seenRl = null;
+  function setState(j) {
+    ST = j; skew = j.world.now - Date.now(); fetchedAt = Date.now();
+    const my = j.casino && j.casino.myLast;
+    if (seenRl !== null && my && my.round > seenRl) {
+      const col = { red: '赤', black: '黒', green: '緑' }[SL.rlColor(my.num)];
+      toast(my.void ? `🎰 第${my.round}回：お金が足りず賭けは無効` : `🎰 第${my.round}回は${my.num}（${col}）：${my.net > 0 ? '+' : my.net < 0 ? '−' : '±'}${man(Math.abs(my.net))}`);
+    }
+    if (my) seenRl = Math.max(seenRl || 0, my.round); else if (seenRl === null) seenRl = 0;
+  }
 
   // ===== 入団 =====
   function renderDraft() {
@@ -149,6 +158,11 @@
         setState(r.state); toast(r.text); renderHome();
       });
     }
+    // ルーレットに賭けているとき
+    const cz = ST.casino;
+    const czLine = cz && cz.myBets.length ? `🎰 第${cz.round}回に${man(cz.myBets.reduce((x, b) => x + b.a, 0))}賭けています（${new Date(cz.nextAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}ごろ回ります）` : '';
+    $('casinoNote').textContent = czLine;
+    $('casinoNote').classList.toggle('hidden', !czLine);
     $('statHead').innerHTML = `📊 能力 <span class="potline">${me.potKnown ? `才能 <b style="color:var(--gold)">${me.potKnown}</b>（見抜いた）` : me.potLo != null ? `才能の見立て ${me.potLo}〜${me.potHi}` : ''}</span>`;
     // 前節
     const L = me.last;
@@ -352,6 +366,9 @@
     $('topCd').textContent = countdown();
     const due = ST.world.nextAt + 8000 - (Date.now() + skew);
     if (due < 0 && Date.now() - fetchedAt > 30000 && document.visibilityState === 'visible') load();
+    // ルーレットに賭けているときだけ、回った直後に1回取りに行く
+    const cz = ST.casino;
+    if (cz && cz.myBets.length && cz.nextAt + 3000 - (Date.now() + skew) < 0 && Date.now() - fetchedAt > 15000 && document.visibilityState === 'visible' && !document.querySelector('.sheet.casino')) load();
   }, 1000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ST && Date.now() - fetchedAt > 60000) load(); });
 
@@ -369,15 +386,11 @@
   };
   $('refreshBtn').onclick = load;
   // カジノ（オンライン：当たり外れはサーバーが決める）
-  $('casinoBtn').onclick = () => openRoulette({
-    getMoney: () => ST.me.money,
-    spinsLeft: () => ST.casinoLeft,
-    spin: async (bets) => {
-      const r = await api('/casino/roulette', { bets });
-      if (r.error) return { error: /^[a-z_]+$/.test(r.error) ? errMsg(r.error) : r.error };
-      ST.me.money = r.money; ST.casinoLeft = r.left;
-      return r;
-    },
+  // 全員共通の台。3分ごとにサーバーが1回だけ回す
+  const tableErr = (j) => (j && j.error ? { error: /^[a-z_]+$/.test(j.error) ? errMsg(j.error) : j.error } : j);
+  $('casinoBtn').onclick = () => openRouletteTable({
+    load: async () => tableErr(await api('/casino')),
+    bet: async (bets) => tableErr(await api('/casino/bet', { bets })),
     onClose: () => load(),
   });
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; renderTab(); } });

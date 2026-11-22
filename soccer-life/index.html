@@ -402,6 +402,9 @@
   .rl-out small { margin-left: 3px; font-size: .62rem; color: #b7cbbb; }
   .rl-out.rl-red { background: #d33b2c; } .rl-out.rl-black { background: #1f2328; }
   .rl-sum { text-align: center; font-size: .82rem; margin-top: 8px; }
+  .rl-timer { text-align: center; font-size: .86rem; margin-top: 4px; }
+  .rl-timer b { font-family: var(--num); font-size: 1.15rem; color: #ffd04a; }
+  .rl-winners { margin-bottom: 6px; }
   .rl-sum b { color: #ffd04a; font-family: var(--num); }
 
   /* 60秒モード */
@@ -671,7 +674,8 @@
     <div class="card hidden" id="ol-shopCard">
       <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="ol-shopMoney"></span></h2>
       <div class="shop" id="ol-shopList"></div>
-      <button class="btn" id="ol-casinoBtn" style="margin-top:10px">🎰 カジノでルーレット</button>
+      <p class="sub hidden" id="ol-casinoNote" style="margin:10px 0 0;font-weight:800;color:var(--green)"></p>
+      <button class="btn" id="ol-casinoBtn" style="margin-top:10px">🎰 みんなのルーレット（3分ごと）</button>
     </div>
     <div class="card hidden" id="ol-lastCard"><h2 id="ol-lastHead">📺 前節の試合</h2><div id="ol-lastBody"></div></div>
     <div class="card" id="ol-seasonCard">

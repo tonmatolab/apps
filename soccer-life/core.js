@@ -365,7 +365,10 @@ const SL = (() => {
   function spinRoulette(p, bets) {
     const e = rlCheck(p, bets);
     if (e) return { error: e };
-    const num = ri(0, 36);
+    return resolveRoulette(p, bets, ri(0, 36));
+  }
+  // 出目 num で賭けを精算する（オンラインの共通の台は、全員に同じ num を使う）
+  function resolveRoulette(p, bets, num) {
     let total = 0, back = 0;
     const results = bets.map((b) => {
       const info = rlBetInfo(b.k), a = Number(b.a), win = info.win(num), payout = win ? a * info.pay : 0;
@@ -1399,7 +1402,7 @@ const SL = (() => {
     setRng, STATS, POS, GROW, TRAINING, LEAGUES, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
-    START_MONEY, ROULETTE, RL_BETS, rlColor, rlBetInfo, rlCheck, spinRoulette,
+    START_MONEY, ROULETTE, RL_BETS, rlColor, rlBetInfo, rlCheck, spinRoulette, resolveRoulette,
     CHALLENGES, SHOP, shopList, buy, narrowPot, TITLES, titleInfo, ACHIEVEMENTS, newCollection, addToCollection, CUP_WEEKS,
     migrate, inheritBonus, lastMatchInfo, playLastMatch, familyTitle, POLICY, autoDraft, autoYear, autoLastMatch, lastName,
     // オンライン版のサーバーが同じルールで試合を回すための部品

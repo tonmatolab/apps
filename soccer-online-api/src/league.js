@@ -34,6 +34,8 @@ export class League extends DurableObject {
     super(ctx, env);
     this.sql = ctx.storage.sql;
     this.signups = new Map();
+    // 次の回の賭けは、各プレイヤーのデータ（m.rlBet）に保存する。
+    // Durable Object は使われていないとメモリから消えるので、メモリだけに持つと賭けが消えてしまう
     ctx.blockConcurrencyWhile(() => this.boot());
   }
 
@@ -52,16 +54,58 @@ export class League extends DurableObject {
       if (m.pl.potLo == null) Object.assign(m.pl, G.SL._.potRange(m.pl.pot));
       if (m.status !== 'draft' && m.status !== 'retired' && m.debutYear == null) m.debutYear = (m.history[0] && m.history[0].year) || this.w.year;
     }
+    // 台を初めて作ったらすぐ保存する（保存しないと、起き直すたびに次の時刻が先送りされて回らない）
+    if (!this.w.rl) { this.w.rl = G.newTable(Date.now(), this.rlMs()); this.saveWorld(); }
     if (!row) this.saveWorld();
-    if (!(await this.ctx.storage.getAlarm())) await this.schedule();
+    if (!this.w.nextAt) this.w.nextAt = Date.now() + this.tickMs();
+    await this.armAlarm();
   }
 
   tickMs() { return Math.max(1, Number(this.env.TICK_MINUTES || 60)) * 60000; }
-  async schedule() { this.w.nextAt = Date.now() + this.tickMs(); this.saveWorld(); await this.ctx.storage.setAlarm(this.w.nextAt); }
+  rlMs() { return Math.max(.1, Number(this.env.RL_MINUTES || 3)) * 60000; }
+  // アラームは1つだけなので「次の試合」と「次のルーレット」の早いほうに合わせる
+  async armAlarm() { await this.ctx.storage.setAlarm(Math.min(this.w.nextAt, this.w.rl.nextAt)); }
   saveWorld() { this.sql.exec("INSERT OR REPLACE INTO world (k, v) VALUES ('w', ?)", JSON.stringify(this.w)); }
   saveMember(m, active = 1) { this.sql.exec('INSERT OR REPLACE INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', m.id, m.account, active, JSON.stringify(m)); }
 
-  async alarm() { this.tick(); await this.schedule(); }
+  async alarm() {
+    const now = Date.now();
+    if (now >= this.w.rl.nextAt - 500) this.rlSpin();
+    if (now >= this.w.nextAt - 500) { this.tick(); this.w.nextAt = now + this.tickMs(); this.saveWorld(); }
+    await this.armAlarm();
+  }
+
+  // ルーレットを1回まわし、賭けている全員を同じ出目で精算する。
+  // 書き込むのは「賭けていた人」と「台の状態（世界の1行）」だけ。
+  rlSpin() {
+    const T = this.w.rl, num = G.SL._.ri(0, 36), round = T.round + 1, winners = [];
+    let players = 0, totalBet = 0;
+    for (const m of this.members.values()) {
+      if (!m.rlBet) continue;
+      const bets = m.rlBet.bets; m.rlBet = null;
+      if (m.status === 'draft' || m.status === 'retired') { this.saveMember(m); continue; }
+      const e = G.SL.rlCheck(m.pl, bets);
+      if (e) { m.rlLast = { round, num, void: e, total: bets.reduce((x, b) => x + b.a, 0) }; this.saveMember(m); continue; } // お金が減っていたら、その賭けは無効
+      const r = G.SL.resolveRoulette(m.pl, bets, num);
+      m.rlLast = { round, num, net: r.net, total: r.total, back: r.back, results: r.results };
+      players++; totalBet += r.total;
+      winners.push({ name: m.pl.name, net: r.net });
+      this.saveMember(m);
+    }
+    T.round = round;
+    T.hist.unshift(num); if (T.hist.length > 20) T.hist.length = 20;
+    T.last = { round, num, color: G.SL.rlColor(num), at: Date.now(), players, totalBet, winners: winners.filter((x) => x.net > 0).sort((a, b) => b.net - a.net).slice(0, 5) };
+    T.nextAt = Date.now() + this.rlMs();
+    this.saveWorld(); // 回の番号と次の時刻を残す（1日480行ほど）
+  }
+  betCount() { let n = 0; for (const m of this.members.values()) if (m.rlBet) n++; return n; }
+  tableView(m) {
+    const T = this.w.rl;
+    return {
+      now: Date.now(), nextAt: T.nextAt, round: T.round + 1, intervalMin: this.rlMs() / 60000, last: T.last, hist: T.hist,
+      players: this.betCount(), myBets: m && m.rlBet ? m.rlBet.bets : [], myLast: m ? m.rlLast || null : null, money: m ? m.pl.money : null,
+    };
+  }
 
   // 1節すすめる（オフシーズン中はオフの残りを1つ減らす）
   tick() {
@@ -98,6 +142,11 @@ export class League extends DurableObject {
         const n = Math.min(40, Number(body.n) || 1); for (let i = 0; i < n; i++) this.tick();
         return json({ ok: true, world: this.worldView() });
       }
+      if (req.method === 'POST' && path === '/dev/spin') {
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        this.rlSpin(); await this.armAlarm(); return json({ ok: true, last: this.w.rl.last });
+      }
+      if (req.method === 'GET' && path === '/casino') return json(this.tableView(await this.me(req)));
       const m = await this.me(req);
       if (!m) return err('unauthorized', 401);
       if (req.method === 'GET' && path === '/state') return json(this.stateView(m));
@@ -106,16 +155,15 @@ export class League extends DurableObject {
         const e = G.join(m, this.w, Number(body.i), [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
       }
-      if (req.method === 'POST' && path === '/casino/roulette') {
+      // 次の回への賭けを置く（[] なら取り消し）。賭けはプレイヤーのデータに保存し、お金は回った瞬間に動く
+      if (req.method === 'POST' && path === '/casino/bet') {
         if (m.status === 'draft' || m.status === 'retired') return err('not_now');
-        const key = G.casinoKey(this.w);
-        if (!m.casinoTick || m.casinoTick.key !== key) m.casinoTick = { key, n: 0 };
-        if (m.casinoTick.n >= G.CASINO_SPINS) return err('spin_limit');
-        const r = G.SL.spinRoulette(m.pl, body.bets);
-        if (r.error) return err(r.error);
-        m.casinoTick.n++;
+        const bets = Array.isArray(body.bets) ? body.bets.map((b) => ({ k: String(b && b.k), a: Number(b && b.a) })) : [];
+        if (!bets.length) { if (m.rlBet) { m.rlBet = null; this.saveMember(m); } return json(this.tableView(m)); }
+        const e = G.SL.rlCheck(m.pl, bets); if (e) return err(e);
+        m.rlBet = { bets, at: Date.now() };
         this.saveMember(m);
-        return json({ ...r, left: G.CASINO_SPINS - m.casinoTick.n });
+        return json(this.tableView(m));
       }
       if (req.method === 'POST' && path === '/buy') {
         if (m.status === 'draft' || m.status === 'retired') return err('not_now');
@@ -232,7 +280,7 @@ export class League extends DurableObject {
       cup: w.cup ? { results: w.cup.results, alive: w.cup.alive, winner: w.cup.winner } : null,
       shop: m.status === 'draft' || m.status === 'retired' ? [] : G.SL.shopList(G.adapter(m, w)),
       caps: { club: G.CLUB_CAP, gk: G.GK_CAP, salary: G.SALARY_CAP },
-      casinoLeft: G.casinoLeft(m, w),
+      casino: this.tableView(m),
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
         grow: p.growKnown ? p.grow : null, cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,

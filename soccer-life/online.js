@@ -28,7 +28,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: '満員です。ごめんなさい', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { spin_limit: 'この節はもう回せません（1節10回まで）。次の節を待とう',  club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: '満員です。ごめんなさい', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
@@ -368,6 +368,18 @@
     store.set('code', code); setState(j); route();
   };
   $('refreshBtn').onclick = load;
+  // カジノ（オンライン：当たり外れはサーバーが決める）
+  $('casinoBtn').onclick = () => openRoulette({
+    getMoney: () => ST.me.money,
+    spinsLeft: () => ST.casinoLeft,
+    spin: async (bets) => {
+      const r = await api('/casino/roulette', { bets });
+      if (r.error) return { error: /^[a-z_]+$/.test(r.error) ? errMsg(r.error) : r.error };
+      ST.me.money = r.money; ST.casinoLeft = r.left;
+      return r;
+    },
+    onClose: () => load(),
+  });
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; renderTab(); } });
   $('revealBtn').onclick = () => { $('myCode').textContent = CODE; };
   $('logoutBtn').onclick = () => {

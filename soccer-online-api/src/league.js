@@ -106,6 +106,17 @@ export class League extends DurableObject {
         const e = G.join(m, this.w, Number(body.i), [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
       }
+      if (req.method === 'POST' && path === '/casino/roulette') {
+        if (m.status === 'draft' || m.status === 'retired') return err('not_now');
+        const key = G.casinoKey(this.w);
+        if (!m.casinoTick || m.casinoTick.key !== key) m.casinoTick = { key, n: 0 };
+        if (m.casinoTick.n >= G.CASINO_SPINS) return err('spin_limit');
+        const r = G.SL.spinRoulette(m.pl, body.bets);
+        if (r.error) return err(r.error);
+        m.casinoTick.n++;
+        this.saveMember(m);
+        return json({ ...r, left: G.CASINO_SPINS - m.casinoTick.n });
+      }
       if (req.method === 'POST' && path === '/buy') {
         if (m.status === 'draft' || m.status === 'retired') return err('not_now');
         const r = G.SL.buy(G.adapter(m, this.w), String(body.id || ''));
@@ -221,6 +232,7 @@ export class League extends DurableObject {
       cup: w.cup ? { results: w.cup.results, alive: w.cup.alive, winner: w.cup.winner } : null,
       shop: m.status === 'draft' || m.status === 'retired' ? [] : G.SL.shopList(G.adapter(m, w)),
       caps: { club: G.CLUB_CAP, gk: G.GK_CAP, salary: G.SALARY_CAP },
+      casinoLeft: G.casinoLeft(m, w),
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
         grow: p.growKnown ? p.grow : null, cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,

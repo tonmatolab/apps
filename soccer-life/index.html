@@ -370,6 +370,40 @@
   .achrow .bar { margin-top: 4px; height: 6px; }
   .achrow.done .bar i { background: var(--gold); }
 
+  /* カジノ（ルーレット） */
+  .sheet.casino { background: #123a24; color: #f3f7f2; }
+  .casino .sub { color: #b7cbbb; }
+  .casino .btn { background: #1d4d32; color: #f3f7f2; box-shadow: 0 4px 0 #0b2616; }
+  .casino .btn.gold { background: linear-gradient(180deg, #ffd04a, #f2b300); color: #3a2a00; box-shadow: 0 4px 0 #b88400; }
+  .casino .btn.ghost { background: transparent; box-shadow: none; color: #b7cbbb; }
+  .casino .btn:disabled { opacity: .45; }
+  .rl-head { display: flex; justify-content: space-between; align-items: center; font-size: 1.05rem; }
+  .rl-money { text-align: right; font-size: .82rem; line-height: 1.35; }
+  .rl-money b { font-family: var(--num); font-size: 1rem; color: #ffd04a; }
+  .rl-wheelbox { display: flex; justify-content: center; margin: 6px 0; }
+  .rl-wheel { width: min(260px, 70vw); height: auto; }
+  .rl-rot { transform-origin: 130px 130px; transform-box: view-box; }
+  .rl-result { text-align: center; font-weight: 800; min-height: 2.6em; font-size: .95rem; line-height: 1.4; }
+  .rl-result.win { color: #ffd04a; } .rl-result.lose { color: #ff9a8a; } .rl-result.warn { color: #ffb37a; }
+  .rl-big { display: inline-block; min-width: 2em; padding: 0 8px; border-radius: 10px; font-family: var(--num); font-size: 1.5rem; color: #fff; vertical-align: -2px; }
+  .rl-hist { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; min-height: 22px; margin: 4px 0 8px; }
+  .rl-h { font-family: var(--num); font-weight: 800; font-size: .72rem; color: #fff; border-radius: 6px; padding: 1px 6px; }
+  .rl-c-red { background: #d33b2c; } .rl-c-black { background: #1f2328; } .rl-c-green { background: #17924c; }
+  .rl-chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .rl-chips button { border: 2px dashed #e9c46a; background: #1d4d32; color: #ffe8a3; border-radius: 99px; padding: 4px 9px; font-family: var(--num); font-weight: 800; font-size: .74rem; cursor: pointer; }
+  .rl-chips button.on { background: #e9c46a; color: #3a2a00; border-style: solid; }
+  .rl-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+  .rl-zero { grid-column: 1 / -1; }
+  .rl-cell { position: relative; border: 1px solid rgba(255,255,255,.25); border-radius: 8px; color: #fff; font-family: var(--num); font-weight: 800; font-size: .86rem; padding: 7px 0 9px; cursor: pointer; }
+  .rl-cell i { position: absolute; left: 0; right: 0; bottom: 1px; font-style: normal; font-size: .56rem; color: #ffe8a3; line-height: 1; }
+  .rl-cell.bet { outline: 3px solid #ffd04a; outline-offset: -3px; }
+  .rl-outs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 6px; }
+  .rl-out { background: #1d4d32; font-family: inherit; font-size: .8rem; }
+  .rl-out small { margin-left: 3px; font-size: .62rem; color: #b7cbbb; }
+  .rl-out.rl-red { background: #d33b2c; } .rl-out.rl-black { background: #1f2328; }
+  .rl-sum { text-align: center; font-size: .82rem; margin-top: 8px; }
+  .rl-sum b { color: #ffd04a; font-family: var(--num); }
+
   /* 60秒モード */
   .montage { text-align: center; }
   .montage .yr { font-family: var(--num); font-weight: 800; font-size: .9rem; color: var(--sub); }
@@ -497,6 +531,7 @@
     <div class="card">
       <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="shopMoney"></span></h2>
       <div class="shop" id="shopList"></div>
+      <button class="btn" id="casinoBtn" style="margin-top:10px">🎰 カジノでルーレット</button>
     </div>
     <div class="actions">
       <div class="row">
@@ -636,6 +671,7 @@
     <div class="card hidden" id="ol-shopCard">
       <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="ol-shopMoney"></span></h2>
       <div class="shop" id="ol-shopList"></div>
+      <button class="btn" id="ol-casinoBtn" style="margin-top:10px">🎰 カジノでルーレット</button>
     </div>
     <div class="card hidden" id="ol-lastCard"><h2 id="ol-lastHead">📺 前節の試合</h2><div id="ol-lastBody"></div></div>
     <div class="card" id="ol-seasonCard">
@@ -1630,6 +1666,13 @@ $('imgBtn').onclick = saveImage;
 $('rankNameBtn').onclick = submitName;
 $('nextGenBtn').onclick = () => renderCreate({ child: true, pos: S.p.pos });
 $('wikiBtn').onclick = showWiki;
+// カジノ（一人用：当たり外れは core.js がその場で決める）
+$('casinoBtn').onclick = () => openRoulette({
+  getMoney: () => S.p.money,
+  spinsLeft: () => null,
+  spin: (bets) => { const r = SL.spinRoulette(S.p, bets); if (!r.error) save(); return r; },
+  onClose: () => renderGame(),
+});
 $('colBtn').onclick = () => { colTab = 'titles'; renderCol(); };
 $('colBack').onclick = renderTitle;
 $('colTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { colTab = b.dataset.c; renderCol(); } });
@@ -1638,6 +1681,7 @@ $('endTitleBtn').onclick = renderTitle;
 // #online で開かれたときはオンラインリーグから始める（online.js が開く）
 if (location.hash !== '#online') renderTitle();
 </script>
+<script src="casino.js"></script>
 <script src="online.js"></script>
 <script src="../shared/apps.js"></script>
 <script src="../shared/next.js"></script>

@@ -79,6 +79,7 @@ const SL = (() => {
   const NATION_STR = { ブラジル: 86, アルゼンチン: 86, フランス: 87, スペイン: 85, ドイツ: 84, イングランド: 85, イタリア: 82, オランダ: 82, ポルトガル: 83, ベルギー: 80, クロアチア: 79, ウルグアイ: 78, メキシコ: 74, 韓国: 73, アメリカ: 74, セネガル: 75, モロッコ: 77, ナイジェリア: 74, オーストラリア: 71, カナダ: 72 };
 
   const SEASON_WEEKS = 18;
+  const START_MONEY = 500; // 選手を作った瞬間に振り込まれるお金（万円）
   const START_YEAR = 2027;
   const isWorldCupYear = (y) => y % 4 === 2;
 
@@ -101,7 +102,7 @@ const SL = (() => {
     return {
       name, pos, age, stats, exp: {},
       pot, ...potRange(pot), grow: gr, growKnown: false,
-      cond: 0, fatigue: 0, injury: 0, fame: 5 + bonus, money: 0,
+      cond: 0, fatigue: 0, injury: 0, fame: 5 + bonus, money: START_MONEY, // プロ契約の支度金
       club: null, salary: 0, contract: 0, number: 30,
       married: false, dating: false, kids: 0, kidsBorn: [],
     };
@@ -323,6 +324,59 @@ const SL = (() => {
   function healWeek(p) { p.injury = Math.max(0, p.injury - (p.clinic ? 2 : 1)); }
   // 調子が下がるとき、家があれば半分は踏みとどまる
   function condDown(p, n = 1) { if (p.house && chance(.5)) return; p.cond = clamp(p.cond - n, -2, 2); }
+
+  // ===== カジノ：ルーレット（ヨーロッパ式 0〜36。ゲーム内のお金だけを賭ける） =====
+  const RL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+  const RL_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+  const rlColor = (n) => n === 0 ? 'green' : RL_RED.has(n) ? 'red' : 'black';
+  // 賭け方：k は 'red' 'black' 'even' 'odd' 'low' 'high' 'd1' 'd2' 'd3' 'n0'〜'n36'。pay は当たったときに戻る倍率（賭け金込み）
+  const RL_BETS = {
+    red: { name: '赤', pay: 2, win: (n) => RL_RED.has(n) },
+    black: { name: '黒', pay: 2, win: (n) => n > 0 && !RL_RED.has(n) },
+    even: { name: '偶数', pay: 2, win: (n) => n > 0 && n % 2 === 0 },
+    odd: { name: '奇数', pay: 2, win: (n) => n % 2 === 1 },
+    low: { name: '1-18', pay: 2, win: (n) => n >= 1 && n <= 18 },
+    high: { name: '19-36', pay: 2, win: (n) => n >= 19 },
+    d1: { name: '1st 12', pay: 3, win: (n) => n >= 1 && n <= 12 },
+    d2: { name: '2nd 12', pay: 3, win: (n) => n >= 13 && n <= 24 },
+    d3: { name: '3rd 12', pay: 3, win: (n) => n >= 25 },
+  };
+  const ROULETTE = { minBet: 10, maxTotal: 10000, maxBets: 12, order: RL_ORDER };
+  function rlBetInfo(k) {
+    if (RL_BETS[k]) return RL_BETS[k];
+    const m = /^n([0-9]{1,2})$/.exec(k);
+    if (m && +m[1] <= 36) { const v = +m[1]; return { name: String(v), pay: 36, win: (n) => n === v }; }
+    return null;
+  }
+  // 賭けを確かめる。おかしければエラー文を返す
+  function rlCheck(p, bets) {
+    if (!Array.isArray(bets) || !bets.length) return '賭けてください';
+    if (bets.length > ROULETTE.maxBets) return `賭けは${ROULETTE.maxBets}か所まで`;
+    let total = 0;
+    for (const b of bets) {
+      const a = Number(b && b.a);
+      if (!rlBetInfo(b && b.k) || !Number.isInteger(a) || a < ROULETTE.minBet || a % 10) return '賭け方がおかしい';
+      total += a;
+    }
+    if (total > ROULETTE.maxTotal) return "1回に賭けられるのは1億円まで";
+    if (total > p.money) return 'お金が足りない';
+    return null;
+  }
+  function spinRoulette(p, bets) {
+    const e = rlCheck(p, bets);
+    if (e) return { error: e };
+    const num = ri(0, 36);
+    let total = 0, back = 0;
+    const results = bets.map((b) => {
+      const info = rlBetInfo(b.k), a = Number(b.a), win = info.win(num), payout = win ? a * info.pay : 0;
+      total += a; back += payout;
+      return { k: b.k, name: info.name, a, win, payout };
+    });
+    p.money += back - total;
+    const C = p.casino || (p.casino = { spins: 0, bet: 0, back: 0, best: 0 });
+    C.spins++; C.bet += total; C.back += back; C.best = Math.max(C.best, back - total);
+    return { num, color: rlColor(num), results, total, back, net: back - total, money: p.money };
+  }
 
   // ===== カップ戦（1部10クラブ＋2部の上位6クラブの勝ち抜き戦。第4・8・12・16節に開催） =====
   const CUP_WEEKS = { 4: '1回戦', 8: '準々決勝', 12: '準決勝', 16: '決勝' };
@@ -1345,6 +1399,7 @@ const SL = (() => {
     setRng, STATS, POS, GROW, TRAINING, LEAGUES, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
+    START_MONEY, ROULETTE, RL_BETS, rlColor, rlBetInfo, rlCheck, spinRoulette,
     CHALLENGES, SHOP, shopList, buy, narrowPot, TITLES, titleInfo, ACHIEVEMENTS, newCollection, addToCollection, CUP_WEEKS,
     migrate, inheritBonus, lastMatchInfo, playLastMatch, familyTitle, POLICY, autoDraft, autoYear, autoLastMatch, lastName,
     // オンライン版のサーバーが同じルールで試合を回すための部品

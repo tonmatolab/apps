@@ -12,6 +12,10 @@ export const OFF_TICKS = 3; // オフシーズンの長さ（試合の何回分�
 export const CLUB_CAP = 6, GK_CAP = 2;
 // 年俸の上限（万円）。リーグごと
 export const SALARY_CAP = { 0: 30000, 1: 8000, 2: 2000 };
+// ルーレットは1節につき1人10回まで（1回ごとに保存するので、無料枠の書き込み数を守るため）
+export const CASINO_SPINS = 10;
+export const casinoKey = (w) => w.season + '-' + w.phase + '-' + w.week + '-' + w.offLeft;
+export const casinoLeft = (m, w) => CASINO_SPINS - (m.casinoTick && m.casinoTick.key === casinoKey(w) ? m.casinoTick.n : 0);
 
 // ----- 世界（クラブ・日程・順位表） -----
 export function newWorldState() {

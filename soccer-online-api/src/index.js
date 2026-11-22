@@ -5,6 +5,7 @@
 //   GET  /api/state                  → 自分と所属リーグの状態（Authorization: Bearer <code>）
 //   POST /api/join {i}               → 入団先を選ぶ
 //   POST /api/training {k}           → 練習メニューを変える
+//   POST /api/casino/roulette {bets} → ルーレットを1回まわす（1節10回まで）
 //   POST /api/decide {choice}        → オフの契約：'stay' / 'retire' / オファーの番号
 //   POST /api/nextgen {name, pos}    → 引退後、次の世代を始める
 //   POST /api/dev/tick {n}           → 開発用：n節すすめる（DEV=1 のときだけ）

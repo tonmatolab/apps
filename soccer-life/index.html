@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>サッカー人生｜入団から引退、そして次の世代へ</title>
+<title>サッカー人生｜一人用もオンラインリーグも</title>
 <meta name="description" content="プロサッカー選手として入団から引退まで。練習で能力を伸ばし、試合は自動で進む。移籍・海外挑戦・ワールドカップ、引退したら子どもに夢を託そう。無料・登録なし。">
 <meta property="og:type" content="website">
 <meta property="og:title" content="サッカー人生⚽ 入団から引退、そして次の世代へ">
@@ -294,6 +294,40 @@
   .wiki .note { font-size: .7rem; color: #54595d; text-align: left; font-weight: 400; }
   @media (max-width: 420px) { .wiki .ib { float: none; width: 100%; margin: 0 0 10px; } }
 
+  /* オンラインリーグ（.ol の画面だけに効かせる） */
+  .beta { display: inline-block; font-family: var(--num); font-size: .7rem; font-weight: 800; background: var(--red); color: #fff; border-radius: 6px; padding: 0 6px; vertical-align: 3px; }
+  .btn.small { padding: 8px 12px; font-size: .82rem; width: auto; display: inline-block; }
+  .ol .logo h1 { font-size: clamp(1.9rem, 9.5vw, 2.7rem); line-height: 1.15; }
+  .ol .feats { display: block; list-style: none; margin: 0; padding: 0; font-size: .84rem; font-weight: 700; }
+  .ol .feats li { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .ol .feats li:last-child { border: none; }
+  .ol .worldbar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .ol .worldbar div { background: var(--chip); border-radius: 14px; padding: 8px 4px; font-size: .66rem; color: var(--sub); font-weight: 700; }
+  .ol .worldbar b { display: block; font-family: var(--num); font-size: 1.15rem; color: var(--ink); line-height: 1.25; }
+  .ol .crest { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-weight: 800; font-size: .8rem; }
+  .ol .score .tm .crest { margin: 0 auto 4px; width: 38px; height: 38px; font-size: .7rem; }
+  .ol .codebox { text-align: center; font-family: var(--num); font-weight: 800; font-size: 1.5rem; letter-spacing: .06em; background: var(--chip); border: 2px dashed var(--green); border-radius: 16px; padding: 14px 8px; margin: 10px 0; user-select: all; }
+  .ol .warn { background: #fff4d6; color: #6b4b00; border-radius: 12px; padding: 10px 12px; font-size: .8rem; font-weight: 700; }
+  .ol .topbar { display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 800; color: var(--sub); }
+  .ol .topbar .cd { margin-left: auto; color: var(--green); font-family: var(--num); }
+  .ol .pc .av { width: 80px; height: 80px; }
+  .ol .stl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; }
+  .ol .stl li { grid-template-columns: 4.8em 1fr 2em; }
+  .ol .hl li.mine { color: var(--green); }
+  .ol .hl li.mate { font-weight: 800; color: var(--blue); }
+  .ol .hum { font-size: .64rem; color: var(--blue); font-weight: 800; margin-left: 3px; }
+  .ol .list { list-style: none; margin: 0; padding: 0; font-size: .84rem; }
+  .ol .list li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .ol .list li:last-child { border: none; }
+  .ol .list .no { width: 1.6em; text-align: center; font-family: var(--num); font-weight: 800; color: var(--sub); }
+  .ol .list .nm { flex: 1; min-width: 0; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ol .list .v { font-family: var(--num); font-weight: 800; }
+  .ol .empty { text-align: center; color: var(--sub); font-size: .8rem; padding: 6px 0; }
+  .ol .ach li { background: #fff1c4; color: #7a5600; }
+  .ol .panel { border: 3px solid var(--gold); }
+  @media (prefers-color-scheme: dark) { .ol .warn { background: #3a3010; color: #ffd76a; } .ol .ach li { background: #4a3c10; color: #ffd76a; } }
+  .olentry { border: 3px solid var(--green); }
+
   /* 60秒モード */
   .montage { text-align: center; }
   .montage .yr { font-family: var(--num); font-weight: 800; font-size: .9rem; color: var(--sub); }
@@ -317,7 +351,13 @@
     </div>
     <div class="stack" style="margin-top:14px">
       <button class="btn primary" id="contBtn">▶ つづきから</button>
-      <button class="btn" id="newBtn">⚽ はじめから</button>
+      <button class="btn" id="newBtn">⚽ 一人用ではじめから</button>
+    </div>
+    <div class="card olentry">
+      <h2>🌍 オンラインリーグ <span class="beta">β</span></h2>
+      <p class="sub" style="margin:0 0 6px">全員が同じリーグの選手。1時間に1節、試合が自動で進む。チームメイトもライバルも本物のプレイヤー</p>
+      <p class="sub" id="olEntryInfo" style="margin:0 0 10px;font-weight:800;color:var(--green)"></p>
+      <button class="btn primary" id="olEntryBtn">オンラインで遊ぶ ▶</button>
     </div>
     <div class="card">
       <div class="feats">
@@ -445,8 +485,108 @@
     </div>
   </section>
 
+  <!-- ===== オンライン：はじめに ===== -->
+  <section id="ol-scrStart" class="ol hidden">
+    <div class="logo">
+      <h1>サッカー人生<br><span>オンラインリーグ</span> <span class="beta">β</span></h1>
+      <p>チームメイトもライバルも、本物のプレイヤー</p>
+    </div>
+    <div class="card">
+      <div class="worldbar" id="ol-startWorld"></div>
+    </div>
+    <div class="stack" style="margin-top:14px">
+      <button class="btn primary" id="ol-startBtn">⚽ 選手になる（無料・メール不要）</button>
+    </div>
+    <div class="card">
+      <ul class="feats">
+        <li>🌍 全員が同じ30クラブのリーグに所属。同じクラブになった人とは一緒に試合に出る</li>
+        <li>⏰ <b id="ol-tickTxt">1時間</b>に1節、試合は自動で進む。あなたが決めるのは練習と契約だけ</li>
+        <li>📅 18節でシーズン終了。オフに移籍・残留・引退を選ぶ（1日でおよそ1年）</li>
+        <li>👶 引退したら、子どもが次の世代として続きを生きる</li>
+        <li>🔑 ログインは「引き継ぎコード」だけ。メモしておけば別の端末でも続きから</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>🔑 引き継ぎコードで続きから</h2>
+      <div class="row"><input class="t" id="ol-codeIn" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="flex:2"><button class="btn small primary" id="ol-loginBtn">ログイン</button></div>
+      <p class="sub" id="ol-loginMsg" style="margin:6px 0 0"></p>
+    </div>
+    <div class="card">
+      <h2>⚽ 今季の得点ランキング（全リーグ）</h2>
+      <ol class="list" id="ol-startScorers"><li class="empty">読み込み中…</li></ol>
+    </div>
+    <button class="btn ghost" id="ol-backBtn" style="margin-top:12px">← 一人用のタイトルへ</button>
+  </section>
+
+  <!-- ===== オンライン：選手を作る ===== -->
+  <section id="ol-scrCreate" class="ol hidden">
+    <div class="card">
+      <h2 id="ol-createTitle" style="font-size:1.2rem">あなたの名前は？</h2>
+      <input class="t" id="ol-nameIn" maxlength="12" placeholder="例：山田 蓮" autocomplete="off">
+      <p class="sub" style="margin:6px 0 0">リーグのほかのプレイヤーにも表示されます</p>
+    </div>
+    <div class="card">
+      <h2>ポジション</h2>
+      <div class="poses" id="ol-poses"></div>
+    </div>
+    <div class="stack" style="margin-top:16px">
+      <button class="btn primary" id="ol-signupBtn">プロになる ▶</button>
+      <p class="sub" id="ol-signupMsg" style="text-align:center;margin:0"></p>
+      <button class="btn ghost" id="ol-createBack">もどる</button>
+    </div>
+  </section>
+
+  <!-- ===== オンライン：引き継ぎコード ===== -->
+  <section id="ol-scrCode" class="ol hidden">
+    <div class="card">
+      <h2 style="font-size:1.2rem">🔑 あなたの引き継ぎコード</h2>
+      <div class="codebox" id="ol-codeShow"></div>
+      <div class="warn">このコードが、あなたの選手の「鍵」です。メール登録がないので、なくすと二度とログインできません。スクリーンショットかメモで保存してください。</div>
+      <div class="stack" style="margin-top:12px">
+        <button class="btn" id="ol-copyBtn">📋 コピーする</button>
+        <button class="btn primary" id="ol-codeOkBtn">保存した ▶ 入団先を選ぶ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== オンライン：入団先 ===== -->
+  <section id="ol-scrDraft" class="ol hidden">
+    <div class="card">
+      <div class="sub" style="font-weight:800">入団テスト合格！</div>
+      <h2 style="font-size:1.15rem;margin-top:4px">3クラブからオファーが届いた</h2>
+      <p class="sub" style="margin:0 0 10px">強いクラブほどレギュラー争いは厳しい。<span style="color:var(--blue);font-weight:800">👤</span>は所属しているプレイヤーの数</p>
+      <div class="stack" id="ol-draftList"></div>
+    </div>
+  </section>
+
+  <!-- ===== オンライン：ホーム ===== -->
+  <section id="ol-scrHome" class="ol hidden">
+    <div class="topbar"><span id="ol-topYear"></span><span class="cd" id="ol-topCd"></span><button class="btn small" id="ol-refreshBtn">🔄</button></div>
+    <div class="card pc" id="ol-pCard"></div>
+    <div id="ol-statusPanel"></div>
+    <div class="card hidden" id="ol-lastCard"><h2 id="ol-lastHead">📺 前節の試合</h2><div id="ol-lastBody"></div></div>
+    <div class="card" id="ol-seasonCard">
+      <h2 id="ol-seasonHead">📅 今シーズン</h2>
+      <div class="season" id="ol-seasonBox"></div>
+      <p class="sub" id="ol-nextTxt" style="margin:8px 0 0;font-weight:700"></p>
+    </div>
+    <div class="card" id="ol-statCard"><h2>📊 能力</h2><ul class="stl" id="ol-statList"></ul></div>
+    <div class="card">
+      <div class="tabs" id="ol-tabs">
+        <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="career">経歴</button>
+      </div>
+      <div id="ol-tabBody"></div>
+    </div>
+    <div class="card">
+      <h2>🔑 引き継ぎコード</h2>
+      <div class="row"><div class="codebox" id="ol-myCode" style="font-size:1rem;margin:0;flex:2">••••-••••-••••-••••</div><button class="btn small" id="ol-revealBtn">表示</button></div>
+      <button class="btn ghost" id="ol-logoutBtn" style="margin-top:6px">この端末からログアウト</button>
+    </div>
+    <button class="btn ghost" id="ol-homeBackBtn" style="margin-top:12px">← タイトルへ（一人用もここから）</button>
+  </section>
+
   <div class="tonmato-next" data-current="soccer"></div>
-  <p class="foot">このゲームに登場するクラブ・リーグ・選手はすべて架空のものです。</p>
+  <p class="foot">このゲームに登場するクラブ・リーグ・選手はすべて架空のものです。<br>オンラインリーグの選手名はプレイヤーが自由につけたものです。</p>
 </main>
 
 <script src="core.js"></script>
@@ -563,7 +703,9 @@ function sheet(html, btns = [{ label: '次へ', cls: 'primary' }]) {
   });
 }
 function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
-function show(id) { for (const s of ['scrTitle', 'scrCreate', 'scrDraft', 'scrGame', 'scrEnd']) $(s).classList.toggle('hidden', s !== id); window.scrollTo(0, 0); }
+// 画面の切り替え（一人用・オンラインの両方の画面から1つだけ表示する）
+function showScreen(id) { document.querySelectorAll('main > section').forEach((s) => s.classList.toggle('hidden', s.id !== id)); window.scrollTo(0, 0); }
+function show(id) { showScreen(id); if (location.hash) history.replaceState(null, '', location.pathname); }
 
 /// ===== タイトル =====
 const boardGame = (mode) => mode === 'quick' ? 'soccerq' : 'soccer';
@@ -609,6 +751,7 @@ function renderTitle() {
     $('lineageList').innerHTML = treeHTML(lin, live);
   }
   show('scrTitle');
+  if (window.OL) OL.entryCard();
   loadBoard($('boardTitle'));
   api('/get?keys=soccer-play').then((j) => { $('sPlays').textContent = j ? (j['soccer-play'] || 0).toLocaleString() : '-'; });
 }
@@ -1314,8 +1457,10 @@ $('nextGenBtn').onclick = () => renderCreate({ child: true, pos: S.p.pos });
 $('wikiBtn').onclick = showWiki;
 $('paperBtn').onclick = () => { const pp = S.papers.filter((x) => x.kind === 'retire').at(-1); if (pp) paperSheet(pp); };
 $('endTitleBtn').onclick = renderTitle;
-renderTitle();
+// #online で開かれたときはオンラインリーグから始める（online.js が開く）
+if (location.hash !== '#online') renderTitle();
 </script>
+<script src="online.js"></script>
 <script src="../shared/apps.js"></script>
 <script src="../shared/next.js"></script>
 </body>

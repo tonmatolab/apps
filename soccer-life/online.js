@@ -252,6 +252,34 @@
       ${rounds || '<p class="empty">まだ試合がありません</p>'}`;
   }
 
+  // ----- 全国ランキング（現役のプレイヤー全員） -----
+  // タブを開いたときだけ取りに行き、1分間は取り直さない（無料枠を守る）
+  const NR_KINDS = [
+    ['score', '生涯スコア', (v) => `${v.toLocaleString()}pt`, 'いまの生涯スコア（今季の成績も含む）'],
+    ['ovr', '総合力', (v) => v, 'いまの総合力'],
+    ['FW', 'FW', (v) => v, 'FWの総合力'], ['MF', 'MF', (v) => v, 'MFの総合力'], ['DF', 'DF', (v) => v, 'DFの総合力'], ['GK', 'GK', (v) => v, 'GKの総合力'],
+    ['rating', '平均評価', (v) => v.toFixed(2), '今季の平均評価点（10試合以上出場）'],
+    ['salary', '年俸', (v) => man(v), 'いまの年俸'],
+    ['money', '貯金', (v) => man(v), 'いまの貯金'],
+  ];
+  let NR = null, nrAt = 0, nrKind = 'score';
+  async function renderNational(body) {
+    if (!NR || Date.now() - nrAt > 60000) {
+      body.innerHTML = '<p class="empty">読み込み中…</p>';
+      const j = await api('/rankings');
+      if (j.error) { body.innerHTML = `<p class="empty">${errMsg(j.error)}</p>`; return; }
+      NR = j; nrAt = Date.now();
+      if (tab !== 'national') return;
+    }
+    const [key, label, fmt, desc] = NR_KINDS.find((k) => k[0] === nrKind);
+    const R = NR[key];
+    body.innerHTML = `<div class="nrkinds">${NR_KINDS.map((k) => `<button data-k="${k[0]}" class="${k[0] === nrKind ? 'on' : ''}">${k[1]}</button>`).join('')}</div>
+      <p class="sub" style="margin:0 0 6px">🌏 ${desc}・現役 ${R.total}人</p>
+      ${R.mine ? `<div class="nrmine">あなたは <span style="color:var(--green);font-size:1.1rem">${R.mine.rank}位</span> / ${R.total}人（${fmt(R.mine.v)}）</div>` : key === 'rating' ? '<div class="nrmine sub">今季10試合以上出場すると載ります</div>' : ''}
+      ${R.top.length ? `<ol class="list">${R.top.map((r, i) => `<li${r.me ? ' style="background:var(--chip)"' : ''}><span class="no">${i + 1}</span>${posTag(r.pos)}<span class="nm">${esc(r.name)} <span class="sub">${esc(r.club)}・${r.age}歳${r.gen > 1 ? `・${r.gen}代目` : ''}</span></span><span class="v">${fmt(r.v)}</span></li>`).join('')}</ol>` : '<p class="empty">まだ誰もいません</p>'}`;
+    body.querySelectorAll('.nrkinds button').forEach((b) => b.onclick = () => { nrKind = b.dataset.k; renderNational(body); });
+  }
+
   function renderTab() {
     document.querySelectorAll('#ol-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
     const me = ST.me, lg = me.club != null ? club(me.club).lg : 1, body = $('tabBody');
@@ -264,6 +292,8 @@
       body.innerHTML = `<h2>⚽ 得点ランキング（${SL.LEAGUES[lg].short}・プレイヤー）</h2>${list(ST.scorers)}<h2 style="margin-top:12px">👟 アシストランキング</h2>${list(ST.assisters)}`;
     } else if (tab === 'mates') {
       body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>${ST.mates.length ? `<ul class="list">${ST.mates.map((m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`).join('')}</ul>` : '<p class="empty">ほかのプレイヤーはまだいません。友達を誘おう</p>'}`;
+    } else if (tab === 'national') {
+      renderNational(body);
     } else if (tab === 'cohort') {
       const C = ST.cohort || [];
       body.innerHTML = `<h2>🎓 ${ST.debutYear != null ? `${ST.debutYear}年デビュー組` : '同期'}のランキング</h2><p class="sub" style="margin:0 0 6px">同じ年にプロ入りした本物のプレイヤー同士の、いまの生涯スコア</p>${C.length ? `<ol class="list">${C.map((r, i) => `<li${r.me ? ' style="background:var(--chip)"' : ''}><span class="no">${i + 1}</span>${posTag(r.pos)}<span class="nm">${esc(r.name)} <span class="sub">${esc(r.club)}・${r.goals}G</span></span><span class="v">${r.score.toLocaleString()}</span></li>`).join('')}</ol>` : '<p class="empty">入団すると同期ランキングに載ります</p>'}`;

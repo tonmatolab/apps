@@ -328,6 +328,10 @@
   .ol .tabs { overflow-x: auto; }
   .ol .tabs button { flex: 0 0 auto; min-width: 3.6em; padding: 8px 8px; }
   .ol .full { color: var(--red); font-weight: 800; }
+  .ol .nrkinds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .ol .nrkinds button { border: 2px solid var(--line); background: var(--paper); border-radius: 99px; padding: 4px 10px; font-weight: 800; font-size: .74rem; cursor: pointer; }
+  .ol .nrkinds button.on { border-color: var(--green); background: var(--green); color: #fff; }
+  .ol .nrmine { background: var(--chip); border-radius: 12px; padding: 8px 12px; font-weight: 800; font-size: .84rem; margin-bottom: 8px; }
   .ol .motw { display: flex; align-items: center; gap: 10px; font-size: .82rem; font-weight: 700; }
   .ol .motw .ic { font-size: 1.6rem; }
   @media (prefers-color-scheme: dark) { .ol .warn { background: #3a3010; color: #ffd76a; } .ol .ach li { background: #4a3c10; color: #ffd76a; } }
@@ -642,7 +646,7 @@
     <div class="card" id="ol-statCard"><h2 id="ol-statHead">📊 能力</h2><ul class="stl" id="ol-statList"></ul></div>
     <div class="card">
       <div class="tabs" id="ol-tabs">
-        <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="cohort">同期</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="records">記録</button><button data-t="career">経歴</button>
+        <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="national">全国</button><button data-t="cohort">同期</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="records">記録</button><button data-t="career">経歴</button>
       </div>
       <div id="ol-tabBody"></div>
     </div>

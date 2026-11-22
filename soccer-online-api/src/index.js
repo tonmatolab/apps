@@ -1,5 +1,6 @@
 // サッカー人生 オンラインリーグ API（Cloudflare Workers + Durable Objects）
 //   GET  /api/public                 → リーグの概要（だれでも）
+//   GET  /api/rankings               → 現役プレイヤー全員の全国ランキング（ログイン中なら自分の順位も）
 //   POST /api/signup {name, pos}     → {code, state}  code は引き継ぎコード（これがログインの鍵）
 //   GET  /api/state                  → 自分と所属リーグの状態（Authorization: Bearer <code>）
 //   POST /api/join {i}               → 入団先を選ぶ

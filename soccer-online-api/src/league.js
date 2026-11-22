@@ -90,6 +90,8 @@ export class League extends DurableObject {
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     try {
       if (req.method === 'GET' && path === '/public') return json(this.publicView());
+      // 全国ランキング（ログインしていれば自分の順位も返す）
+      if (req.method === 'GET' && path === '/rankings') return json(this.rankingsView(await this.me(req)));
       if (req.method === 'POST' && path === '/signup') return this.signup(req, body);
       if (req.method === 'POST' && path === '/dev/tick') {
         if (this.env.DEV !== '1') return err('not_found', 404);
@@ -166,6 +168,31 @@ export class League extends DurableObject {
       .sort((a, b) => b.season[key] - a.season[key] || b.season.apps - a.season.apps).slice(0, 10)
       .map((m) => ({ name: m.pl.name, club: this.w.clubs[m.pl.club].name, pos: m.pl.pos, v: m.season[key] }));
   }
+  // 現役のプレイヤー全員を比べる全国ランキング。メモリ上のデータから計算するだけで、書き込みはしない
+  rankingsView(me) {
+    const w = this.w;
+    const act = [...this.members.values()].filter((m) => m.status !== 'draft' && m.status !== 'retired' && m.pl.club != null);
+    const build = (val, filter = () => true) => {
+      const all = act.filter(filter).map((m) => ({ m, v: val(m) })).sort((a, b) => b.v - a.v || b.m.season.apps - a.m.season.apps);
+      const top = all.slice(0, 20).map(({ m, v }) => ({ name: m.pl.name, pos: m.pl.pos, age: m.pl.age, gen: m.gen, club: w.clubs[m.pl.club].name, v, me: m === me }));
+      const i = me ? all.findIndex((x) => x.m === me) : -1;
+      return { top, total: all.length, mine: i >= 0 ? { rank: i + 1, v: all[i].v } : null };
+    };
+    const ovrOf = (m) => G.ovr(m.pl);
+    return {
+      year: w.year, week: w.week,
+      score: build((m) => G.scoreNow(m, w)),
+      ovr: build(ovrOf),
+      FW: build(ovrOf, (m) => m.pl.pos === 'FW'),
+      MF: build(ovrOf, (m) => m.pl.pos === 'MF'),
+      DF: build(ovrOf, (m) => m.pl.pos === 'DF'),
+      GK: build(ovrOf, (m) => m.pl.pos === 'GK'),
+      rating: build((m) => G.avg(m.season.ratings), (m) => m.season.apps >= 10),
+      salary: build((m) => m.pl.salary),
+      money: build((m) => m.pl.money),
+    };
+  }
+
   publicView() {
     return { world: this.worldView(), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
   }

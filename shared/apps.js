@@ -1,6 +1,7 @@
 // 全アプリの一覧（一覧ページと「次はこれで遊ぼう」で使う）。新しいアプリはここに1行足す
 // shelf: 一覧ページの棚（friends=みんなと（友達・オンライン） / solo=ひとりで / quiz=診断・クイズ）
 window.TONMATO_APPS = [
+  { id: 'onigiri', path: 'onigiri/', title: 'おにぎり握り職人', desc: 'ぎゅっ、くるっ、で握って、まっぷたつ。断面を見て査定されるおにぎりゲーム', icon: '🍙', key: 'onigiri-play', added: '2026-11-24', tag: 'バカゲー', shelf: 'solo' },
   { id: 'arukisumaho', path: 'arukisumaho/', title: '歩きスマホ、ダメ絶対', desc: '前を見ない歩きスマホを、スワイプで突き飛ばして注意。何人いける？', icon: '📵', key: 'arukisumaho-play', added: '2026-11-23', tag: 'バカゲー', shelf: 'solo' },
   { id: 'batsu', path: 'batsu/', title: '罰ゲーム決めたげる', desc: '負けた人が決まったら、あとはおまかせ。場面と強さで罰ゲームを判決', icon: '🔨', key: 'batsu-play', added: '2026-11-23', tag: 'パーティー', shelf: 'friends' },
   { id: 'reversi', path: 'reversi/', title: 'リバーシ部屋', desc: '合言葉を送るだけで友達とすぐ対戦。登録なし、CPU練習も', icon: '⚫', key: 'reversi-play', added: '2026-11-23', tag: '対戦', shelf: 'friends' },

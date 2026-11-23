@@ -62,7 +62,19 @@
     background: var(--chip); border: 2px solid transparent; border-radius: 99px; padding: 5px 13px; cursor: pointer;
   }
   .chips button.on { background: var(--ink); color: var(--yellow); }
+  .chips.lv { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .chips.lv button { padding: 5px 4px; white-space: nowrap; }
   .chips.lv button.on[data-v="3"] { background: var(--red); color: #fff; }
+  .chips.lv button.on[data-v="4"] { background: #1a0d10; color: #ff4d6d; box-shadow: 0 0 0 2px #ff4d6d inset; }
+  .kwarn { margin: -8px 0 14px; font-size: .78rem; font-weight: 800; color: #b3122e; }
+  /* 鬼畜の判決：黒い紙に赤い字 */
+  .verdict.kichiku { background: #1d1416; color: #f6ece0; border-color: #f6ece0; outline-color: #1d1416; }
+  .verdict.kichiku .v-sub { color: #ff4d6d; border-color: #4a3438; }
+  .verdict.kichiku .v-text { color: #ff4d6d; }
+  .verdict.kichiku .v-long { background: #ff4d6d; color: #fff; }
+  .verdict.kichiku .v-tags span { background: #3a2529; }
+  .verdict.kichiku .v-foot, .verdict.kichiku .v-foot b { color: #c9a9ae; }
+  .verdict.kichiku .hanko { border-color: #ff4d6d; color: #ff4d6d; }
   input[type=text] {
     width: 100%; font: inherit; font-weight: 700; font-size: 1rem; color: var(--ink);
     border: 2px solid var(--line); border-radius: 12px; padding: 9px 12px; background: #fff; margin: 0 0 12px;
@@ -156,7 +168,9 @@
       <button data-v="1">😌 ゆる</button>
       <button data-v="2">😳 ふつう</button>
       <button data-v="3">👹 鬼</button>
+      <button data-v="4">💀 鬼畜</button>
     </div>
+    <p class="kwarn hidden" id="kWarn">💀 覚悟のある人だけ。本当にムリな罰は「引き直す」でOK</p>
     <p class="q">道具は使える？</p>
     <div class="chips" id="cItem">
       <button data-v="none">なし</button>
@@ -174,7 +188,7 @@
     <div class="stage">
       <div class="verdict" id="card">
         <p class="v-head">判決</p>
-        <p class="v-sub">罰ゲーム決めたげる裁判所</p>
+        <p class="v-sub" id="vSub">罰ゲーム決めたげる裁判所</p>
         <p class="v-who" id="vWho"></p>
         <span class="v-long hidden" id="vLong">⏳ 次のゲームが終わるまでずっと</span>
         <p class="v-text" id="vText"></p>
@@ -220,9 +234,9 @@ const RECS = [
   { label: '鼻メガネ・変装グッズ', q: '鼻メガネ パーティー' },
   { label: 'パーティーゲーム・グッズ', q: 'パーティーゲーム 盛り上がる' },
 ];
-const LEVEL_NAME = { 1: 'ゆる', 2: 'ふつう', 3: '鬼' };
+const LEVEL_NAME = { 1: 'ゆる', 2: 'ふつう', 3: '鬼', 4: '鬼畜' };
 // 強さの選び方 → 出す罰の強さと重み
-const LEVEL_WEIGHT = { 1: { 1: 1 }, 2: { 1: 1, 2: 2 }, 3: { 2: 1, 3: 3 } };
+const LEVEL_WEIGHT = { 1: { 1: 1 }, 2: { 1: 1, 2: 2 }, 3: { 2: 1, 3: 3 }, 4: { 3: 1, 4: 3 } };
 const ITEM_OK = { none: [''], phone: ['', 'p'], any: ['', 'p', 'g'] };
 
 const DATA = window.BATSU_DATA.map(([id, text, scene, level, item, long]) => ({ id, text, scene, level, item, long: !!long }));
@@ -273,7 +287,10 @@ const sfx = {
 const cond = Object.assign({ scene: 'all', level: '2', item: 'phone' }, loadJSON('cond', {}));
 function bindChips(boxId, key) {
   const box = $(boxId);
-  const paint = () => box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === cond[key]));
+  const paint = () => {
+    box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === cond[key]));
+    $('kWarn').classList.toggle('hidden', cond.level !== '4');
+  };
   box.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     cond[key] = b.dataset.v; paint(); store.set('cond', JSON.stringify(cond));
@@ -349,6 +366,8 @@ function render() {
   $('rerollBtn').innerHTML = rerollLeft > 0 ? `引き直す<small>あと${rerollLeft}回だけ</small>` : '引き直す<small>もう使い切った</small>';
 
   const card = $('card');
+  card.classList.toggle('kichiku', p.level === 4);
+  $('vSub').textContent = p.level === 4 ? '💀 鬼畜判決 💀' : '罰ゲーム決めたげる裁判所';
   card.classList.remove('flip'); void card.offsetWidth; card.classList.add('flip');
   $('result').classList.remove('hidden');
   $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -375,7 +394,7 @@ function markDone() {
 function shareText() {
   const { p } = current;
   const name = $('who').value.trim();
-  return `⚖️ 判決\n${name ? `被告 ${name} は` : '負けた人は'}\n「${p.long ? '次のゲーム中ずっと、' : ''}${p.text}」の刑に処す。\n\nあなたの罰も決めたげる👇`;
+  return `${p.level === 4 ? '💀 鬼畜判決' : '⚖️ 判決'}\n${name ? `被告 ${name} は` : '負けた人は'}\n「${p.long ? '次のゲーム中ずっと、' : ''}${p.text}」の刑に処す。\n\nあなたの罰も決めたげる👇`;
 }
 function share() {
   const u = new URL('https://twitter.com/intent/tweet');
@@ -407,28 +426,31 @@ async function resultImage() {
   await Promise.all([
     document.fonts.load(`800 60px ${M}`, `判決被告負けた人はの刑に処す。罰${name}`),
     document.fonts.load(`60px ${G}`, p.text),
-    document.fonts.load(`800 40px ${R}`, `${APP_TITLE}裁判所次のゲームが終わるまでずっと${SITE}`),
+    document.fonts.load(`800 40px ${R}`, `${APP_TITLE}裁判所鬼畜次のゲームが終わるまでずっと${SITE}`),
   ]);
+  // 鬼畜は黒い紙に赤い字
+  const K = p.level === 4;
+  const PAPER = K ? '#1d1416' : '#fffaf0', INK = K ? '#f6ece0' : '#2b1b14', RED = K ? '#ff4d6d' : '#e8453c';
   const W = 1080, H = 1350;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  g.fillStyle = '#fff3dc'; g.fillRect(0, 0, W, H);
-  g.fillStyle = '#f3dfbd';
+  g.fillStyle = K ? '#0e0809' : '#fff3dc'; g.fillRect(0, 0, W, H);
+  g.fillStyle = K ? '#2a1a1d' : '#f3dfbd';
   for (let y = 9; y < H; y += 36) for (let x = 9; x < W; x += 36) { g.beginPath(); g.arc(x, y, 2.4, 0, 7); g.fill(); }
   // 紙
-  g.fillStyle = '#fffaf0'; g.fillRect(90, 110, 900, 1080);
-  g.strokeStyle = '#2b1b14'; g.lineWidth = 6; g.strokeRect(90, 110, 900, 1080);
+  g.fillStyle = PAPER; g.fillRect(90, 110, 900, 1080);
+  g.strokeStyle = INK; g.lineWidth = 6; g.strokeRect(90, 110, 900, 1080);
   g.lineWidth = 3; g.strokeRect(108, 128, 864, 1044);
-  g.textAlign = 'center'; g.fillStyle = '#2b1b14';
+  g.textAlign = 'center'; g.fillStyle = INK;
   g.font = `800 110px ${M}`; g.fillText('判　決', W / 2, 290);
-  g.fillStyle = '#8a6f5d'; g.font = `800 32px ${R}`; g.fillText('罰ゲーム決めたげる裁判所', W / 2, 350);
-  g.strokeStyle = '#ecd9bd'; g.lineWidth = 2; g.beginPath(); g.moveTo(180, 385); g.lineTo(900, 385); g.stroke();
-  g.fillStyle = '#2b1b14'; g.font = `800 52px ${M}`;
+  g.fillStyle = K ? RED : '#8a6f5d'; g.font = `800 32px ${R}`; g.fillText(K ? '💀 鬼畜判決 💀' : '罰ゲーム決めたげる裁判所', W / 2, 350);
+  g.strokeStyle = (K ? '#4a3438' : '#ecd9bd'); g.lineWidth = 2; g.beginPath(); g.moveTo(180, 385); g.lineTo(900, 385); g.stroke();
+  g.fillStyle = INK; g.font = `800 52px ${M}`;
   g.fillText(name ? `被告 ${name} は` : '被告（負けた人）は', W / 2, 470);
   let y = 560;
   if (p.long) {
-    g.fillStyle = '#2b1b14'; g.beginPath(); g.roundRect(W / 2 - 300, y - 50, 600, 70, 35); g.fill();
-    g.fillStyle = '#ffd23f'; g.font = `800 34px ${R}`; g.fillText('⏳ 次のゲームが終わるまでずっと', W / 2, y - 3);
+    g.fillStyle = (K ? RED : INK); g.beginPath(); g.roundRect(W / 2 - 300, y - 50, 600, 70, 35); g.fill();
+    g.fillStyle = (K ? '#fff' : '#ffd23f'); g.font = `800 34px ${R}`; g.fillText('⏳ 次のゲームが終わるまでずっと', W / 2, y - 3);
     y += 80;
   }
   // 罰の文：長ければ字を小さくして、残りの高さの真ん中に置く
@@ -436,13 +458,13 @@ async function resultImage() {
   for (; size >= 54; size -= 6) { g.font = `${size}px ${G}`; ls = wrap(g, p.text, 780); if (ls.length <= 4) break; }
   const lh = size + 28, bottom = 990;
   const top = y + (bottom - y - ls.length * lh) / 2 + size * .85;
-  g.fillStyle = '#e8453c';
+  g.fillStyle = RED;
   ls.forEach((l, i) => g.fillText(l, W / 2, top + i * lh));
-  g.fillStyle = '#2b1b14'; g.font = `800 52px ${M}`; g.fillText('の刑に処す。', W / 2, 1060);
+  g.fillStyle = INK; g.font = `800 52px ${M}`; g.fillText('の刑に処す。', W / 2, 1060);
   // はんこ
   g.save(); g.translate(860, 1030); g.rotate(-.25);
-  g.strokeStyle = 'rgba(232,69,60,.85)'; g.lineWidth = 7; g.beginPath(); g.arc(0, 0, 70, 0, 7); g.stroke();
-  g.fillStyle = 'rgba(232,69,60,.85)'; g.font = `800 64px ${M}`; g.textBaseline = 'middle'; g.fillText('罰', 0, 4);
+  g.strokeStyle = RED; g.lineWidth = 7; g.beginPath(); g.arc(0, 0, 70, 0, 7); g.stroke();
+  g.fillStyle = RED; g.font = `800 64px ${M}`; g.textBaseline = 'middle'; g.fillText('罰', 0, 4);
   g.restore();
   g.textBaseline = 'alphabetic';
   g.fillStyle = '#8a6f5d'; g.font = `800 34px ${R}`; g.fillText(APP_TITLE, W / 2, 1255);

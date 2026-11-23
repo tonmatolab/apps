@@ -47,6 +47,10 @@
   .hit.y { color: var(--y); }
   .hit.r { color: #ff6a50; }
   .hit.big { font-size: 46px; }
+  .hit.huge { font-size: 58px; color: #ff4a3a; -webkit-text-stroke: 9px #161616; }
+  .hit.w { font-size: 24px; color: #bfe8ff; }
+  .hit.o { font-size: 30px; color: #ffa23a; }
+  .hit.s { font-size: 20px; }
 
   /* HUD */
   #hud { position: fixed; inset: 0; pointer-events: none; padding: max(10px, env(safe-area-inset-top)) 12px 0; }
@@ -78,6 +82,16 @@
   @keyframes ban { 0% { opacity: 0; transform: scale(2.4); } 12% { opacity: 1; transform: scale(.95); } 20% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
   #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 120px 40px rgba(232, 40, 30, .8); }
   #flash.on { animation: fl .45s; }
+  #flash.pow { box-shadow: inset 0 0 0 100vmax rgba(255,255,255,.55); }
+  #replay { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
+  #replay.hidden { display: none; }
+  #replay .bar { position: absolute; left: 0; right: 0; height: 11vh; background: #000; animation: barIn .35s ease-out; }
+  #replay .bar.t { top: 0; } #replay .bar.b { bottom: 0; }
+  @keyframes barIn { from { height: 0; } }
+  #replay .rp-tag { position: absolute; top: calc(11vh + 12px); left: 14px; background: #e8281e; color: #fff; font-weight: 900; font-size: 14px; padding: 4px 12px; border-radius: 6px; animation: pulse 1s infinite; }
+  #replay .rp-dist { position: absolute; bottom: calc(11vh + 18px); left: 0; right: 0; text-align: center; font-family: "Dela Gothic One", sans-serif; font-size: 44px; color: var(--y); -webkit-text-stroke: 8px #161616; paint-order: stroke fill; opacity: 0; transform: scale(2); transition: all .35s cubic-bezier(.2,1.6,.4,1); }
+  #replay .rp-dist.on { opacity: 1; transform: scale(1); }
+  #replay .rp-skip { position: absolute; bottom: 3.5vh; left: 0; right: 0; text-align: center; color: #bbb; font-size: 12px; font-weight: 800; }
   @keyframes fl { 0% { opacity: 1; } 100% { opacity: 0; } }
   #fever { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
     background: repeating-conic-gradient(from 0deg at 50% 45%, rgba(255,212,0,.0) 0 4deg, rgba(255,255,255,.22) 4deg 5deg); -webkit-mask: radial-gradient(circle at 50% 45%, transparent 30%, #000 75%); mask: radial-gradient(circle at 50% 45%, transparent 30%, #000 75%); }
@@ -153,6 +167,7 @@
 <div id="fx"></div>
 <div id="fever"></div>
 <div id="flash"></div>
+<div id="replay" class="hidden"><div class="bar t"></div><div class="bar b"></div><div class="rp-tag">🎬 ベストショット</div><div class="rp-dist" id="rpDist"></div><div class="rp-skip">タップでスキップ</div></div>
 
 <div id="hud" class="hidden">
   <div class="hrow">
@@ -176,8 +191,8 @@
     <div class="card" style="margin-top:10px">
       <p class="lead">前を見ずにスマホを見ている人を<br>全力で前へ突き飛ばして注意しよう。</p>
       <ul class="how">
-        <li><b>⇆</b><div>左右スワイプでレーン移動</div></li>
-        <li><b>⇧</b><div>上スワイプで突き飛ばす<small>ぶつかる前に、スマホの人めがけて</small></div></li>
+        <li><b>⇆</b><div>左右スワイプでレーン移動<small>1回のスワイプで1レーンずつ</small></div></li>
+        <li><b>⇧</b><div>上スワイプで突き飛ばす<small>速く払うほど遠くへ。全力で払えばフルスイング！</small></div></li>
         <li><b>⇩</b><div>下スワイプで「ダメ絶対モード」<small>ゲージが満タンのとき。まとめて吹っ飛ぶ</small></div></li>
         <li class="ng"><b>✕</b><div>3回ミスで終了<small>歩きスマホを見逃す／前を見ている人を突き飛ばす</small></div></li>
       </ul>
@@ -203,6 +218,8 @@
         <div><small>キラーン☆（場外）</small><b id="rHome">0</b></div>
         <div><small>巻き込み</small><b id="rChain">0</b></div>
         <div><small>歩いた距離</small><b id="rDist">0m</b></div>
+        <div><small>最長飛距離</small><b id="rFar">-</b></div>
+        <div><small>ぶっ壊した物</small><b id="rProps">0</b></div>
       </div>
       <div class="comment" id="rComment"></div>
       <button class="btn go" id="againBtn">↻ もう一回注意しに行く</button>
@@ -476,6 +493,31 @@ function makeTextures() {
     return new THREE.MeshBasicMaterial({ map: t, toneMapped: false });
   });
   TX.glowMat = new THREE.SpriteMaterial({ map: TX.glow, color: '#8fd0ff', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: .95 });
+  // 割れた画面（バキバキ）
+  TX.crack = [0, 1].map(() => {
+    const c = cv(128, 256), x = c.getContext('2d');
+    x.fillStyle = '#0c0f14'; x.fillRect(0, 0, 128, 256);
+    for (let i = 0; i < 5; i++) { x.fillStyle = `hsla(${rand(0, 360)},70%,55%,.35)`; x.fillRect(rand(0, 90), rand(0, 220), rand(20, 60), rand(10, 40)); }
+    const ox = rand(30, 98), oy = rand(50, 200);
+    x.strokeStyle = 'rgba(235,245,255,.95)'; x.lineCap = 'round';
+    const rays = [];
+    for (let i = 0; i < 11; i++) {
+      const a = i / 11 * Math.PI * 2 + rand(-.2, .2); let px = ox, py = oy; const pts = [[px, py]];
+      x.lineWidth = rand(1.2, 2.6); x.beginPath(); x.moveTo(px, py);
+      for (let k = 0; k < 7; k++) { const aa = a + rand(-.35, .35), l = rand(12, 30); px += Math.cos(aa) * l; py += Math.sin(aa) * l; x.lineTo(px, py); pts.push([px, py]); }
+      x.stroke(); rays.push(pts);
+    }
+    x.lineWidth = 1;
+    for (let k = 1; k < 5; k++) { x.beginPath(); rays.forEach((r, i) => { const p = r[Math.min(k, r.length - 1)]; i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); }); x.closePath(); x.stroke(); }
+    x.fillStyle = 'rgba(255,255,255,.9)'; x.beginPath(); x.arc(ox, oy, 5, 0, 7); x.fill();
+    return new THREE.MeshBasicMaterial({ map: tex(c), toneMapped: false });
+  });
+  // 破片
+  { const c = cv(32, 32), x = c.getContext('2d'); x.fillStyle = '#fff'; x.beginPath(); x.moveTo(16, 1); x.lineTo(30, 26); x.lineTo(5, 31); x.closePath(); x.fill(); TX.shard = tex(c); }
+  // 立て看板（黒板）
+  { const c = cv(128, 160), x = c.getContext('2d'); x.fillStyle = '#7a5530'; x.fillRect(0, 0, 128, 160); x.fillStyle = '#23352b'; x.fillRect(8, 8, 112, 144);
+    x.fillStyle = '#f4f1e6'; x.textAlign = 'center'; x.font = '900 22px "M PLUS Rounded 1c"'; x.fillText('本日の', 64, 40); x.fillText('ランチ', 64, 66);
+    x.fillStyle = '#ffd84a'; x.font = '900 30px "M PLUS Rounded 1c"'; x.fillText('780円', 64, 108); x.fillStyle = '#ff8a8a'; x.font = '900 15px "M PLUS Rounded 1c"'; x.fillText('前を見てね♡', 64, 138); TX.chalk = tex(c); }
 }
 
 // ビルの外壁（窓つき）
@@ -655,7 +697,7 @@ function building(g, side, zc, w) {
   if (side < 0 && Math.random() < .35) {
     const n = Math.random() < .5 ? 2 : 1, z0 = zc + rand(-w * .3, w * .3);
     for (let i = 0; i < n; i++) {
-      const vz = z0 + i * 1.02;
+      const vz = z0 + i * 1.02; (g.userData.vend ||= []).push(vz);
       mesh(GEO.box, M('#e8e8e8'), g, FRONT_L + .37, .915, vz, .72, 1.83, .98, true);
       facePlane(g, pick(vendSet), .94, 1.8, FRONT_L + .735, .915, vz, -1);
     }
@@ -1107,7 +1149,15 @@ function updSprites(dt) {
     if (p.kind === 'star') { p.vel.y -= 9 * dt; p.s.scale.setScalar(p.size * (1 - k * .6)); p.s.material.rotation += dt * 8; p.s.material.opacity = 1 - k * k; }
     else if (p.kind === 'puff') { p.vel.multiplyScalar(1 - dt * 3); p.s.scale.setScalar(p.size * (1 + k * 1.8)); p.s.material.opacity = (1 - k) * .75; }
     else if (p.kind === 'kira') { p.s.scale.setScalar(p.size * (k < .25 ? k / .25 : 1) * (1 + Math.sin(k * 30) * .15)); p.s.material.rotation += dt * 4; p.s.material.opacity = k > .7 ? (1 - k) / .3 : 1; }
+    else if (p.kind === 'shard') {
+      p.vel.y -= 15 * dt; p.s.material.rotation += p.size * 40 * dt;
+      if (p.s.position.y < .03 && p.vel.y < 0) { p.s.position.y = .03; p.vel.y *= -.3; p.vel.x *= .5; p.vel.z *= .5; }
+      p.s.material.opacity = k > .75 ? (1 - k) / .25 : 1;
+    }
   }
+}
+function shards(pos, n, colors, power = 1) {
+  emit('shard', pos, n, (p) => { p.vel.set(rand(-2.6, 2.6) * power, rand(2, 5.5) * power, rand(-2.6, 2.6) * power); p.size = rand(.05, .11); p.s.scale.setScalar(p.size); p.max = rand(.9, 1.5); p.s.material.color.set(pick(colors)); p.s.material.rotation = rand(0, 6); });
 }
 function burst(pos, n = 8, power = 1) {
   emit('star', pos, n, (p) => { p.vel.set(rand(-4, 4) * power, rand(2, 6) * power, rand(-4, 4) * power); p.size = rand(.18, .34); p.max = rand(.45, .7); });
@@ -1148,17 +1198,29 @@ function makePhones() {
     const scr = new THREE.Mesh(GEO.plane, pick(TX.screens)); scr.position.z = .0065; scr.scale.set(.068, .138, 1); g.add(scr);
     const gl = new THREE.Sprite(TX.glowMat); gl.position.z = .05; gl.scale.setScalar(.3); g.add(gl);
     g.visible = false; scene.add(g);
-    phones.push({ g, vel: new THREE.Vector3(), av: new THREE.Vector3(), state: 'off', big: false });
+    phones.push({ g, scr, gl, vel: new THREE.Vector3(), av: new THREE.Vector3(), state: 'off', big: false, broken: false });
   }
 }
 function throwPhone(e) {
   const p = phones.find((x) => x.state === 'off'); if (!p) return;
   e.h.phone.getWorldPosition(_v);
-  p.g.position.copy(_v); p.g.visible = true; p.state = 'fly';
-  p.g.scale.setScalar(e.arch === 'big' ? 2.6 : 1.3);
-  p.vel.set(rand(-2.5, 2.5), rand(6, 10), -(S.speed + rand(2, 9)));
+  p.g.position.copy(_v); p.g.visible = true; p.state = 'fly'; p.broken = false; p.gl.visible = true;
+  p.scr.material = pick(TX.screens);
+  p.big = e.arch === 'big';
+  p.g.scale.setScalar(p.big ? 2.6 : 1.6);
+  const k = .8 + S.pow * .5;
+  p.vel.set(rand(-2.5, 2.5), rand(6, 10) * k, -(S.speed + rand(2, 9) * k));
   p.av.set(rand(-20, 20), rand(-20, 20), rand(-20, 20));
-  S.phones++;
+  if (S.mode !== 'replay') S.phones++;
+}
+// スマホが地面に落ちて、画面がバキバキに割れる
+function crackPhone(p) {
+  p.broken = true; p.scr.material = pick(TX.crack); p.gl.visible = false;
+  _v.copy(p.g.position); _v.y = .08;
+  shards(_v, p.big ? 14 : 9, ['#e8f6ff', '#bfe4ff', '#ffffff', '#9fd0ff']);
+  emit('star', _v, 3, (q) => { q.vel.set(rand(-2, 2), rand(2, 4), rand(-2, 2)); q.size = rand(.15, .25); q.max = .4; });
+  SFX.crack();
+  if (Math.random() < .65 || p.big) hitText(_v, pick(['バキッ！', 'パリーン！', 'バリッ！']), 'w');
 }
 function updPhones(dt) {
   for (const p of phones) {
@@ -1170,11 +1232,198 @@ function updPhones(dt) {
       if (p.g.position.x < -2.4) { p.g.position.x = -2.4; p.vel.x *= -.5; }
       if (p.g.position.y < .02 && p.vel.y < 0) {
         p.g.position.y = .02; p.vel.y *= -.35; p.vel.x *= .5; p.vel.z *= .5; p.av.multiplyScalar(.4);
+        if (!p.broken) crackPhone(p);
         if (Math.abs(p.vel.y) < 1) { p.state = 'lie'; p.g.rotation.set(-Math.PI / 2, 0, rand(0, 6)); p.g.position.y = .01; }
       }
     }
     if (S.pz - p.g.position.z < -14) { p.state = 'off'; p.g.visible = false; }
   }
+}
+// ===== 壊れる小物（コーン・ゴミ箱・立て看板・段ボール・自転車・自販機の缶） =====
+const props = [], cans = [], bikeRows = [];
+const PROP_R = { cone: .3, bin: .36, board: .4, boxes: .42, bike: .5 };
+const LIE_Y = { cone: .15, bin: .26, board: .06, boxes: .22, bike: 0 };
+function addProp(g, type, extra = {}) {
+  g.visible = false; scene.add(g);
+  const o = Object.assign({ g, type, state: 'off', vel: new THREE.Vector3(), av: new THREE.Vector3(), restQ: new THREE.Quaternion(), t: 0, b: 0, ang: 0, angV: 0, dirz: -1, passed: false }, extra);
+  props.push(o); return o;
+}
+function makeBike(color) {
+  const g = new THREE.Group(), fm = M(color, { roughness: .35, metalness: .5 }), dk = M('#1c1c1c', { roughness: .7 }), gr = M('#9aa0a6', { roughness: .4, metalness: .7 });
+  const wheel = new THREE.TorusGeometry(.3, .033, 8, 22);
+  for (const x of [-.52, .52]) { mesh(wheel, dk, g, x, .33, 0, 1, 1, 1, true); mesh(GEO.cyl, gr, g, x, .33, 0, .04, .04, .06); }
+  const t1 = mesh(GEO.box, fm, g, .02, .5, 0, .86, .055, .055, true); t1.rotation.z = -.22;
+  mesh(GEO.box, fm, g, -.2, .62, 0, .05, .5, .05, true);
+  mesh(GEO.box, dk, g, -.22, .9, 0, .26, .06, .13, true);
+  mesh(GEO.box, fm, g, .42, .66, 0, .05, .62, .05, true);
+  mesh(GEO.box, gr, g, .42, .97, 0, .06, .04, .52, true);
+  mesh(GEO.box, gr, g, .62, .82, 0, .28, .22, .32, true);
+  mesh(GEO.box, gr, g, -.52, .66, 0, .36, .03, .15);
+  return g;
+}
+function makeProps() {
+  const coneM = M('#ff6a1a', { roughness: .55 }), whiteM = M('#f4f4f4', { roughness: .5 }), baseM = M('#2a2a2a', { roughness: .8 });
+  const coneG = new THREE.ConeGeometry(.15, .62, 16), stripeG = new THREE.CylinderGeometry(.085, .105, .1, 16);
+  for (let i = 0; i < 8; i++) { const g = new THREE.Group(); mesh(coneG, coneM, g, 0, .36, 0, 1, 1, 1, true); mesh(stripeG, whiteM, g, 0, .42, 0); mesh(GEO.box, baseM, g, 0, .025, 0, .38, .05, .38, true); addProp(g, 'cone'); }
+  for (let i = 0; i < 5; i++) { const g = new THREE.Group(), c = pick(['#2f6bb8', '#2f8a4a', '#d8d8d2']); mesh(new THREE.CylinderGeometry(.25, .21, .72, 18), M(c, { roughness: .5 }), g, 0, .36, 0, 1, 1, 1, true); mesh(new THREE.CylinderGeometry(.27, .27, .07, 18), M('#2a2f38', { roughness: .5 }), g, 0, .75, 0, 1, 1, 1, true); mesh(GEO.box, M('#111', { roughness: .9 }), g, 0, .79, 0, .22, .02, .06); addProp(g, 'bin'); }
+  const chalkM = new THREE.MeshStandardMaterial({ map: TX.chalk, roughness: .8 }), woodM = M('#7a5530', { roughness: .8 });
+  for (let i = 0; i < 4; i++) {
+    const g = new THREE.Group();
+    for (const s of [1, -1]) { const p = grp(g, 0, 0, 0); p.rotation.z = s * .17; mesh(GEO.box, woodM, p, s * .07, .4, 0, .03, .8, .52, true); const f = mesh(GEO.plane, chalkM, p, s * .087, .42, 0, .46, .74, 1); f.rotation.y = s * Math.PI / 2; }
+    addProp(g, 'board');
+  }
+  const boxM = M('#b8875a', { roughness: .85 }), tapeM = M('#d9b98a', { roughness: .6 });
+  for (let i = 0; i < 4; i++) { const g = new THREE.Group(); [[0, .2, 0, .5], [.04, .58, .03, .44], [-.03, .9, -.02, .34]].forEach(([x, y, z, s]) => { const b = mesh(GEO.box, boxM, g, x, y, z, s, s * .8, s, true); b.rotation.y = rand(-.3, .3); mesh(GEO.box, tapeM, g, x, y + s * .401, z, s * 1.01, .01, .08).rotation.y = b.rotation.y; }); addProp(g, 'boxes'); }
+  for (let r = 0; r < 2; r++) { const row = { bikes: [], hits: 0 }; for (let i = 0; i < 5; i++) row.bikes.push(addProp(makeBike(pick(['#e8e8e8', '#c8302a', '#2a5aa8', '#f2c81a', '#2a2a2a', '#7ab8d8'])), 'bike', { row, idx: i })); bikeRows.push(row); }
+  const canG = new THREE.CylinderGeometry(.034, .034, .12, 12);
+  for (let i = 0; i < 18; i++) { const m = new THREE.Mesh(canG, M(pick(['#d8261c', '#1d5fb8', '#f2c81a', '#2f9a5a', '#e8e8e8', '#7a3aa8']), { roughness: .3, metalness: .7 })); m.castShadow = true; m.visible = false; scene.add(m); cans.push({ m, vel: new THREE.Vector3(), av: new THREE.Vector3(), on: false, b: 0 }); }
+}
+// 歩道の左にある自販機の位置（なければ null）
+function vendNear(z, r) {
+  for (const s of segments) for (const vz of s.userData.vend || []) { const wz = s.position.z + vz; if (Math.abs(wz - z) < r) return wz; }
+  return null;
+}
+function spawnProp(z) {
+  const r = Math.random();
+  let type = r < .24 ? 'cone' : r < .42 ? 'bin' : r < .6 ? 'board' : r < .76 ? 'boxes' : 'bike';
+  const leftOk = vendNear(z, type === 'bike' ? 4.5 : 1.6) === null;
+  if ((type === 'bike' || type === 'board' || type === 'boxes') && !leftOk) type = Math.random() < .5 ? 'cone' : 'bin';
+  if (type === 'bike') {
+    const row = bikeRows.find((w) => w.bikes.every((b) => b.state === 'off'));
+    if (row) {
+      row.hits = 0; row.done = false;
+      row.bikes.forEach((b, i) => { b.state = 'stand'; b.ang = 0; b.angV = 0; b.passed = false; b.g.visible = true; b.g.position.set(-2.02, 0, z - i * .62); b.g.rotation.set(0, .95, 0, 'YXZ'); });
+      return;
+    }
+    type = 'cone';
+  }
+  const o = props.find((p) => p.type === type && p.state === 'off'); if (!o) return;
+  o.state = 'stand'; o.g.visible = true; o.b = 0;
+  const left = type === 'board' || type === 'boxes' || (type === 'bin' && leftOk && Math.random() < .4);
+  o.g.position.set(left ? -2.08 : 1.86, 0, z); o.g.rotation.set(0, type === 'board' ? 0 : rand(0, 6), 0);
+  if (type === 'cone' && Math.random() < .6) { // コーンは2〜3本並べる
+    for (let k = 1; k < (Math.random() < .5 ? 3 : 2); k++) { const c = props.find((p) => p.type === 'cone' && p.state === 'off'); if (!c) break; c.state = 'stand'; c.g.visible = true; c.b = 0; c.g.position.set(1.86, 0, z - k * .9); c.g.rotation.set(0, rand(0, 6), 0); }
+  }
+}
+const PROP_TXT = { cone: ['ポーン！', 'カーン！'], bin: ['ガシャーン！', 'ドンガラガッシャン！'], board: ['バタン！', 'バターン！'], boxes: ['ドサドサッ！', 'ドサーッ！'] };
+const TRASH = ['#f4f4f4', '#e8d8a8', '#9ad0ff', '#ff9a8a', '#c8c8c8', '#8ac86a'];
+function knockProp(o, push) {
+  if (o.state !== 'stand') return;
+  if (o.type === 'bike') { tipBike(o, -1); return; }
+  o.state = 'fly'; o.t = 0; o.b = 0;
+  o.vel.set(push.x * .35 + rand(-1.5, 1.5), rand(3.5, 6.5), Math.min(push.z * .6, -2) + rand(-1, 1));
+  o.av.set(rand(-12, 12), rand(-8, 8), rand(-12, 12));
+  o.restQ.setFromEuler(new THREE.Euler(o.type === 'board' ? -Math.PI / 2 : Math.PI / 2, rand(0, 6), 0, 'YXZ'));
+  _v.copy(o.g.position); _v.y = .5;
+  if (o.type === 'bin') { shards(_v, 12, TRASH, 1.2); dust(_v, 3); }
+  if (o.type === 'boxes') { shards(_v, 6, ['#b8875a', '#d9b98a'], 1); dust(_v, 4, 1.2); }
+  burst(_v, 4, .8);
+  hitText(_v, pick(PROP_TXT[o.type]), 'o'); SFX.crash(); S.shake = Math.max(S.shake, .12);
+  propScore(60);
+}
+function propScore(n) { if (S.mode === 'play') { S.score += n; S.propsHit++; } }
+function tipBike(o, dir) {
+  if (o.state !== 'stand') return;
+  o.state = 'tip'; o.dirz = dir; o.ang = 0; o.angV = o.row.hits ? 3.2 : 2.2; o.passed = false;
+  o.row.hits++; SFX.clang(); propScore(40);
+  if (o.row.hits === 1) { _v.copy(o.g.position); _v.y = 1; hitText(_v, 'ガシャ！', 'o'); }
+}
+function sprayCans(z) {
+  let n = 0;
+  for (const c of cans) {
+    if (c.on || n >= 9) continue;
+    c.on = true; c.b = 0; c.m.visible = true; c.m.position.set(FRONT_L + .8, rand(.55, 1.1), z + rand(-.3, .3));
+    c.vel.set(rand(1.5, 4.2), rand(2.5, 5.5), rand(-2.5, 1)); c.av.set(rand(-15, 15), rand(-15, 15), rand(-15, 15)); n++;
+  }
+  _v.set(FRONT_L + .9, 1.2, z);
+  hitText(_v, 'ガコン！ジャラジャラ', 'o'); SFX.crash(); for (let i = 0; i < 5; i++) setTimeout(() => SFX.clang(), 120 + i * 90);
+  propScore(150);
+}
+// 飛んでいる人が、小物や自販機にぶつかったか
+function propCheck(e) {
+  const P = e.h.pivot.position;
+  if (P.y > 2.4) return;
+  for (const o of props) {
+    if (o.state !== 'stand') continue;
+    const q = o.g.position, dx = q.x - P.x, dz = q.z - P.z, r = PROP_R[o.type] + .28;
+    if (dx * dx + dz * dz < r * r) knockProp(o, e.vel);
+  }
+  if (!e.vendHit && P.x < -1.85 && P.y < 2.3) { const wz = vendNear(P.z, .62); if (wz !== null) { e.vendHit = true; sprayCans(wz); } }
+}
+// 吹っ飛ぶ向きを、少し先の小物に寄せる（当たりやすくする）
+function aimProp(e) {
+  const P = e.h.pivot.position, vz = Math.max(4, -e.vel.z);
+  let best = null, bd = 99;
+  for (const o of props) {
+    if (o.state !== 'stand') continue;
+    const dz = P.z - o.g.position.z;
+    if (dz < 2.5 || dz > 9.5) continue;
+    const sc = dz + Math.abs(o.g.position.x - P.x) * .5 + rand(0, 2);
+    if (sc < bd) { bd = sc; best = o; }
+  }
+  if (!best) return false;
+  const t = (P.z - best.g.position.z) / vz;
+  e.vel.x = clamp((best.g.position.x - P.x) / t, -8, 8);
+  return true;
+}
+function aimVend(e) {
+  const P = e.h.pivot.position;
+  const wz = vendNear(P.z - 3, 2.6); if (wz === null) return;
+  const dz = P.z - wz; if (dz < .3) return;
+  const t = clamp(dz / 13, .12, .5);
+  e.vel.x = -Math.max(4, (P.x + 1.72) / t); e.vel.z = -dz / t;
+}
+function updProps(dt) {
+  for (const o of props) {
+    if (o.state === 'off') continue;
+    const g = o.g;
+    if (o.state === 'fly') {
+      o.vel.y -= 16 * dt; g.position.addScaledVector(o.vel, dt);
+      g.rotation.x += o.av.x * dt; g.rotation.y += o.av.y * dt; g.rotation.z += o.av.z * dt;
+      if (g.position.x < -2.45) { g.position.x = -2.45; o.vel.x = Math.abs(o.vel.x) * .4; SFX.tick(); }
+      if (g.position.x > 2.35) { g.position.x = 2.35; o.vel.x = -Math.abs(o.vel.x) * .4; }
+      if (g.position.y < LIE_Y[o.type] && o.vel.y < 0) {
+        g.position.y = LIE_Y[o.type]; o.vel.y *= -.32; o.vel.x *= .55; o.vel.z *= .55; o.av.multiplyScalar(.45); o.b++;
+        _v.copy(g.position); dust(_v, 2, .7); if (o.b === 1) SFX.tick();
+        if (Math.abs(o.vel.y) < 1.2 || o.b > 2) o.state = 'rest';
+      }
+    } else if (o.state === 'rest') {
+      g.quaternion.slerp(o.restQ, 1 - Math.exp(-dt * 10));
+      g.position.y += (LIE_Y[o.type] - g.position.y) * Math.min(1, dt * 10);
+      g.position.x += o.vel.x * dt; g.position.z += o.vel.z * dt; o.vel.multiplyScalar(Math.exp(-dt * 4));
+    } else if (o.state === 'tip') {
+      o.angV += 11 * dt; o.ang = Math.min(1.42, o.ang + o.angV * dt);
+      g.rotation.x = o.dirz < 0 ? -o.ang : o.ang;
+      if (!o.passed && o.ang > .42) {
+        o.passed = true;
+        const nx = o.row.bikes[o.idx + (o.dirz < 0 ? 1 : -1)];
+        if (nx && nx.state === 'stand') tipBike(nx, o.dirz);
+        else if (!o.row.done && o.row.hits >= 3) {
+          o.row.done = true; _v.copy(g.position); _v.y = 1.3;
+          hitText(_v, 'ドミノ倒し！', 'y big'); SFX.combo(20); propScore(300);
+        }
+      }
+      if (o.ang >= 1.42) { o.state = 'down'; _v.copy(g.position); dust(_v, 2, .8); }
+    }
+    if (S.pz - g.position.z < -14) { o.state = 'off'; g.visible = false; }
+  }
+  for (const c of cans) {
+    if (!c.on) continue;
+    const m = c.m;
+    c.vel.y -= 16 * dt; m.position.addScaledVector(c.vel, dt);
+    m.rotation.x += c.av.x * dt; m.rotation.y += c.av.y * dt; m.rotation.z += c.av.z * dt;
+    if (m.position.y < .035 && c.vel.y < 0) {
+      m.position.y = .035; c.vel.y *= -.4; c.vel.x *= .75; c.vel.z *= .75; c.b++;
+      if (c.b === 1 && Math.random() < .5) SFX.tick();
+      if (c.b > 3) { c.vel.y = 0; c.av.set(0, 0, c.vel.x * 8); m.rotation.x = Math.PI / 2; }
+    }
+    if (m.position.x > 2.3) { m.position.x = 2.3; c.vel.x *= -.4; }
+    if (S.pz - m.position.z < -14) { c.on = false; m.visible = false; }
+  }
+}
+function resetProps() {
+  for (const o of props) { o.state = 'off'; o.g.visible = false; }
+  for (const c of cans) { c.on = false; c.m.visible = false; }
 }
 // 衝撃波（ダメ絶対モード）
 let ring;
@@ -1260,6 +1509,11 @@ const SFX = {
   fever() { osc('sawtooth', 200, 1200, .6, .18); this.whistle(); [784, 988, 1175, 1568].forEach((f, i) => osc('square', f, null, .16, .08, .3 + i * .08)); },
   bad() { osc('sawtooth', 300, 120, .4, .2); },
   heal() { [784, 1175, 1568].forEach((f, i) => osc('sine', f, null, .3, .18, i * .08)); },
+  crack() { noise(.07, 5200, .55, 'highpass'); noise(.22, 3200, .3, 'bandpass', .02); for (let i = 0; i < 5; i++) osc('sine', rand(2600, 5200), null, .07, .06, .03 + i * .035); },
+  crash() { noise(.35, 1400, .75); noise(.18, 4500, .25, 'highpass', .02); osc('square', 150, 55, .16, .18); },
+  clang() { osc('triangle', rand(700, 1000), rand(500, 650), .18, .14); noise(.06, 4200, .2, 'highpass'); },
+  power() { osc('sawtooth', 110, 32, .4, .55); noise(.3, 500, .9); osc('sine', 60, 30, .5, .9); },
+  tick() { osc('sine', 900, 600, .05, .08); },
 };
 // BGM（かんたんなシーケンサー）
 const BGM = { id: null, t: 0, step: 0 };
@@ -1310,6 +1564,7 @@ const L = {
 const S = {
   mode: 'loading', px: 0, lane: 1, pz: 0, speed: 4, dist: 0, lives: 3, combo: 0, maxCombo: 0, shoves: 0, phones: 0, chains: 0, homeruns: 0, score: 0,
   gauge: 0, feverT: 0, shoveT: 0, shoveId: 0, stagT: 0, inv: 0, slowT: 0, hitstop: 0, shake: 0, nextRow: 0, overT: 0, ph: 0, paused: false, aiT: 0, nextHeal: 40,
+  pow: .6, propsHit: 0, bestShot: null, far: 0, farHome: false, nextProp: 0,
 };
 let player, peds = [], active = [];
 const pools = { adult: [], kid: [], elder: [], big: [], bg: [] };
@@ -1407,19 +1662,20 @@ function updSpawner() {
   while (S.nextRow > S.pz - 62) {
     const gapMul = spawnRow(S.nextRow);
     const d = difficulty();
-    const step = (S.speed + 1.2) * (1.15 - .42 * d) * gapMul + rand(0, 2.2 - d);
+    const step = (S.speed * .86 + 1.2) * (1.15 - .42 * d) * gapMul + rand(0, 2.2 - d);
     S.nextRow -= Math.max(4.5, step);
   }
+  while (S.nextProp > S.pz - 62) { spawnProp(S.nextProp); S.nextProp -= rand(5.5, 10); }
 }
 
 // ===== 打撃・吹っ飛び =====
-const SPEED0 = 5.2;
-function baseSpeed() { return SPEED0 + Math.min(4.6, S.dist / 190); }
+const SPEED0 = 6.6;
+function baseSpeed() { return SPEED0 + Math.min(5.4, S.dist / 150); }
 function chooseFate(e, src) {
   if (e.arch === 'big') return 'homerun';
   if (src === 'fever') return pick(['homerun', 'homerun', 'arc', 'spin', 'slide']);
-  const x = e.h.pivot.position.x;
-  const W = [['arc', .3], ['homerun', .09 + Math.min(.15, S.combo * .004)], ['stuck', .13], ['spin', .11], ['wall', x < -.5 ? .2 : .03], ['slide', .14]];
+  const P = e.h.pivot.position, x = P.x, full = src === 'player' && S.pow > .85;
+  const W = [['arc', .3], ['homerun', .09 + Math.min(.15, S.combo * .004) + (full ? .35 : 0)], ['stuck', full ? .04 : .13], ['spin', .11], ['wall', x < -.5 ? (vendNear(P.z - 3, 2.6) !== null ? .6 : .2) : .03], ['slide', .14]];
   let t = W.reduce((a, b) => a + b[1], 0), q = Math.random() * t;
   for (const [k, w] of W) if ((q -= w) <= 0) return k;
   return 'arc';
@@ -1436,8 +1692,15 @@ function launch(e, src = 'player', push = null) {
   else if (f === 'spin') { v.set(rand(-.5, .5), 4, dir * (sp + rand(3, 5))); a.set(0, 28, 0); }
   else if (f === 'wall') { v.set(-rand(9, 11), rand(3, 4), dir * (sp + rand(2, 4))); a.set(rand(-3, 3), rand(-6, 6), 8); }
   else if (f === 'slide') { v.set(rand(-.5, .5), 2.6, dir * (sp + rand(10, 12))); a.set(-6, 0, 0); }
+  // スワイプの勢いで飛び方が変わる
+  if (src === 'player' && f !== 'homerun') { const k = .7 + S.pow * .85; v.y *= .85 + S.pow * .35; v.z = -(sp + (-v.z - sp) * k); }
   if (push) { v.x += push.x * .35; v.z = Math.min(v.z, push.z * .8); }
   if (e.kind === 'inno') { v.multiplyScalar(.55); v.y = 4; a.multiplyScalar(.6); }
+  else if (f === 'wall') aimVend(e);
+  else if ((f === 'arc' || f === 'slide') && Math.random() < .6) aimProp(e);
+  e.vendHit = false;
+  if (e.wasPhone && S.mode === 'play') e.shot = { pos: P.position.clone(), vel: v.clone(), av: a.clone(), fate: f, rotY: P.rotation.y, arch: e.arch, sd: e.sd, pow: src === 'player' ? S.pow : .6, dist: 0 };
+  else e.shot = null;
   if (e.h.phone.visible) { throwPhone(e); e.h.phone.visible = false; }
   e.h.stick.visible = false;
   e.kind = 'done';
@@ -1476,9 +1739,10 @@ function addShove(e, chain = false) {
 }
 function hit(e) {
   const P = e.h.pivot;
-  if (e.arch === 'big' && e.hp > 1) {
+  const full = S.pow > .85, dmg = full ? 2 : 1;
+  if (e.arch === 'big' && e.hp > dmg) {
     if (e.hitLock === S.shoveId) return;
-    e.hitLock = S.shoveId; e.hp--; e.wob = .6; P.position.z -= 2.4;
+    e.hitLock = S.shoveId; e.hp -= dmg; e.wob = .6; P.position.z -= 2.4;
     say(P, L.big[2 - e.hp] || 'ん？', 'calm', 1); SFX.boing(); S.hitstop = .05; S.shake = .2; S.score += 150;
     hitText(P.position, `あと${e.hp}発！`, 'y');
     return;
@@ -1487,10 +1751,14 @@ function hit(e) {
     const group = e.group;
     launch(e); addShove(e);
     if (group) { group.forEach((g) => { if (g !== e && g.kind === 'phone') { launch(g, 'chain'); S.chains++; addShove(g, true); } }); hitText(P.position, 'まとめて喝！', 'y big'); S.score += 300; }
-    hitText(P.position, pick(['ドンッ！', 'ドーン！', 'バーン！', 'ドカッ！']), e.fate === 'homerun' ? 'r big' : '');
+    if (full) {
+      hitText(P.position, 'フルスイング！', 'huge'); SFX.power(); S.score += 150;
+      S.hitstop = .13; S.shake = Math.max(S.shake, .55);
+      const f = $('flash'); f.classList.remove('on', 'pow'); void f.offsetWidth; f.classList.add('on', 'pow');
+    } else if (S.pow < .3) { hitText(P.position, pick(['ちょんっ', 'ぽすっ', 'とんっ']), 's'); S.hitstop = .04; S.shake = Math.max(S.shake, .12); }
+    else { hitText(P.position, pick(['ドンッ！', 'ドーン！', 'バーン！', 'ドカッ！']), e.fate === 'homerun' ? 'r big' : ''); S.hitstop = .07; S.shake = Math.max(S.shake, .28); }
     SFX.hit(); if (Math.random() < .5) SFX.whistle();
-    S.hitstop = .07; S.shake = Math.max(S.shake, .28);
-    if (navigator.vibrate) try { navigator.vibrate(18); } catch {}
+    if (navigator.vibrate) try { navigator.vibrate(full ? 45 : 18); } catch {}
     if (Math.random() < .3) say(player.h.pivot, pick(L.shout), 'shout', 1.1);
   } else {
     // 誤爆
@@ -1509,7 +1777,7 @@ function loseLife(msg) {
   S.lives--; S.inv = 1.1; S.shake = .45;
   renderLives(true);
   banner(msg, 'r'); SFX.miss();
-  const f = $('flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  const f = $('flash'); f.classList.remove('on', 'pow'); void f.offsetWidth; f.classList.add('on');
   if (navigator.vibrate) try { navigator.vibrate(90); } catch {}
   if (S.lives <= 0) gameOver();
 }
@@ -1522,9 +1790,9 @@ function miss(e, why) {
   } else say(e.h.pivot, pick(L.pass), 'calm', 1.4);
   loseLife(why === 'bump' ? 'ぶつかった！' : '見逃し！');
 }
-function shove() {
+function shove(pow = .6) {
   if (S.shoveT > 0 || S.mode !== 'play' || S.stagT > 0) return;
-  S.shoveT = .34; S.shoveId++; SFX.swoosh();
+  S.shoveT = .34; S.shoveId++; S.pow = pow; SFX.swoosh();
 }
 function checkShove() {
   const k = 1 - S.shoveT / .34;
@@ -1609,16 +1877,18 @@ function updPed(e, dt) {
       P.position.addScaledVector(e.vel, dt);
       P.rotation.x += e.av.x * dt; P.rotation.y += e.av.y * dt; P.rotation.z += e.av.z * dt;
       if (e.fate === 'spin') { poseT(e.h, e.t); } else poseFlail(e.h, e.t, e.sd);
-      if (P.position.x < -2.3) {
-        if (e.fate === 'wall' && P.position.y > 1) { e.state = 'splat'; e.t = 0; P.position.x = -2.44; P.rotation.set(0, -Math.PI / 2, rand(-.3, .3)); say(P, pick(L.splat), '', 1.2, 1.3); SFX.splat(); S.shake = Math.max(S.shake, .15); _v.copy(P.position); burst(_v, 6); hitText(P.position, 'ベチャッ！', ''); break; }
-        P.position.x = -2.3; e.vel.x = Math.abs(e.vel.x) * .4;
+      const vend = P.position.x < -1.7 && vendNear(P.position.z, .6) !== null, wallX = vend ? -1.72 : -2.3;
+      if (P.position.x < wallX) {
+        if (vend && !e.vendHit) { e.vendHit = true; sprayCans(P.position.z); }
+        if (e.fate === 'wall' && P.position.y > 1) { e.state = 'splat'; e.t = 0; P.position.x = wallX - .14; P.rotation.set(0, -Math.PI / 2, rand(-.3, .3)); say(P, pick(L.splat), '', 1.2, 1.3); SFX.splat(); S.shake = Math.max(S.shake, .15); _v.copy(P.position); burst(_v, 6); hitText(P.position, 'ベチャッ！', ''); break; }
+        P.position.x = wallX; e.vel.x = Math.abs(e.vel.x) * .4;
       }
       if (P.position.x > 2.05) { P.position.x = 2.05; e.vel.x = -Math.abs(e.vel.x) * .4; }
-      chainCheck(e);
+      chainCheck(e); propCheck(e);
       if (e.fate === 'homerun') {
         if (e.t > 1.45) {
           emit('kira', P.position, 1, (p) => { p.vel.set(0, 0, 0); p.size = 5; p.max = .9; p.s.material.rotation = 0; });
-          say(P.position.clone(), 'キラーン☆', 'shout', 1.1, 0); SFX.kira(); S.homeruns++;
+          say(P.position.clone(), 'キラーン☆', 'shout', 1.1, 0); SFX.kira(); if (S.mode === 'play') S.homeruns++; recordShot(e, true);
           release(e);
         }
         break;
@@ -1627,7 +1897,7 @@ function updPed(e, dt) {
       if (P.position.y < floor && e.vel.y < 0) {
         _v.copy(P.position); dust(_v, 4);
         if (e.fate === 'stuck') {
-          e.state = 'stuck'; e.t = 0; P.rotation.set(Math.PI, rand(-.4, .4), rand(-.12, .12)); P.position.y = .52 * sc;
+          e.state = 'stuck'; e.t = 0; recordShot(e); P.rotation.set(Math.PI, rand(-.4, .4), rand(-.12, .12)); P.position.y = .52 * sc;
           SFX.boing(); say(P, pick(L.stuck), 'calm', 2, 1.1); hitText(P.position, 'ズボッ！', 'y'); dust(_v, 6, 1.3);
           break;
         }
@@ -1645,7 +1915,7 @@ function updPed(e, dt) {
       P.quaternion.slerp(e.lieQ, 1 - Math.exp(-dt * 14));
       poseFlail(e.h, e.t * .6, e.sd);
       if (Math.random() < dt * 10) { _v.copy(P.position); dust(_v, 1, .6); }
-      chainCheck(e);
+      chainCheck(e); propCheck(e);
       if (Math.abs(e.vel.z) < 1.5) toLie(e);
       break;
     }
@@ -1653,7 +1923,7 @@ function updPed(e, dt) {
       e.av.y *= 1 - dt * .9; e.vel.z *= 1 - dt * 1.5;
       P.position.z += e.vel.z * dt; P.rotation.y += e.av.y * dt;
       poseT(e.h, e.t);
-      chainCheck(e);
+      chainCheck(e); propCheck(e);
       if (e.t > 1.3) { e.state = 'fly'; e.fate = 'arc'; e.vel.set(rand(-1, 1), 2.5, e.vel.z); e.av.set(-5, 0, rand(-2, 2)); e.bounces = 2; }
       break;
     }
@@ -1675,14 +1945,64 @@ function updPed(e, dt) {
   if (ahead < -15 && e.state !== 'off') release(e);
 }
 function toLie(e) {
-  e.state = 'lie'; e.t = 0; e.vel.y = 0;
+  e.state = 'lie'; e.t = 0; e.vel.y = 0; recordShot(e);
   e.lieQ.setFromEuler(new THREE.Euler(-Math.PI / 2, rand(-.7, .7) + (Math.random() < .3 ? Math.PI : 0), 0, 'YXZ'));
   if (Math.random() < .7) attachDizzy(e);
+}
+// ===== ベストショット（一番遠くまで飛んだ人）を記録して、最後にスローで流す =====
+function recordShot(e, far = false) {
+  const b = e.shot; if (!b || S.mode !== 'play') { e.shot = null; return; }
+  e.shot = null;
+  const P = e.h.pivot.position;
+  b.dist = far ? 999 : Math.hypot(P.x - b.pos.x, P.z - b.pos.z);
+  if (!far) S.far = Math.max(S.far, b.dist); else S.farHome = true;
+  if (!S.bestShot || b.dist > S.bestShot.dist) S.bestShot = b;
+}
+const RP = { e: null, t: 0, endT: 0, landed: false, go: false };
+function farText(b) { return b.dist >= 999 ? '場外ホームラン☆' : `飛距離 ${b.dist.toFixed(1)}m`; }
+function startReplay() {
+  const b = S.bestShot; if (!b || b.dist < 4) return false;
+  releaseAll(); clearBubs();
+  const e = spawn(b.arch, 'phone', b.pos.x, S.pz - 7) || spawn('adult', 'phone', b.pos.x, S.pz - 7); if (!e) return false;
+  e.state = 'rpwait'; e.h.pivot.rotation.set(0, b.rotY, 0); e.h.pivot.position.y = b.pos.y; e.sd = b.sd;
+  poseWalk(e.h, 1, .38, 'phone');
+  Object.assign(RP, { e, b, t: 0, endT: 0, landed: false, go: false });
+  S.mode = 'replay';
+  $('rpDist').textContent = farText(b); $('rpDist').classList.remove('on');
+  $('replay').classList.remove('hidden');
+  return true;
+}
+function updReplay(dt) {
+  const e = RP.e, b = RP.b;
+  RP.t += dt;
+  if (!RP.go && RP.t > .45) {
+    RP.go = true; S.pow = b.pow;
+    throwPhone(e); e.h.phone.visible = false;
+    e.state = 'fly'; e.fate = b.fate; e.t = 0; e.bounces = 0; e.kind = 'done'; e.vendHit = false; e.shot = null;
+    e.vel.copy(b.vel); e.av.copy(b.av);
+    _v.copy(e.h.pivot.position); burst(_v, 10, 1.2);
+    hitText(_v, b.pow > .85 ? 'フルスイング！' : 'ドーン！', b.pow > .85 ? 'huge' : 'r big');
+    say(e.h.pivot, pick(L.scream), '', 2);
+    SFX.hit(); if (b.pow > .85) SFX.power(); SFX.fly();
+  }
+  const st = e.state;
+  if (RP.go && !RP.landed && (st === 'off' || st === 'lie' || st === 'stuck')) {
+    RP.landed = true; $('rpDist').classList.add('on'); SFX.combo(40);
+    if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
+  }
+  if (RP.landed) RP.endT += dt;
+  if (RP.endT > .7 || RP.t > 3.4) endReplay();
+}
+function endReplay() {
+  if (S.mode !== 'replay') return;
+  S.mode = 'over'; S.overT = 99; RP.e = null;
+  $('replay').classList.add('hidden');
+  showResult();
 }
 
 function updPlayer(dt) {
   const P = player.h.pivot;
-  if (S.mode === 'over') {
+  if (S.mode === 'over' || S.mode === 'replay') {
     S.pf.vel.y -= G * dt; P.position.addScaledVector(S.pf.vel, dt);
     P.rotation.x += 7 * dt; poseFlail(player.h, S.overT, 1);
     if (P.position.y < .3) { P.position.y = .3; S.pf.vel.set(0, 0, 0); P.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0, 'YXZ')), .2); poseLie(player.h, S.overT, 0); }
@@ -1716,6 +2036,16 @@ function titleAI(dt) {
 
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 function updCamera(dt, snap = false) {
+  if (S.mode === 'replay' && RP.e) { // リプレイ：横からついていく
+    const p = RP.e.h.pivot.position;
+    camPos.set(p.x + 3.6, Math.max(1.4, p.y + .9), p.z + 3.4);
+    camera.position.lerp(camPos, Math.min(1, dt * (RP.go ? 6 : 3)));
+    camLook.lerp(p, Math.min(1, dt * 10)); camera.lookAt(camLook);
+    camera.fov += (50 - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix();
+    sky.position.copy(camera.position); clouds.position.set(camera.position.x, 0, camera.position.z);
+    sun.position.set(p.x + SUN_DIR.x * 50, SUN_DIR.y * 50, p.z + SUN_DIR.z * 50); sun.target.position.set(p.x, 0, p.z);
+    return;
+  }
   const aspect = innerWidth / innerHeight;
   const dist = 7.6, hgt = 4.0;
   const tanH = 2.45 / dist;
@@ -1767,15 +2097,16 @@ function frame(now) {
   if (S.hitstop > 0) { S.hitstop -= dt; renderer.render(scene, camera); return; }
   if (S.slowT > 0) { S.slowT -= dt; dt *= .35; }
   if (S.mode === 'over') dt *= S.overT < 1.2 ? .4 : 1;
+  if (S.mode === 'replay') dt *= .5;
   update(dt);
   renderer.render(scene, camera);
 }
 function update(dt) {
   if (S.mode === 'play') {
     S.speed = baseSpeed() * (S.stagT > 0 ? .3 : 1) * (S.feverT > 0 ? 1.45 : 1);
-  } else if (S.mode === 'title') { S.speed = 4.2; titleAI(dt); }
+  } else if (S.mode === 'title') { S.speed = 5; titleAI(dt); }
   else S.speed = 0;
-  if (AUTO && !DIE && S.mode === 'play') { titleAI(dt); if (S.gauge >= 100) fever(); for (const e of active) { if (e.state === 'walk' && e.kind === 'phone' && Math.abs(e.h.pivot.position.x - S.px) < .6 && S.pz - e.h.pivot.position.z < 2.2 && S.pz - e.h.pivot.position.z > 0) shove(); } }
+  if (AUTO && !DIE && S.mode === 'play') { titleAI(dt); if (S.gauge >= 100) fever(); for (const e of active) { if (e.state === 'walk' && e.kind === 'phone' && Math.abs(e.h.pivot.position.x - S.px) < .6 && S.pz - e.h.pivot.position.z < 2.2 && S.pz - e.h.pivot.position.z > 0) shove(Math.random()); } }
   S.pz -= S.speed * dt;
   if (S.mode === 'play') S.dist += S.speed * dt;
   if (S.shoveT > 0) { if (S.mode === 'play') checkShove(); S.shoveT -= dt; }
@@ -1783,12 +2114,14 @@ function update(dt) {
   if (S.inv > 0) S.inv -= dt;
   if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 1.6);
   if (S.feverT > 0) { S.feverT -= dt; if (S.feverT <= 0) { S.gauge = 0; $('fever').classList.remove('on'); } }
-  if (S.mode === 'over') { S.overT += dt; if (S.overT > 2.2 && !S.shown) { S.shown = true; showResult(); } }
-  if (S.mode !== 'over') updSpawner();
+  if (S.mode === 'over') { S.overT += dt; if (S.overT > 2.2 && !S.shown) { S.shown = true; if (!startReplay()) showResult(); } }
+  if (S.mode === 'replay') updReplay(dt);
+  if (S.mode === 'play' || S.mode === 'title') updSpawner();
   updPlayer(dt);
   for (let i = active.length - 1; i >= 0; i--) { const e = active[i]; if (e) updPed(e, dt); }
   updBg(dt);
-  updPhones(dt); updSprites(dt); updDizzies(dt); updateCars(dt, S.pz);
+  updPhones(dt); updProps(dt); updSprites(dt); updDizzies(dt); updateCars(dt, S.pz);
+  if (S.feverT > 0) for (const o of props) { if (o.state !== 'stand') continue; const a = S.pz - o.g.position.z; if (a > 0 && a < 7) knockProp(o, _v2.set(0, 0, -9)); }
   if (ring.userData.t < 1) { ring.userData.t += dt * 1.6; const k = ring.userData.t; ring.position.set(S.px, .05, S.pz - 1); ring.scale.setScalar(1 + k * 12); ring.material.opacity = (1 - k) * .8; }
   updateSegments(S.pz); updateGround(S.pz);
   updCamera(dt);
@@ -1800,7 +2133,8 @@ function update(dt) {
 function show(id) { for (const s of ['title', 'result', 'pause']) $(s).classList.toggle('hidden', s !== id); }
 function resetRun() {
   releaseAll(); clearBubs();
-  Object.assign(S, { lives: 3, combo: 0, maxCombo: 0, shoves: 0, phones: 0, chains: 0, homeruns: 0, score: 0, gauge: 0, feverT: 0, shoveT: 0, stagT: 0, inv: 0, slowT: 0, hitstop: 0, shake: 0, dist: 0, lane: 1, overT: 0, shown: false, nextHeal: 40 });
+  Object.assign(S, { lives: 3, combo: 0, maxCombo: 0, shoves: 0, phones: 0, chains: 0, homeruns: 0, score: 0, gauge: 0, feverT: 0, shoveT: 0, stagT: 0, inv: 0, slowT: 0, hitstop: 0, shake: 0, dist: 0, lane: 1, overT: 0, shown: false, nextHeal: 40, pow: .6, propsHit: 0, bestShot: null, far: 0, farHome: false });
+  resetProps(); S.nextProp = S.pz - 12; $('replay').classList.add('hidden');
   S.px = 0; S.nextRow = S.pz - 26;
   const P = player.h.pivot; P.rotation.set(0, Math.PI, 0); P.scale.setScalar(player.h.sc); P.visible = true;
   $('fever').classList.remove('on');
@@ -1845,6 +2179,8 @@ function showResult() {
   $('rHome').textContent = S.homeruns;
   $('rChain').textContent = S.chains;
   $('rDist').textContent = Math.floor(S.dist) + 'm';
+  $('rFar').textContent = S.farHome ? '場外☆' : S.far ? S.far.toFixed(1) + 'm' : '-';
+  $('rProps').textContent = S.propsHit;
   $('rBest').innerHTML = isNew && S.shoves > 0 ? '<span class="new">🎉 自己ベスト更新！</span>' : `自己ベスト ${Math.max(best, S.shoves)}人`;
   $('rComment').textContent = comment();
   show('result'); $('result').scrollTop = 0;
@@ -1854,7 +2190,8 @@ function toTitle() {
 }
 function renderTitle() { const b = store.get('best'); $('tBest').textContent = b ? `${b}人` : '-'; }
 function share() {
-  const text = `歩きスマホ、ダメ絶対！📵\n${S.shoves}人に注意しました（最大${S.maxCombo}連続）\n称号「${rankOf(S.shoves)}」\n\nあなたは何人に注意できる？`;
+  const far = S.farHome ? '場外ホームランあり☆\n' : S.far ? `最長${S.far.toFixed(1)}m吹っ飛ばし\n` : '';
+  const text = `歩きスマホ、ダメ絶対！📵\n${S.shoves}人に注意しました（最大${S.maxCombo}連続）\n${far}称号「${rankOf(S.shoves)}」\n\nあなたは何人に注意できる？`;
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text); u.searchParams.set('url', APP_URL); u.searchParams.set('hashtags', HASHTAGS.join(','));
   window.open(u.toString(), '_blank', 'noopener');
@@ -1868,27 +2205,43 @@ async function api(path, method = 'GET') {
 async function loadStats() { const j = await api('/get?keys=arukisumaho-play'); $('tPlays').textContent = j ? (j['arukisumaho-play'] || 0).toLocaleString() : '-'; }
 
 // ===== 操作 =====
-function swipe(dir) {
+function swipe(dir, pow = .6) {
   if (S.mode !== 'play' || S.paused) return;
   if (dir === 'L') S.lane = Math.max(0, S.lane - 1);
   else if (dir === 'R') S.lane = Math.min(2, S.lane + 1);
-  else if (dir === 'U') shove();
+  else if (dir === 'U') shove(pow);
   else if (dir === 'D') fever();
 }
+// 1回のスワイプ（指を離すまで）で動くのは1回だけ。上スワイプは、指の速さで強さが決まる
 let tp = null;
-canvas.addEventListener('pointerdown', (e) => { audio(); tp = { x: e.clientX, y: e.clientY, id: e.pointerId }; });
+function swipePow() {
+  const h = tp.hist, a = h[h.length - 1];
+  let b = h[0];
+  for (let i = h.length - 2; i >= 0; i--) { b = h[i]; if (a.t - h[i].t > 70) break; }
+  const dt = Math.max(8, a.t - b.t), v = Math.hypot(a.x - b.x, a.y - b.y) / dt * 1000 / innerHeight; // 画面の高さ/秒
+  return clamp((v - .5) / 2.5, 0, 1);
+}
+canvas.addEventListener('pointerdown', (e) => {
+  audio();
+  if (S.mode === 'replay') { endReplay(); return; }
+  tp = { x: e.clientX, y: e.clientY, id: e.pointerId, done: false, dir: '', hist: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
+});
 addEventListener('pointermove', (e) => {
   if (!tp || e.pointerId !== tp.id) return;
-  const dx = e.clientX - tp.x, dy = e.clientY - tp.y, th = 26;
-  if (Math.hypot(dx, dy) < th) return;
-  swipe(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy < 0 ? 'U' : 'D'));
-  tp.x = e.clientX; tp.y = e.clientY;
+  tp.hist.push({ x: e.clientX, y: e.clientY, t: performance.now() }); if (tp.hist.length > 12) tp.hist.shift();
+  if (tp.done) { if (tp.dir === 'U' && S.shoveT > .1) S.pow = Math.max(S.pow, swipePow()); return; }
+  const dx = e.clientX - tp.x, dy = e.clientY - tp.y;
+  if (Math.hypot(dx, dy) < 24) return;
+  const dir = Math.abs(dx) > Math.abs(dy) * .9 ? (dx > 0 ? 'R' : 'L') : (dy < 0 ? 'U' : 'D');
+  tp.done = true; tp.dir = dir;
+  swipe(dir, dir === 'U' ? swipePow() : .6);
 });
 addEventListener('pointerup', () => { tp = null; });
 addEventListener('pointercancel', () => { tp = null; });
 addEventListener('keydown', (e) => {
+  if (S.mode === 'replay') { endReplay(); return; }
   const k = { ArrowLeft: 'L', a: 'L', ArrowRight: 'R', d: 'R', ArrowUp: 'U', w: 'U', ' ': 'U', ArrowDown: 'D', s: 'D' }[e.key];
-  if (k) { e.preventDefault(); audio(); swipe(k); }
+  if (k) { e.preventDefault(); audio(); swipe(k, e.shiftKey ? 1 : .6); }
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && S.mode === 'play' && !AUTO) pauseGame(); });
 function pauseGame() { S.paused = true; show('pause'); if (ac) ac.suspend(); }
@@ -1917,8 +2270,8 @@ facadeMats = facadeSet.map((f) => new THREE.MeshStandardMaterial({ map: f.map, e
   buildGround();
   for (let i = 0; i < NSEG; i++) { const s = buildSegment(); s.position.z = -(i - 1) * SEG; segments.push(s); }
   for (let i = 0; i < 5; i++) cars.push(makeCar());
-  spr(TX.star, 50, 'star'); spr(TX.puff, 40, 'puff'); spr(TX.star, 3, 'kira', { fog: false });
-  makeDizzies(); makePhones(); makeRing();
+  spr(TX.star, 50, 'star'); spr(TX.puff, 40, 'puff'); spr(TX.shard, 70, 'shard'); spr(TX.star, 3, 'kira', { fog: false });
+  makeDizzies(); makePhones(); makeProps(); makeRing();
   player = { h: makeHuman(playerLook()) }; scene.add(player.h.pivot); player.h.pivot.rotation.y = Math.PI;
   for (let i = 0; i < 34; i++) newPed('adult');
   for (let i = 0; i < 5; i++) newPed('kid');
@@ -1936,7 +2289,7 @@ facadeMats = facadeSet.map((f) => new THREE.MeshStandardMaterial({ map: f.map, e
   renderTitle(); loadStats();
   if (OG) { setupOg(); return; }
   if (new URLSearchParams(location.search).has('gallery')) { releaseAll(); show(null); const z = S.pz; const list = [["adult", "phone", -1.1, -3.2, {}], ["adult", "inno", 0, -3.6, {}], ["adult", "phone", 1.1, -3.4, { sel: true }], ["big", "phone", -1.2, -6, {}], ["kid", "inno", 0, -6.2, {}], ["elder", "inno", 1.2, -6.4, {}]]; for (const [a, k, x, dz, o] of list) { const e = spawn(a, k, x, z + dz, o); e.ph = 1; poseWalk(e.h, 1, .4, k === "phone" ? (o.sel ? "selfie" : "phone") : a === "elder" ? "elder" : ""); } player.h.pivot.visible = false; updCamera(0, true); const rl = () => { renderer.render(scene, camera); requestAnimationFrame(rl); }; rl(); return; }
-  if (AUTO) { startGame(); const sim = +new URLSearchParams(location.search).get('sim'); if (sim) { for (let i = 0; i < sim * 30; i++) update(1 / 30); updBubs(0); const rl = () => { renderer.render(scene, camera); requestAnimationFrame(rl); }; rl(); document.title = 'sim-ready'; return; } }
+  if (AUTO) { startGame(); const sim = +new URLSearchParams(location.search).get('sim'); if (sim) { for (let i = 0; i < sim * 30; i++) update(1 / 30); const ov = +new URLSearchParams(location.search).get('over'); if (ov) { S.lives = 1; S.inv = 0; const e = active.find((x) => x.state === 'walk' && x.kind === 'phone'); if (e) e.h.pivot.position.z = S.pz + 2; for (let i = 0; i < ov * 30; i++) update(1 / 30); } updBubs(0); const rl = () => { renderer.render(scene, camera); requestAnimationFrame(rl); }; rl(); document.title = 'sim-ready'; return; } }
   requestAnimationFrame(frame);
 }
 

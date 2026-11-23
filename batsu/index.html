@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>罰ゲーム決めたげる｜2タップで罰ゲームが決まる</title>
+<meta name="description" content="負けた人が決まったら、あとはおまかせ。飲み会・友達・家族・カップル・通話…場面と強さを選ぶだけで、その場でできる罰ゲームを決めたげます。登録なし・無料。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="罰ゲーム決めたげる⚖️">
+<meta property="og:description" content="場面と強さを選ぶだけ。その場でできる罰ゲームを2タップで判決！">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/batsu/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/batsu/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Shippori+Mincho:wght@800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fff3dc;
+    --paper: #fffaf0;
+    --ink: #2b1b14;
+    --sub: #8a6f5d;
+    --red: #e8453c;
+    --red-dark: #a82a22;
+    --yellow: #ffd23f;
+    --yellow-dark: #c99a00;
+    --line: #ecd9bd;
+    --chip: #ffe9c4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image: radial-gradient(#f3dfbd 1.2px, transparent 1.2px);
+    background-size: 18px 18px;
+    color: var(--ink);
+    font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
+    line-height: 1.7;
+    -webkit-tap-highlight-color: transparent;
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 18px 16px 40px; }
+  .hidden { display: none !important; }
+  .display { font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
+  .mincho { font-family: "Shippori Mincho", serif; font-weight: 800; }
+
+  /* タイトル */
+  header { text-align: center; }
+  .kicker { display: inline-block; background: var(--ink); color: var(--yellow); font-weight: 800; font-size: .8rem; padding: 1px 14px; border-radius: 99px; }
+  h1 { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 2.7rem; line-height: 1.15; margin: 10px 0 0; color: var(--red); text-shadow: 3px 3px 0 var(--ink); -webkit-text-stroke: 1px var(--ink); }
+  h1 small { display: block; font-size: 1.5rem; color: var(--ink); text-shadow: none; -webkit-text-stroke: 0; }
+  .gavel { display: inline-block; font-size: 2.2rem; transform-origin: 80% 80%; animation: tap 2.4s ease-in-out infinite; }
+  @keyframes tap { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-35deg); } 84% { transform: rotate(10deg); } }
+  .lead { color: var(--sub); margin: 10px 0 16px; font-size: .92rem; }
+
+  /* 条件 */
+  .panel { background: var(--paper); border: 2px solid var(--ink); border-radius: 20px; padding: 14px 14px 6px; box-shadow: 0 5px 0 var(--ink); }
+  .q { font-weight: 800; font-size: .9rem; margin: 0 0 6px; }
+  .q span { color: var(--sub); font-weight: 700; font-size: .75rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+  .chips button {
+    font: inherit; font-weight: 800; font-size: .88rem; color: var(--ink);
+    background: var(--chip); border: 2px solid transparent; border-radius: 99px; padding: 5px 13px; cursor: pointer;
+  }
+  .chips button.on { background: var(--ink); color: var(--yellow); }
+  .chips.lv button.on[data-v="3"] { background: var(--red); color: #fff; }
+  input[type=text] {
+    width: 100%; font: inherit; font-weight: 700; font-size: 1rem; color: var(--ink);
+    border: 2px solid var(--line); border-radius: 12px; padding: 9px 12px; background: #fff; margin: 0 0 12px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--ink); }
+
+  button.big {
+    display: block; width: 100%; font: inherit; font-weight: 800; font-size: 1.05rem;
+    border: 2px solid var(--ink); border-radius: 16px; padding: 14px 16px; margin-top: 12px; cursor: pointer;
+    transition: transform .06s ease, box-shadow .06s ease;
+  }
+  .primary { background: var(--red); color: #fff; box-shadow: 0 5px 0 var(--ink); font-family: "Dela Gothic One", sans-serif; font-weight: 400 !important; font-size: 1.5rem !important; letter-spacing: .05em; }
+  .yellow { background: var(--yellow); color: var(--ink); box-shadow: 0 5px 0 var(--ink); }
+  .ghost { background: var(--paper); color: var(--ink); box-shadow: 0 4px 0 var(--ink); }
+  .x { background: var(--ink); color: #fff; box-shadow: 0 5px 0 #000; }
+  button.big:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+  button.big:disabled { opacity: .5; cursor: default; transform: none; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row button.big { font-size: .95rem; padding: 10px 8px; line-height: 1.35; }
+  .row button.big small { display: block; font-size: .72rem; color: var(--sub); }
+  .count { text-align: center; color: var(--sub); font-size: .82rem; font-weight: 700; margin: 12px 0 0; }
+  .count b { color: var(--red); font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.1rem; }
+
+  /* 判決カード */
+  #result { margin-top: 22px; scroll-margin-top: 12px; }
+  .stage { perspective: 1200px; }
+  .verdict {
+    position: relative; background: var(--paper); color: var(--ink);
+    border: 3px double var(--ink); outline: 2px solid var(--ink); outline-offset: 4px;
+    border-radius: 6px; padding: 22px 18px 18px; margin: 6px; text-align: center;
+    box-shadow: 0 10px 0 6px rgba(43, 27, 20, .15);
+  }
+  .verdict.flip { animation: flip .55s cubic-bezier(.2, .9, .3, 1.3); }
+  @keyframes flip { from { transform: rotateY(90deg) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+  .v-head { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 1.9rem; letter-spacing: .6em; text-indent: .6em; margin: 0; line-height: 1.3; }
+  .v-sub { font-size: .72rem; color: var(--sub); font-weight: 700; letter-spacing: .1em; border-bottom: 1px solid var(--line); padding-bottom: 10px; margin: 0 0 14px; }
+  .v-who { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 1.05rem; margin: 0; }
+  .v-who b { font-size: 1.35rem; border-bottom: 3px solid var(--yellow); padding: 0 4px; }
+  .v-long { display: inline-block; background: var(--ink); color: var(--yellow); font-weight: 800; font-size: .78rem; border-radius: 99px; padding: 1px 12px; margin: 14px 0 0; }
+  .v-text { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.55rem; line-height: 1.45; margin: 10px 0; color: var(--red); word-break: auto-phrase; }
+  .v-end { font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 1.05rem; margin: 0; }
+  .v-tags { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; }
+  .v-tags span { background: var(--chip); border-radius: 99px; padding: 0 10px; font-size: .75rem; font-weight: 800; }
+  .v-foot { font-size: .78rem; color: var(--sub); font-weight: 700; margin: 12px 0 0; }
+  .v-foot b { color: var(--ink); }
+  .hanko {
+    position: absolute; right: 14px; top: 14px; width: 58px; height: 58px; border: 3px solid var(--red); border-radius: 50%;
+    color: var(--red); font-family: "Shippori Mincho", serif; font-weight: 800; font-size: 1.35rem; line-height: 52px; transform: rotate(-14deg); opacity: .85;
+  }
+  .verdict.flip .hanko { animation: stamp .35s .45s both cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes stamp { from { transform: rotate(-14deg) scale(2.4); opacity: 0; } to { transform: rotate(-14deg) scale(1); opacity: .85; } }
+  .relaxed { font-size: .75rem; color: var(--sub); text-align: center; margin: 8px 0 0; }
+
+  /* 判決の瞬間 */
+  #bang { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(43, 27, 20, .55); }
+  #bang .g { font-size: 6rem; transform-origin: 80% 80%; animation: swing .5s ease-in forwards; }
+  #bang .t { position: absolute; font-family: "Dela Gothic One", sans-serif; font-size: 4rem; color: var(--yellow); -webkit-text-stroke: 2px var(--ink); text-shadow: 4px 4px 0 var(--ink); opacity: 0; animation: pop .3s .42s forwards; }
+  @keyframes swing { 0% { transform: rotate(30deg); } 80% { transform: rotate(-50deg); } 100% { transform: rotate(-40deg); } }
+  @keyframes pop { from { transform: scale(.3) rotate(-8deg); opacity: 0; } to { transform: scale(1) rotate(-8deg); opacity: 1; } }
+
+  /* おすすめ */
+  .rec { margin-top: 24px; background: var(--paper); border: 2px dashed var(--line); border-radius: 18px; padding: 12px 14px; }
+  .rec h3 { margin: 0 0 6px; font-size: .95rem; }
+  .rec a { display: block; color: var(--ink); font-weight: 700; font-size: .9rem; padding: 7px 0; border-top: 1px solid var(--line); text-decoration: none; }
+  .rec a:first-child { border-top: none; }
+  .pr { font-size: .7rem; color: var(--sub); margin: 6px 0 0; }
+  .note { font-size: .72rem; color: var(--sub); text-align: center; margin: 18px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="kicker">ゲームに負けた人へ</span>
+    <h1><span class="gavel">🔨</span><small>罰ゲーム</small>決めたげる</h1>
+    <p class="lead">負けた人が決まったら、あとはおまかせ。<br>選ぶだけで、その場でできる罰を出したげる。</p>
+  </header>
+
+  <section class="panel">
+    <p class="q">どこで遊んでる？</p>
+    <div class="chips" id="cScene">
+      <button data-v="all">なんでも</button>
+      <button data-v="n">🍻 飲み会</button>
+      <button data-v="f">🎮 友達</button>
+      <button data-v="k">🏠 家族</button>
+      <button data-v="c">💑 カップル</button>
+      <button data-v="t">📱 通話中</button>
+      <button data-v="w">💼 職場</button>
+    </div>
+    <p class="q">罰の強さは？</p>
+    <div class="chips lv" id="cLevel">
+      <button data-v="1">😌 ゆる</button>
+      <button data-v="2">😳 ふつう</button>
+      <button data-v="3">👹 鬼</button>
+    </div>
+    <p class="q">道具は使える？</p>
+    <div class="chips" id="cItem">
+      <button data-v="none">なし</button>
+      <button data-v="phone">スマホならOK</button>
+      <button data-v="any">何でもOK</button>
+    </div>
+    <p class="q">負けた人の名前 <span>（なくてもOK）</span></p>
+    <input type="text" id="who" maxlength="12" placeholder="例：たろう" autocomplete="off">
+  </section>
+
+  <button class="big primary" id="goBtn">決めたげる！</button>
+  <p class="count">これまでに決めたげた罰 <b id="sJudge">-</b> 件</p>
+
+  <section id="result" class="hidden">
+    <div class="stage">
+      <div class="verdict" id="card">
+        <p class="v-head">判決</p>
+        <p class="v-sub">罰ゲーム決めたげる裁判所</p>
+        <p class="v-who" id="vWho"></p>
+        <span class="v-long hidden" id="vLong">⏳ 次のゲームが終わるまでずっと</span>
+        <p class="v-text" id="vText"></p>
+        <p class="v-end">の刑に処す。</p>
+        <div class="v-tags" id="vTags"></div>
+        <p class="v-foot" id="vFoot">&nbsp;</p>
+        <div class="hanko">罰</div>
+      </div>
+    </div>
+    <p class="relaxed hidden" id="relaxed"></p>
+    <button class="big yellow" id="doneBtn">執行した！</button>
+    <div class="row">
+      <button class="big ghost" id="rerollBtn">引き直す</button>
+      <button class="big ghost" id="againBtn">次の罰へ<small>新しく決めたげる</small></button>
+    </div>
+    <button class="big x" id="shareBtn">𝕏 で判決をシェア</button>
+    <button class="big ghost" id="imgBtn">判決を画像で保存</button>
+
+    <div class="rec">
+      <h3>🎉 罰ゲームがもっと盛り上がるグッズ</h3>
+      <div id="recList"></div>
+      <p class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</p>
+    </div>
+  </section>
+
+  <p class="note">無理強いはナシで。イヤな罰は「引き直す」でOK。</p>
+
+  <div class="tonmato-next" data-current="batsu"></div>
+</main>
+
+<div id="bang" class="hidden"><div class="g">🔨</div><div class="t">カンッ！</div></div>
+
+<script src="data.js"></script>
+<script>
+'use strict';
+const APP_TITLE = '罰ゲーム決めたげる';
+const HASHTAGS = ['罰ゲーム決めたげる'];
+const SITE = 'tonmatolab.github.io/apps/batsu';
+const AFFILIATE = { amazonTag: '' }; // 例: 'yourname-22'（入れるとリンクに付与＆PR表記）
+const RECS = [
+  { label: '激辛のお菓子（罰ゲーム用）', q: '激辛 お菓子 罰ゲーム' },
+  { label: 'ロシアンルーレット系のお菓子', q: 'ロシアンルーレット お菓子' },
+  { label: '鼻メガネ・変装グッズ', q: '鼻メガネ パーティー' },
+  { label: 'パーティーゲーム・グッズ', q: 'パーティーゲーム 盛り上がる' },
+];
+const LEVEL_NAME = { 1: 'ゆる', 2: 'ふつう', 3: '鬼' };
+// 強さの選び方 → 出す罰の強さと重み
+const LEVEL_WEIGHT = { 1: { 1: 1 }, 2: { 1: 1, 2: 2 }, 3: { 2: 1, 3: 3 } };
+const ITEM_OK = { none: [''], phone: ['', 'p'], any: ['', 'p', 'g'] };
+
+const DATA = window.BATSU_DATA.map(([id, text, scene, level, item, long]) => ({ id, text, scene, level, item, long: !!long }));
+const $ = (id) => document.getElementById(id);
+
+// ===== 通信（カウンター） =====
+const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+async function api(path, method = 'GET') {
+  try {
+    const res = await fetch(API + path, { method, signal: AbortSignal.timeout(8000) });
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+
+// ===== 端末の記録 =====
+const store = {
+  get(k) { try { return localStorage.getItem('batsu_' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('batsu_' + k, v); } catch {} },
+};
+function loadJSON(k, d) { try { return JSON.parse(store.get(k)) ?? d; } catch { return d; } }
+
+// ===== 効果音 =====
+let ac = null;
+function audio() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch {} return ac; }
+function tone(freq, dur, type = 'sine', gain = .3, at = 0) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + at;
+  o.type = type; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * .5, t + dur);
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur);
+}
+function knock(at) {
+  const a = audio(); if (!a) return;
+  const len = a.sampleRate * .08, buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3;
+  const s = a.createBufferSource(); s.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400;
+  const g = a.createGain(); g.gain.value = .9;
+  s.connect(f).connect(g).connect(a.destination); s.start(a.currentTime + at);
+  tone(220, .18, 'triangle', .5, at);
+}
+const sfx = {
+  gavel() { knock(.42); },
+  done() { [523, 659, 784].forEach((f, i) => tone(f, .25, 'square', .08, i * .08)); },
+};
+
+// ===== 条件 =====
+const cond = Object.assign({ scene: 'all', level: '2', item: 'phone' }, loadJSON('cond', {}));
+function bindChips(boxId, key) {
+  const box = $(boxId);
+  const paint = () => box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === cond[key]));
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    cond[key] = b.dataset.v; paint(); store.set('cond', JSON.stringify(cond));
+  });
+  paint();
+}
+bindChips('cScene', 'scene');
+bindChips('cLevel', 'level');
+bindChips('cItem', 'item');
+$('who').value = store.get('who') || '';
+$('who').addEventListener('input', () => store.set('who', $('who').value.trim()));
+
+// ===== 罰を選ぶ =====
+function matches(p, c, relax) {
+  if (relax < 2 && c.scene !== 'all' && p.scene !== 'A' && !p.scene.includes(c.scene)) return false;
+  if (relax < 1 && !ITEM_OK[c.item].includes(p.item)) return false;
+  return true;
+}
+function pick(excludeId) {
+  const recent = loadJSON('recent', []);
+  const weights = LEVEL_WEIGHT[cond.level];
+  // 条件に合う罰が少なすぎるときは、道具 → 場面の順にゆるめる
+  for (let relax = 0; relax < 3; relax++) {
+    const base = DATA.filter((p) => weights[p.level] && matches(p, cond, relax) && p.id !== excludeId);
+    if (base.length < 3 && relax < 2) continue;
+    const fresh = base.filter((p) => !recent.includes(p.id));
+    const pool = fresh.length ? fresh : base;
+    let sum = pool.reduce((s, p) => s + weights[p.level], 0), r = Math.random() * sum;
+    const hit = pool.find((p) => (r -= weights[p.level]) < 0) || pool[pool.length - 1];
+    store.set('recent', JSON.stringify([hit.id, ...recent.filter((x) => x !== hit.id)].slice(0, 40)));
+    return { p: hit, relax };
+  }
+  return null;
+}
+
+// ===== 判決 =====
+let current = null, rerollLeft = 1, executed = false, busy = false;
+
+function judge(isReroll) {
+  if (busy) return;
+  const r = pick(isReroll && current ? current.p.id : null);
+  if (!r) return;
+  busy = true; audio(); sfx.gavel();
+  if (navigator.vibrate) setTimeout(() => navigator.vibrate(40), 420);
+  if (!isReroll) rerollLeft = 1;
+  current = r; executed = false;
+  if (!store.get('played')) { store.set('played', '1'); api('/hit/batsu-play', 'POST'); }
+  api('/hit/batsu-judge', 'POST').then((j) => { if (j) $('sJudge').textContent = j.value.toLocaleString(); });
+
+  $('bang').classList.remove('hidden');
+  setTimeout(() => {
+    $('bang').classList.add('hidden');
+    render();
+    busy = false;
+  }, 950);
+}
+
+function render() {
+  const { p, relax } = current;
+  const name = $('who').value.trim();
+  $('vWho').innerHTML = name ? `被告 <b></b> は` : '被告（負けた人）は';
+  if (name) $('vWho').querySelector('b').textContent = name;
+  $('vLong').classList.toggle('hidden', !p.long);
+  $('vText').textContent = p.text;
+  const tags = [`強さ：${LEVEL_NAME[p.level]}`];
+  if (p.item === 'p') tags.push('📱 スマホを使う'); if (p.item === 'g') tags.push('🧰 道具を使う');
+  $('vTags').innerHTML = tags.map((t) => `<span>${t}</span>`).join('');
+  $('vFoot').innerHTML = '&nbsp;';
+  $('relaxed').classList.toggle('hidden', !relax);
+  $('relaxed').textContent = relax ? '※ 条件にぴったりの罰が少なかったので、少し広めに選びました' : '';
+  $('doneBtn').disabled = false; $('doneBtn').textContent = '執行した！';
+  $('rerollBtn').disabled = rerollLeft <= 0;
+  $('rerollBtn').innerHTML = rerollLeft > 0 ? `引き直す<small>あと${rerollLeft}回だけ</small>` : '引き直す<small>もう使い切った</small>';
+
+  const card = $('card');
+  card.classList.remove('flip'); void card.offsetWidth; card.classList.add('flip');
+  $('result').classList.remove('hidden');
+  $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const key = `batsu-x-${p.id}`;
+  api(`/get?keys=${key}`).then((j) => {
+    if (!j || current.p !== p) return;
+    showExecCount(j[key] || 0);
+  });
+}
+function showExecCount(n) {
+  $('vFoot').innerHTML = n ? `この罰は全国で <b>${n.toLocaleString()}</b> 回執行されました` : 'この罰、全国でまだ誰も執行していません';
+}
+
+function markDone() {
+  if (!current || executed) return;
+  executed = true; sfx.done();
+  $('doneBtn').disabled = true; $('doneBtn').textContent = '執行済み ✔ おつかれさま！';
+  const p = current.p;
+  api(`/hit/batsu-x-${p.id}`, 'POST').then((j) => { if (j && current.p === p) showExecCount(j.value); });
+}
+
+// ===== シェア =====
+function shareText() {
+  const { p } = current;
+  const name = $('who').value.trim();
+  return `⚖️ 判決\n${name ? `被告 ${name} は` : '負けた人は'}\n「${p.long ? '次のゲーム中ずっと、' : ''}${p.text}」の刑に処す。\n\nあなたの罰も決めたげる👇`;
+}
+function share() {
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', shareText());
+  u.searchParams.set('url', location.origin + location.pathname);
+  u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+
+// 文字を幅に収まるよう折り返す
+function wrap(g, text, maxW) {
+  const lines = []; let line = '';
+  for (const ch of text) {
+    if (g.measureText(line + ch).width > maxW && line) { lines.push(line); line = ch; }
+    else line += ch;
+  }
+  if (line) lines.push(line);
+  // 行頭に句読点・閉じかっこが来ないようにする
+  for (let i = 1; i < lines.length; i++) {
+    while (/^[、。」）！？ー]/.test(lines[i])) { lines[i - 1] += lines[i][0]; lines[i] = lines[i].slice(1); }
+  }
+  return lines.filter(Boolean);
+}
+async function resultImage() {
+  const M = '"Shippori Mincho", serif', G = '"Dela Gothic One", sans-serif', R = '"M PLUS Rounded 1c", sans-serif';
+  const { p } = current;
+  const name = $('who').value.trim();
+  // Webフォントは文字ごとに分割配信されるので、実際に描く文字を渡して読み込む
+  await Promise.all([
+    document.fonts.load(`800 60px ${M}`, `判決被告負けた人はの刑に処す。罰${name}`),
+    document.fonts.load(`60px ${G}`, p.text),
+    document.fonts.load(`800 40px ${R}`, `${APP_TITLE}裁判所次のゲームが終わるまでずっと${SITE}`),
+  ]);
+  const W = 1080, H = 1350;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff3dc'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#f3dfbd';
+  for (let y = 9; y < H; y += 36) for (let x = 9; x < W; x += 36) { g.beginPath(); g.arc(x, y, 2.4, 0, 7); g.fill(); }
+  // 紙
+  g.fillStyle = '#fffaf0'; g.fillRect(90, 110, 900, 1080);
+  g.strokeStyle = '#2b1b14'; g.lineWidth = 6; g.strokeRect(90, 110, 900, 1080);
+  g.lineWidth = 3; g.strokeRect(108, 128, 864, 1044);
+  g.textAlign = 'center'; g.fillStyle = '#2b1b14';
+  g.font = `800 110px ${M}`; g.fillText('判　決', W / 2, 290);
+  g.fillStyle = '#8a6f5d'; g.font = `800 32px ${R}`; g.fillText('罰ゲーム決めたげる裁判所', W / 2, 350);
+  g.strokeStyle = '#ecd9bd'; g.lineWidth = 2; g.beginPath(); g.moveTo(180, 385); g.lineTo(900, 385); g.stroke();
+  g.fillStyle = '#2b1b14'; g.font = `800 52px ${M}`;
+  g.fillText(name ? `被告 ${name} は` : '被告（負けた人）は', W / 2, 470);
+  let y = 560;
+  if (p.long) {
+    g.fillStyle = '#2b1b14'; g.beginPath(); g.roundRect(W / 2 - 300, y - 50, 600, 70, 35); g.fill();
+    g.fillStyle = '#ffd23f'; g.font = `800 34px ${R}`; g.fillText('⏳ 次のゲームが終わるまでずっと', W / 2, y - 3);
+    y += 80;
+  }
+  // 罰の文：長ければ字を小さくして、残りの高さの真ん中に置く
+  let size = 80, ls;
+  for (; size >= 54; size -= 6) { g.font = `${size}px ${G}`; ls = wrap(g, p.text, 780); if (ls.length <= 4) break; }
+  const lh = size + 28, bottom = 990;
+  const top = y + (bottom - y - ls.length * lh) / 2 + size * .85;
+  g.fillStyle = '#e8453c';
+  ls.forEach((l, i) => g.fillText(l, W / 2, top + i * lh));
+  g.fillStyle = '#2b1b14'; g.font = `800 52px ${M}`; g.fillText('の刑に処す。', W / 2, 1060);
+  // はんこ
+  g.save(); g.translate(860, 1030); g.rotate(-.25);
+  g.strokeStyle = 'rgba(232,69,60,.85)'; g.lineWidth = 7; g.beginPath(); g.arc(0, 0, 70, 0, 7); g.stroke();
+  g.fillStyle = 'rgba(232,69,60,.85)'; g.font = `800 64px ${M}`; g.textBaseline = 'middle'; g.fillText('罰', 0, 4);
+  g.restore();
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = '#8a6f5d'; g.font = `800 34px ${R}`; g.fillText(APP_TITLE, W / 2, 1255);
+  g.font = `800 26px ${R}`; g.fillText(SITE, W / 2, 1300);
+  return c;
+}
+async function saveImage() {
+  const c = await resultImage();
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const file = new File([blob], 'batsu-hanketsu.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ===== おすすめ（アフィリエイト） =====
+function renderRecs() {
+  const box = $('recList');
+  RECS.forEach((r) => {
+    const u = new URL('https://www.amazon.co.jp/s');
+    u.searchParams.set('k', r.q);
+    if (AFFILIATE.amazonTag) u.searchParams.set('tag', AFFILIATE.amazonTag);
+    const a = document.createElement('a');
+    a.href = u.toString(); a.target = '_blank'; a.rel = 'noopener sponsored';
+    a.textContent = `${r.label} を見る →`;
+    box.appendChild(a);
+  });
+  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag);
+}
+
+// ===== 初期化 =====
+$('goBtn').onclick = () => judge(false);
+$('againBtn').onclick = () => judge(false);
+$('rerollBtn').onclick = () => { if (rerollLeft > 0 && !busy) { rerollLeft--; judge(true); } };
+$('doneBtn').onclick = markDone;
+$('shareBtn').onclick = share;
+$('imgBtn').onclick = saveImage;
+renderRecs();
+api('/get?keys=batsu-judge').then((j) => { if (j) $('sJudge').textContent = (j['batsu-judge'] || 0).toLocaleString(); });
+</script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/next.js"></script>
+</body>
+</html>

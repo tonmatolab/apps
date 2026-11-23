@@ -407,6 +407,33 @@
   .rl-winners { margin-bottom: 6px; }
   .rl-sum b { color: #ffd04a; font-family: var(--num); }
 
+  /* PKチャレンジ */
+  .sheet.pkgame { background: #14532d; color: #f3f7f2; }
+  .pkgame .sub { color: #c5dccb; }
+  .pkgame .btn { background: #1d6b3e; color: #f3f7f2; box-shadow: 0 4px 0 #0b2616; }
+  .pkgame .btn.gold { background: linear-gradient(180deg, #ffd04a, #f2b300); color: #3a2a00; box-shadow: 0 4px 0 #b88400; }
+  .pkgame .btn.ghost { background: transparent; box-shadow: none; color: #c5dccb; }
+  .pk-dots { display: flex; gap: 5px; }
+  .pk-dots i { width: 14px; height: 14px; border-radius: 50%; background: rgba(255,255,255,.2); }
+  .pk-dots i.ok { background: #ffd04a; } .pk-dots i.ng { background: #e5483a; }
+  .pk-field { position: relative; height: 230px; border-radius: 16px; overflow: hidden; background: repeating-linear-gradient(180deg, #2f9e55 0 26px, #2a8f4d 26px 52px); }
+  .pk-goal { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); width: 288px; max-width: 86%; height: 118px; border: 5px solid #fff; border-bottom: none; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 1px, transparent 1px 12px), repeating-linear-gradient(0deg, rgba(255,255,255,.18) 0 1px, transparent 1px 12px); }
+  .pk-zone { border: 1px dashed rgba(255,255,255,.25); background: transparent; cursor: pointer; }
+  .pk-zone.on { background: rgba(255,208,74,.35); outline: 3px solid #ffd04a; outline-offset: -3px; }
+  .pk-keeper { position: absolute; left: 50%; bottom: 0; margin-left: -22px; width: 44px; line-height: 0; transform-origin: 50% 100%; transition: transform .45s ease-out; pointer-events: none; }
+  .pk-ball { position: absolute; left: 50%; bottom: 16px; margin-left: -14px; font-size: 1.8rem; line-height: 1; transition: transform .5s cubic-bezier(.2,.8,.3,1); }
+  .pk-msg { text-align: center; font-weight: 800; min-height: 2.6em; margin-top: 8px; line-height: 1.4; }
+  .pk-msg.win { color: #ffd04a; } .pk-msg.lose { color: #ffb0a6; } .pk-msg.warn { color: #ffb37a; }
+  .pk-meter { position: relative; height: 34px; border-radius: 12px; background: rgba(0,0,0,.3); overflow: hidden; margin: 6px 0 10px; }
+  .pk-sweet { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, #3fd17f, #17924c); }
+  .pk-needle { position: absolute; top: -3px; bottom: -3px; width: 6px; margin-left: -3px; background: #fff; border-radius: 3px; }
+  /* リーグ速報 */
+  .newslist { list-style: none; margin: 0; padding: 0; font-size: .8rem; }
+  .newslist li { padding: 5px 0; border-bottom: 1px dashed var(--line); line-height: 1.45; }
+  .newslist li:last-child { border: none; }
+  .newslist time { color: var(--sub); font-size: .68rem; margin-left: 4px; font-family: var(--num); }
+
   /* 60秒モード */
   .montage { text-align: center; }
   .montage .yr { font-family: var(--num); font-weight: 800; font-size: .9rem; color: var(--sub); }
@@ -434,7 +461,7 @@
     </div>
     <div class="card olentry">
       <h2>🌍 オンラインリーグ <span class="beta">β</span></h2>
-      <p class="sub" style="margin:0 0 6px">全員が同じリーグの選手。1時間に1節、試合が自動で進む。チームメイトもライバルも本物のプレイヤー</p>
+      <p class="sub" style="margin:0 0 6px">全員が同じリーグの選手。30分に1節、試合が自動で進む。チームメイトもライバルも本物のプレイヤー</p>
       <p class="sub" id="olEntryInfo" style="margin:0 0 10px;font-weight:800;color:var(--green)"></p>
       <button class="btn primary" id="olEntryBtn">オンラインで遊ぶ ▶</button>
     </div>
@@ -534,6 +561,7 @@
     <div class="card">
       <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="shopMoney"></span></h2>
       <div class="shop" id="shopList"></div>
+      <button class="btn" id="pkBtn" style="margin-top:10px">⚽ PKチャレンジ（1節に1回・最大30万円）</button>
       <button class="btn" id="casinoBtn" style="margin-top:10px">🎰 カジノでルーレット</button>
     </div>
     <div class="actions">
@@ -606,7 +634,7 @@
     <div class="card">
       <ul class="feats">
         <li>🌍 全員が同じ30クラブのリーグに所属。同じクラブになった人とは一緒に試合に出る</li>
-        <li>⏰ <b id="ol-tickTxt">1時間</b>に1節、試合は自動で進む。あなたが決めるのは練習と契約だけ</li>
+        <li>⏰ <b id="ol-tickTxt">30分</b>に1節、試合は自動で進む。あなたが決めるのは練習と契約だけ</li>
         <li>📅 18節でシーズン終了。オフに移籍・残留・引退を選ぶ（1日でおよそ1年）</li>
         <li>👶 引退したら、子どもが次の世代として続きを生きる</li>
         <li>🔑 ログインは「引き継ぎコード」だけ。メモしておけば別の端末でも続きから</li>
@@ -617,6 +645,7 @@
       <div class="row"><input class="t" id="ol-codeIn" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="flex:2"><button class="btn small primary" id="ol-loginBtn">ログイン</button></div>
       <p class="sub" id="ol-loginMsg" style="margin:6px 0 0"></p>
     </div>
+    <div class="card hidden" id="ol-startNewsCard"><h2>📰 リーグ速報</h2><ul class="newslist" id="ol-startNews"></ul></div>
     <div class="card">
       <h2>⚽ 今季の得点ランキング（全リーグ）</h2>
       <ol class="list" id="ol-startScorers"><li class="empty">読み込み中…</li></ol>
@@ -669,12 +698,14 @@
   <section id="ol-scrHome" class="ol hidden">
     <div class="topbar"><span id="ol-topYear"></span><span class="cd" id="ol-topCd"></span><button class="btn small" id="ol-refreshBtn">🔄</button></div>
     <div class="card hidden" id="ol-motwCard" style="padding:10px 14px"></div>
+    <div class="card hidden" id="ol-newsCard"><h2>📰 リーグ速報</h2><ul class="newslist" id="ol-newsList"></ul></div>
     <div class="card pc" id="ol-pCard"></div>
     <div id="ol-statusPanel"></div>
     <div class="card hidden" id="ol-shopCard">
       <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="ol-shopMoney"></span></h2>
       <div class="shop" id="ol-shopList"></div>
       <p class="sub hidden" id="ol-casinoNote" style="margin:10px 0 0;font-weight:800;color:var(--green)"></p>
+      <button class="btn" id="ol-pkBtn" style="margin-top:10px">⚽ PKチャレンジ（1節に1回・最大30万円）</button>
       <button class="btn" id="ol-casinoBtn" style="margin-top:10px">🎰 みんなのルーレット（3分ごと）</button>
     </div>
     <div class="card hidden" id="ol-lastCard"><h2 id="ol-lastHead">📺 前節の試合</h2><div id="ol-lastBody"></div></div>
@@ -1115,6 +1146,7 @@ function matchHTML(w) {
     if (m.assists) bits.push(`👟 ${m.assists}アシスト`);
     if (m.cs) bits.push('🧱 無失点');
     if (m.motm) bits.push('⭐ マン・オブ・ザ・マッチ');
+    if (m.pay) bits.push(`💰 試合給 +${m.pay}万円`);
     line = bits.join('　') || (m.rating >= 6.5 ? '堅実なプレーで貢献' : m.rating < 5.5 ? '見せ場を作れず…' : 'まずまずの出来');
   } else line = m.role === 'bench' ? '監督の信頼をつかめなかった…練習で能力を上げよう' : 'リハビリに専念した';
   const hl = m.events.map((e) => {
@@ -1670,6 +1702,27 @@ $('imgBtn').onclick = saveImage;
 $('rankNameBtn').onclick = submitName;
 $('nextGenBtn').onclick = () => renderCreate({ child: true, pos: S.p.pos });
 $('wikiBtn').onclick = showWiki;
+// PKチャレンジ（一人用：1節に1回。キーパーの飛ぶ方向は始めた時点で決める）
+$('pkBtn').onclick = () => {
+  const key = `${S.year}-${S.phase}-${S.week}`;
+  openPK({
+    start: () => {
+      if (S.pk && S.pk.key === key && S.pk.done) return { error: 'この節はもう挑戦しました。次の節で！' };
+      if (!S.pk || S.pk.key !== key) { S.pk = { key, dives: Array.from({ length: SL.PK.kicks }, () => SL.pkDive()), kicks: [], done: false }; save(); }
+      return { kicks: S.pk.kicks.length, goals: S.pk.kicks.filter((x) => x.goal).length };
+    },
+    kick: (k) => {
+      const pk = S.pk, r = SL.pkResult(k, pk.dives[pk.kicks.length]);
+      pk.kicks.push({ ...k, goal: r.goal });
+      const goals = pk.kicks.filter((x) => x.goal).length;
+      let reward = null;
+      if (pk.kicks.length >= SL.PK.kicks) { pk.done = true; reward = SL.pkReward(goals); S.p.money += reward; }
+      save();
+      return { ...r, n: pk.kicks.length, goals, reward };
+    },
+    onClose: () => renderGame(),
+  });
+};
 // カジノ（一人用：当たり外れは core.js がその場で決める）
 $('casinoBtn').onclick = () => openRoulette({
   getMoney: () => S.p.money,
@@ -1686,6 +1739,7 @@ $('endTitleBtn').onclick = renderTitle;
 if (location.hash !== '#online') renderTitle();
 </script>
 <script src="casino.js"></script>
+<script src="pk.js"></script>
 <script src="online.js"></script>
 <script src="../shared/apps.js"></script>
 <script src="../shared/next.js"></script>

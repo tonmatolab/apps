@@ -7,6 +7,8 @@
 //   POST /api/training {k}           → 練習メニューを変える
 //   GET  /api/casino                 → ルーレットの台（次に回る時刻・前回の結果・自分の賭け）
 //   POST /api/casino/bet {bets}      → 次の回に賭ける（[] で取り消し）。台は3分ごとに全員共通で回る
+//   POST /api/pk/start               → PKチャレンジを始める（1節に1回）
+//   POST /api/pk/kick {dir, high, power} → 1本蹴る（5本目で賞金）
 //   POST /api/decide {choice}        → オフの契約：'stay' / 'retire' / オファーの番号
 //   POST /api/nextgen {name, pos}    → 引退後、次の世代を始める
 //   POST /api/dev/tick {n}           → 開発用：n節すすめる（DEV=1 のときだけ）

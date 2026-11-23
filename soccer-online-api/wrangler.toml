@@ -15,6 +15,6 @@ tag = "v1"
 new_sqlite_classes = ["League"]
 
 [vars]
-TICK_MINUTES = "60"   # 何分ごとに1節すすめるか
+TICK_MINUTES = "30"   # 何分ごとに1節すすめるか
 RL_MINUTES = "3"      # オンラインのルーレットが何分ごとに回るか（全員共通の台）
 DEV = "0"             # 1 にすると /api/dev/tick が使える（本番では 0）

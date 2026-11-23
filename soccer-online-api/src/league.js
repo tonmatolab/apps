@@ -5,7 +5,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 
-const MAX_PLAYERS = 3000;      // 無料枠を守るための上限
+const MAX_PLAYERS = 1500;      // 無料枠を守るための上限（試合ごとに全員を保存するので、1日の書き込み10万行に収まる人数）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限
 const NG_WORDS = ['死ね', 'しね', '殺す', 'ころす', 'fuck', 'shit', 'ちんこ', 'まんこ', 'ちんぽ', 'sex'];
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -89,6 +89,7 @@ export class League extends DurableObject {
       const r = G.SL.resolveRoulette(m.pl, bets, num);
       m.rlLast = { round, num, net: r.net, total: r.total, back: r.back, results: r.results };
       players++; totalBet += r.total;
+      if (r.net >= 500) G.addNews(this.w, `🎰 ${m.pl.name}がルーレットで+${r.net.toLocaleString()}万円！（${num}）`);
       winners.push({ name: m.pl.name, net: r.net });
       this.saveMember(m);
     }
@@ -97,6 +98,21 @@ export class League extends DurableObject {
     T.last = { round, num, color: G.SL.rlColor(num), at: Date.now(), players, totalBet, winners: winners.filter((x) => x.net > 0).sort((a, b) => b.net - a.net).slice(0, 5) };
     T.nextAt = Date.now() + this.rlMs();
     this.saveWorld(); // 回の番号と次の時刻を残す（1日480行ほど）
+  }
+  // PKは1節に1回（節が進むと新しく挑戦できる）
+  pkKey() { const w = this.w; return w.season + '-' + w.phase + '-' + w.week + '-' + w.offLeft; }
+  // ログインボーナス：日本時間で1日1回。連続日数で増える（1日目20万円、1日ごとに+10万円、7日目以降は80万円）
+  loginBonus(m) {
+    if (m.status === 'draft' || m.status === 'retired') return null;
+    const day = (t) => new Date(t + 9 * 3600000).toISOString().slice(0, 10);
+    const today = day(Date.now()), yest = day(Date.now() - 86400000);
+    if (m.loginDay === today) return null;
+    m.loginStreak = m.loginDay === yest ? (m.loginStreak || 0) + 1 : 1;
+    m.loginDay = today;
+    const amount = 20 + Math.min(6, m.loginStreak - 1) * 10;
+    m.pl.money += amount;
+    this.saveMember(m);
+    return { amount, streak: m.loginStreak };
   }
   betCount() { let n = 0; for (const m of this.members.values()) if (m.rlBet) n++; return n; }
   tableView(m) {
@@ -149,7 +165,36 @@ export class League extends DurableObject {
       if (req.method === 'GET' && path === '/casino') return json(this.tableView(await this.me(req)));
       const m = await this.me(req);
       if (!m) return err('unauthorized', 401);
-      if (req.method === 'GET' && path === '/state') return json(this.stateView(m));
+      if (req.method === 'GET' && path === '/state') {
+        const bonus = this.loginBonus(m);
+        return json({ ...this.stateView(m), bonus });
+      }
+      // PK戦チャレンジ：始める（キーパーの飛ぶ方向5本分をサーバーで決めて保存）
+      if (req.method === 'POST' && path === '/pk/start') {
+        if (m.status === 'draft' || m.status === 'retired') return err('not_now');
+        const key = this.pkKey();
+        if (m.pk && m.pk.key === key && m.pk.done) return err('pk_done');
+        if (!m.pk || m.pk.key !== key) { m.pk = { key, dives: Array.from({ length: G.SL.PK.kicks }, () => G.SL.pkDive()), kicks: [], done: false }; this.saveMember(m); }
+        return json({ kicks: m.pk.kicks.length, goals: m.pk.kicks.filter((x) => x.goal).length });
+      }
+      // 1本蹴る。5本目で賞金を払って保存
+      if (req.method === 'POST' && path === '/pk/kick') {
+        const pk = m.pk;
+        if (!pk || pk.key !== this.pkKey() || pk.done) return err('not_now');
+        const k = { dir: body.dir, high: body.high === true, power: Number(body.power) };
+        if (!G.SL.pkCheckKick(k)) return err('bad_kick');
+        const r = G.SL.pkResult(k, pk.dives[pk.kicks.length]);
+        pk.kicks.push({ ...k, goal: r.goal });
+        let reward = null;
+        if (pk.kicks.length >= G.SL.PK.kicks) {
+          pk.done = true;
+          const goals = pk.kicks.filter((x) => x.goal).length;
+          reward = G.SL.pkReward(goals); m.pl.money += reward;
+          if (goals === G.SL.PK.kicks) G.addNews(this.w, `⚽ ${m.pl.name}がPKチャレンジで5本全部成功！`);
+          this.saveMember(m);
+        }
+        return json({ ...r, n: pk.kicks.length, goals: pk.kicks.filter((x) => x.goal).length, reward, money: m.pl.money });
+      }
       if (req.method === 'POST' && path === '/join') {
         if (m.status !== 'draft') return err('not_now');
         const e = G.join(m, this.w, Number(body.i), [...this.members.values()]); if (e) return err(e);
@@ -253,7 +298,7 @@ export class League extends DurableObject {
   }
 
   publicView() {
-    return { world: this.worldView(), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
+    return { world: this.worldView(), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, news: (this.w.news || []).slice(0, 8), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
   }
   stateView(m) {
     const w = this.w, p = m.pl, lg = p.club != null ? w.clubs[p.club].lg : 1;
@@ -281,6 +326,8 @@ export class League extends DurableObject {
       shop: m.status === 'draft' || m.status === 'retired' ? [] : G.SL.shopList(G.adapter(m, w)),
       caps: { club: G.CLUB_CAP, gk: G.GK_CAP, salary: G.SALARY_CAP },
       casino: this.tableView(m),
+      news: (w.news || []).slice(0, 12),
+      pk: { done: !!(m.pk && m.pk.key === this.pkKey() && m.pk.done), kicks: m.pk && m.pk.key === this.pkKey() ? m.pk.kicks.length : 0, reward: G.SL.pkReward(G.SL.PK.kicks) },
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
         grow: p.growKnown ? p.grow : null, cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,

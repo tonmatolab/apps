@@ -325,6 +325,28 @@ const SL = (() => {
   // 調子が下がるとき、家があれば半分は踏みとどまる
   function condDown(p, n = 1) { if (p.house && chance(.5)) return; p.cond = clamp(p.cond - n, -2, 2); }
 
+  // ===== PK戦チャレンジ（5本蹴ってゴール数で賞金。1節に1回） =====
+  // キーパーが飛ぶ方向（dive）は蹴る側に見えない所で決める（オンラインはサーバー）
+  const PK = { kicks: 5, perGoal: 4, perfect: 10, tol: { high: .12, low: .2 } };
+  function pkDive() { const r = rnd(); return r < .4 ? 'L' : r < .8 ? 'R' : 'C'; }
+  // kick = { dir: 'L'|'C'|'R', high: 上を狙ったか, power: 0〜1（真ん中の0.5がちょうどいい強さ） }
+  function pkCheckKick(k) { return k && ['L', 'C', 'R'].includes(k.dir) && typeof k.high === 'boolean' && Number.isFinite(k.power) && k.power >= 0 && k.power <= 1; }
+  function pkResult(k, dive) {
+    if (Math.abs(k.power - .5) > (k.high ? PK.tol.high : PK.tol.low)) return { goal: false, why: k.power > .5 ? 'over' : 'weak', dive };
+    // 同じ方向に飛ばれたら止められる。ただし上の隅は半分は届かない
+    if (dive === k.dir && !(k.high && k.dir !== 'C' && chance(.5))) return { goal: false, why: 'saved', dive };
+    return { goal: true, dive };
+  }
+  const pkReward = (goals) => goals * PK.perGoal + (goals === PK.kicks ? PK.perfect : 0);
+
+  // ===== 試合給（リーグ戦に出るたびにもらえる。年俸とは別の小さなお金） =====
+  function matchPay(p, mins, goals) {
+    if (!mins) return 0;
+    const pay = Math.max(5, Math.round((p.salary || 0) / 60)) + goals * 3;
+    p.money += pay;
+    return pay;
+  }
+
   // ===== カジノ：ルーレット（ヨーロッパ式 0〜36。ゲーム内のお金だけを賭ける） =====
   const RL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
   const RL_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -665,6 +687,7 @@ const SL = (() => {
       S.ratings.push(m.rating);
       if (!S.best || m.rating > S.best.rating) S.best = { rating: m.rating, opp: co.name, gf: gUs, gc: gThem, goals: m.goals, assists: m.assists, week: s.week + 1 };
       p.fame = clamp(p.fame + m.goals * .6 + m.assists * .3 + (m.rating >= 8 ? 1 : 0) + (c.lg === 0 ? .2 : 0), 0, 100);
+      m.pay = matchPay(p, m.mins, m.goals);
     }
     trackRecords(s, m, co.name);
     return m;
@@ -1402,6 +1425,7 @@ const SL = (() => {
     setRng, STATS, POS, GROW, TRAINING, LEAGUES, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
+    PK, pkDive, pkCheckKick, pkResult, pkReward, matchPay,
     START_MONEY, ROULETTE, RL_BETS, rlColor, rlBetInfo, rlCheck, spinRoulette, resolveRoulette,
     CHALLENGES, SHOP, shopList, buy, narrowPot, TITLES, titleInfo, ACHIEVEMENTS, newCollection, addToCollection, CUP_WEEKS,
     migrate, inheritBonus, lastMatchInfo, playLastMatch, familyTitle, POLICY, autoDraft, autoYear, autoLastMatch, lastName,

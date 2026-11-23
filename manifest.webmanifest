@@ -1,7 +1,7 @@
 {
-  "name": "とんまとラボ｜無料ゲーム・診断集",
+  "name": "とんまとラボ｜へんなゲームたち",
   "short_name": "とんまとラボ",
-  "description": "1分で遊べる無料のゲーム・診断集",
+  "description": "登録なしで遊べる無料のゲームと診断",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

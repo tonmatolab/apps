@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/.dist"
 rm -rf "$DIST" && mkdir -p "$DIST"
 cd "$ROOT"
-git ls-files | grep -vE '^(private/|counter-api/|soccer-online-api/|tools/|\.claude/|\.secrets/|\.gitignore$|README\.md$|(.*/)?og.html$)' | while read -r f; do
+git ls-files | grep -vE '^(private/|counter-api/|soccer-online-api/|room-api/|tools/|\.claude/|\.secrets/|\.gitignore$|README\.md$|(.*/)?og.html$)' | while read -r f; do
   mkdir -p "$DIST/$(dirname "$f")"; cp "$f" "$DIST/$f"
 done
 echo "files: $(find "$DIST" -type f | wc -l)"

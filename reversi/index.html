@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>リバーシ部屋｜合言葉で友達とすぐ対戦</title>
+<meta name="description" content="部屋を作って4桁の合言葉を送るだけ。登録なしで友達とリアルタイムにリバーシ対戦。CPUとの練習も。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="リバーシ部屋⚫⚪ 合言葉で友達とすぐ対戦">
+<meta property="og:description" content="部屋を作ってLINEで送るだけ。登録なし・無料でリアルタイム対戦">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/reversi/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/reversi/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3ece0;
+    --card: #fffaf2;
+    --ink: #2b2420;
+    --sub: #8a7c6f;
+    --line: #e4d8c6;
+    --green: #1f7a4d;
+    --green-dark: #155c39;
+    --wood: #8a5a2b;
+    --accent: #e8432f;
+    --gold: #f0b429;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "M PLUS Rounded 1c", system-ui, sans-serif; line-height: 1.6;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+    overscroll-behavior: none;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; }
+  input { font: inherit; }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 18px 16px calc(28px + env(safe-area-inset-bottom)); }
+  .screen { display: none; }
+  .screen.on { display: block; animation: fade .25s; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+
+  /* ----- ホーム ----- */
+  .hero { text-align: center; padding: 14px 0 6px; }
+  .logo { display: inline-flex; gap: 6px; margin-bottom: 4px; }
+  .logo i { width: 34px; height: 34px; border-radius: 50%; display: block; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), 0 3px 0 rgba(0,0,0,.15); }
+  .logo i:nth-child(odd) { background: #222; } .logo i:nth-child(even) { background: #fff; border: 2px solid #ddd; }
+  .logo i:nth-child(2) { animation: flipy 2.4s infinite; }
+  @keyframes flipy { 0%, 60% { transform: rotateY(0); } 80%, 100% { transform: rotateY(180deg); } }
+  h1 { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 2.3rem; margin: 2px 0 0; letter-spacing: .04em; }
+  .tag { color: var(--sub); margin: 0; font-weight: 700; }
+  .card { background: var(--card); border-radius: 20px; padding: 16px; margin-top: 14px; border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); }
+  .card h2 { font-size: 1rem; margin: 0 0 10px; }
+  label.f { display: block; font-size: .85rem; color: var(--sub); font-weight: 700; margin-bottom: 4px; }
+  .in { width: 100%; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--line); background: #fff; font-size: 1.05rem; outline: none; -webkit-user-select: text; user-select: text; }
+  .in:focus { border-color: var(--green); }
+  .btn { display: block; width: 100%; padding: 14px; border-radius: 16px; font-weight: 800; font-size: 1.1rem; background: #fff; border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); transition: transform .06s; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .btn.pri { background: var(--green); color: #fff; border-color: var(--green-dark); box-shadow: 0 4px 0 var(--green-dark); }
+  .btn.pri:active { box-shadow: 0 1px 0 var(--green-dark); }
+  .btn.red { background: var(--accent); color: #fff; border-color: #b52e1e; box-shadow: 0 4px 0 #b52e1e; }
+  .btn.line { background: #06c755; color: #fff; border-color: #049a42; box-shadow: 0 4px 0 #049a42; }
+  .btn.sm { padding: 10px; font-size: .95rem; border-radius: 14px; }
+  .btn:disabled { opacity: .5; }
+  .row { display: flex; gap: 10px; } .row > * { flex: 1; }
+  .gap { height: 10px; }
+  .join { display: flex; gap: 8px; }
+  .join .in { flex: 1; text-align: center; letter-spacing: .4em; font-weight: 800; font-size: 1.3rem; }
+  .join .btn { width: auto; padding: 0 20px; }
+  .sep { text-align: center; color: var(--sub); font-size: .85rem; font-weight: 700; margin: 18px 0 8px; }
+  .lv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .lv .btn small { display: block; font-size: .7rem; color: var(--sub); font-weight: 700; }
+  .invite { text-align: center; }
+  .invite .big { font-family: "Dela Gothic One", sans-serif; font-size: 2.4rem; letter-spacing: .2em; color: var(--green); }
+  .err { color: var(--accent); font-weight: 700; font-size: .9rem; min-height: 1.4em; margin: 6px 0 0; text-align: center; }
+
+  /* ----- 待合室 ----- */
+  .code { display: flex; justify-content: center; gap: 8px; margin: 8px 0 4px; }
+  .code b { width: 58px; height: 72px; display: grid; place-items: center; background: #fff; border-radius: 14px; border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line);
+    font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 2.4rem; color: var(--green); }
+  .center { text-align: center; }
+  .waiting { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--sub); font-weight: 700; margin: 16px 0 4px; }
+  .dots span { display: inline-block; width: 8px; height: 8px; margin: 0 2px; border-radius: 50%; background: var(--green); animation: bob 1s infinite; }
+  .dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bob { 50% { transform: translateY(-6px); opacity: .5; } }
+  .note { font-size: .85rem; color: var(--sub); text-align: center; margin: 10px 0 0; }
+
+  /* ----- 対局 ----- */
+  .players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pl { position: relative; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; transition: all .2s; }
+  .pl.turn { border-color: var(--green); box-shadow: 0 0 0 3px rgba(31,122,77,.18); }
+  .pl .d { flex: none; width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+  .pl.k .d { background: #222; } .pl.w .d { background: #fff; border: 2px solid #ddd; }
+  .pl .nm { flex: 1; min-width: 0; font-weight: 800; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; }
+  .pl .nm small { display: block; font-size: .7rem; color: var(--sub); font-weight: 700; }
+  .pl .ct { font-family: "Dela Gothic One", sans-serif; font-size: 1.6rem; line-height: 1; }
+  .pl .on { position: absolute; top: 6px; left: 6px; width: 9px; height: 9px; border-radius: 50%; background: #c9c0b4; border: 2px solid var(--card); }
+  .pl .on.y { background: #2ecc71; }
+  .bubble { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); font-size: 2rem; animation: pop 1.6s forwards; pointer-events: none; z-index: 5; }
+  @keyframes pop { 0% { transform: translate(-50%, 10px) scale(.4); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1.15); opacity: 1; } 25% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -20px); opacity: 0; } }
+  .status { text-align: center; font-weight: 800; margin: 10px 0 8px; min-height: 1.6em; font-size: 1.05rem; }
+  .status.me { color: var(--green); }
+
+  .frame { background: var(--wood); padding: 8px; border-radius: 16px; box-shadow: 0 6px 0 #6b4420, inset 0 2px 0 rgba(255,255,255,.2); }
+  .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; background: var(--green-dark); border-radius: 8px; overflow: hidden; aspect-ratio: 1; perspective: 600px; position: relative; }
+  .cell { position: relative; background: var(--green); display: grid; place-items: center; }
+  .cell.hint::after { content: ""; width: 26%; height: 26%; border-radius: 50%; background: rgba(0,0,0,.22); }
+  .cell.hint.me { cursor: pointer; }
+  .cell.hint.me::after { background: rgba(255,255,255,.45); animation: breathe 1.6s infinite; }
+  @keyframes breathe { 50% { transform: scale(.7); } }
+  .dot4 { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--green-dark); transform: translate(-50%, -50%); z-index: 1; }
+  .disc { position: absolute; inset: 9%; transform-style: preserve-3d; transition: transform .42s cubic-bezier(.4,1.4,.6,1); display: none; z-index: 2; }
+  .disc.k, .disc.w { display: block; }
+  .disc.w { transform: rotateY(180deg); }
+  .disc.notr { transition: none; }
+  .disc .f { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .disc .f.k { background: radial-gradient(circle at 35% 30%, #555, #111 60%); box-shadow: 0 2px 2px rgba(0,0,0,.4); }
+  .disc .f.w { background: radial-gradient(circle at 35% 30%, #fff, #ddd 70%); transform: rotateY(180deg); box-shadow: 0 2px 2px rgba(0,0,0,.3); }
+  /* 不透明度のアニメは .disc 自体にかけると裏表の3D表示が壊れるので、面のほうにかける */
+  .disc.pop .f { animation: place .3s cubic-bezier(.3,1.6,.6,1); }
+  @keyframes place { from { scale: 1.5; opacity: 0; } }
+  .cell.last::before { content: ""; position: absolute; width: 18%; height: 18%; border-radius: 50%; background: var(--accent); z-index: 3; }
+
+  .stamps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 14px; }
+  .stamps button { background: var(--card); border: 2px solid var(--line); border-radius: 12px; font-size: 1.35rem; padding: 4px 0; }
+  .stamps button:active { transform: scale(.9); }
+  .acts { display: flex; gap: 8px; margin-top: 14px; }
+  .acts .btn { font-size: .9rem; padding: 10px; }
+  .watch { text-align: center; font-size: .8rem; color: var(--sub); margin-top: 8px; font-weight: 700; }
+  .banner { position: fixed; top: 0; left: 0; right: 0; background: var(--ink); color: #fff; text-align: center; padding: 6px; font-weight: 700; font-size: .85rem; z-index: 40; transform: translateY(-100%); transition: transform .2s; }
+  .banner.on { transform: none; }
+
+  /* ----- 結果 ----- */
+  .ov { position: fixed; inset: 0; background: rgba(30,24,20,.55); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
+  .ov.on { display: flex; animation: fade .25s; }
+  .res { background: var(--card); width: 100%; max-width: 380px; border-radius: 24px; padding: 22px 18px; text-align: center; box-shadow: 0 8px 0 rgba(0,0,0,.2); }
+  .res .big { font-family: "Dela Gothic One", sans-serif; font-size: 2.6rem; line-height: 1.2; }
+  .res .big.win { color: var(--accent); } .res .big.lose { color: #4a6fa5; } .res .big.draw { color: var(--sub); }
+  .res .sc { display: flex; justify-content: center; align-items: center; gap: 14px; font-family: "Dela Gothic One", sans-serif; font-size: 2rem; margin: 6px 0; }
+  .res .sc i { width: 26px; height: 26px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .res .why { color: var(--sub); font-weight: 700; font-size: .9rem; margin: 0 0 14px; }
+  .res .rm { font-size: .85rem; color: var(--green); font-weight: 800; min-height: 1.4em; margin: 8px 0 0; }
+  .res .btn + .btn { margin-top: 10px; }
+  .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 99px; font-weight: 700; opacity: 0; transition: all .25s; z-index: 50; pointer-events: none; white-space: nowrap; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .confetti { position: fixed; top: -10px; width: 10px; height: 14px; z-index: 31; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  /* ----- 1台で遊ぶ ----- */
+  .ok { display: inline-block; background: var(--green); color: #fff; font-size: .7rem; padding: 1px 8px; border-radius: 99px; vertical-align: 2px; margin-left: 4px; }
+  .in.sm { padding: 9px 12px; font-size: .95rem; min-width: 0; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 700; color: var(--sub); margin: 10px 0 12px; }
+  .chk input { width: 20px; height: 20px; accent-color: var(--green); flex: none; }
+  .offnote { margin: 8px 0 0; text-align: center; font-size: .85rem; font-weight: 700; color: var(--wood); }
+  /* 向かい合わせ：白の札を上に逆さまに置き、黒の札を下に置く */
+  #game.face.on { display: flex; flex-direction: column; }
+  #game.face .players { display: contents; }
+  #game.face #pl2 { order: 0; transform: rotate(180deg); margin-bottom: 12px; }
+  #game.face .frame { order: 1; }
+  #game.face #pl1 { order: 2; margin-top: 16px; }
+  #game.face .status { display: none; }
+  #game.face .stamps, #game.face .watch, #game.face .acts { order: 3; }
+  #game.face .pl { padding: 12px; }
+  #game.face .pl.turn { background: #e7f4ec; animation: nudge 1.4s infinite; }
+  #game.face #pl2.turn { animation-name: nudge2; }
+  @keyframes nudge { 50% { box-shadow: 0 0 0 6px rgba(31,122,77,.25); } }
+  @keyframes nudge2 { 50% { box-shadow: 0 0 0 6px rgba(31,122,77,.25); } }
+</style>
+</head>
+<body>
+<div class="banner" id="banner">再接続しています…</div>
+<div class="wrap">
+
+  <!-- ===== ホーム ===== -->
+  <section class="screen on" id="home">
+    <div class="hero">
+      <div class="logo"><i></i><i></i><i></i><i></i></div>
+      <h1>リバーシ部屋</h1>
+      <p class="tag">合言葉を送るだけ。友達とすぐ対戦</p>
+    </div>
+
+    <div class="card invite" id="inviteCard" hidden>
+      <div class="f" style="color:var(--sub);font-weight:700">招待された部屋</div>
+      <div class="big" id="inviteCode">----</div>
+    </div>
+
+    <div class="card">
+      <label class="f" for="name">あなたの名前</label>
+      <input class="in" id="name" maxlength="10" placeholder="例：たろう" autocomplete="nickname">
+      <div class="gap"></div>
+      <div id="inviteActs" hidden>
+        <button class="btn pri" id="btnEnter">この部屋に入る</button>
+        <div class="gap"></div>
+        <button class="btn sm" id="btnNoInvite">ほかの遊び方を見る</button>
+      </div>
+      <div id="normalActs">
+        <button class="btn pri" id="btnCreate">部屋を作る</button>
+        <div class="sep">友達から合言葉をもらったら</div>
+        <div class="join">
+          <input class="in" id="joinCode" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off">
+          <button class="btn" id="btnJoin">入る</button>
+        </div>
+      </div>
+      <p class="err" id="homeErr"></p>
+      <p class="offnote" id="offNote" hidden>📵 いまオフラインです。下の「1台で遊ぶ」なら遊べます</p>
+    </div>
+
+    <div class="card" id="soloCard">
+      <h2>1台で遊ぶ <span class="ok">オフラインOK</span></h2>
+      <p class="note" style="text-align:left;margin:-4px 0 10px">ネットがなくても、スマホ1台を2人で交代しながら対戦できます</p>
+      <div class="row">
+        <input class="in sm" id="nameK" maxlength="8" placeholder="⚫ 黒の名前">
+        <input class="in sm" id="nameW" maxlength="8" placeholder="⚪ 白の名前">
+      </div>
+      <label class="chk"><input type="checkbox" id="faceMode"> 向かい合わせ（テーブルに置いて向かい合って遊ぶ）</label>
+      <button class="btn pri" id="btnLocal">1台で2人対戦</button>
+      <div class="sep" style="margin-top:16px">ひとりで練習（CPU対戦）</div>
+      <div class="lv">
+        <button class="btn sm" data-cpu="0">よわい<small>はじめて</small></button>
+        <button class="btn sm" data-cpu="1">ふつう<small>いい勝負</small></button>
+        <button class="btn sm" data-cpu="2">つよい<small>本気</small></button>
+      </div>
+    </div>
+
+    <div class="tonmato-next" data-current="reversi"></div>
+  </section>
+
+  <!-- ===== 待合室 ===== -->
+  <section class="screen" id="lobby">
+    <div class="hero" style="padding-top:4px">
+      <p class="tag" id="lobbyTitle">部屋ができました！</p>
+    </div>
+    <div class="card center">
+      <div class="f" style="color:var(--sub);font-weight:700">合言葉</div>
+      <div class="code" id="codeBox"></div>
+      <p class="note" style="margin-top:6px">友達に送ると、開くだけで入れます</p>
+      <div class="gap"></div>
+      <button class="btn line" id="btnLine">LINEで送る</button>
+      <div class="gap"></div>
+      <div class="row">
+        <button class="btn sm" id="btnCopy">リンクをコピー</button>
+        <button class="btn sm" id="btnShare">ほかで共有</button>
+      </div>
+      <div class="waiting"><span id="waitText">友達を待っています</span><span class="dots"><span></span><span></span><span></span></span></div>
+    </div>
+    <div class="gap"></div>
+    <button class="btn sm" id="btnLobbyLeave">部屋を出る</button>
+  </section>
+
+  <!-- ===== 対局 ===== -->
+  <section class="screen" id="game">
+    <div class="players">
+      <div class="pl k" id="pl1"><span class="on"></span><span class="d"></span><span class="nm"></span><span class="ct">2</span></div>
+      <div class="pl w" id="pl2"><span class="on"></span><span class="d"></span><span class="nm"></span><span class="ct">2</span></div>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="frame"><div class="board" id="board"></div></div>
+    <div class="stamps" id="stamps"></div>
+    <div class="watch" id="watch"></div>
+    <div class="acts">
+      <button class="btn sm" id="btnUndo" hidden>待った</button>
+      <button class="btn sm" id="btnResign">投了する</button>
+      <button class="btn sm" id="btnQuit">部屋を出る</button>
+    </div>
+  </section>
+</div>
+
+<!-- ===== 結果 ===== -->
+<div class="ov" id="ov">
+  <div class="res">
+    <div class="big" id="resBig">勝ち！</div>
+    <div class="sc"><span><i style="background:#222"></i><span id="resK">0</span></span><span>-</span><span><i style="background:#fff;border:2px solid #ddd"></i><span id="resW">0</span></span></div>
+    <p class="why" id="resWhy"></p>
+    <button class="btn pri" id="btnAgain">もう一回</button>
+    <p class="rm" id="resRm"></p>
+    <button class="btn sm" id="btnShareRes">結果をXでシェア</button>
+    <button class="btn sm" id="btnView">盤面を見る</button>
+    <button class="btn sm" id="btnHome">ホームへ</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import * as R from './engine.js';
+
+const $ = (id) => document.getElementById(id);
+const API = new URLSearchParams(location.search).get('api')
+  || (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://127.0.0.1:8788/api' : 'https://tonmatolab-rooms.tonmatolab.workers.dev/api');
+const WS_BASE = API.replace(/^http/, 'ws');
+const SITE = 'https://tonmatolab.github.io/apps/reversi/';
+const STAMPS = ['👍', '😂', '😱', '🤔', '😭', '🔥', '🙏', '👏'];
+const CPU_NAMES = ['CPU（よわい）', 'CPU（ふつう）', 'CPU（つよい）'];
+
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+let pid = store.get('reversi-pid');
+if (!pid) { pid = [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(36).padStart(2, '0')).join('').slice(0, 20); store.set('reversi-pid', pid); }
+$('name').value = store.get('reversi-name', '');
+
+// 遊んだ人数（1台1回）
+try { if (!store.get('reversi-played')) { store.set('reversi-played', '1'); fetch('https://tonmatolab-counter.tonmatolab.workers.dev/hit/reversi-play', { method: 'POST' }).catch(() => {}); } } catch {}
+
+// ===== 共通 =====
+function show(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2000); }
+function myName() { const n = $('name').value.trim().slice(0, 10) || 'ななし'; store.set('reversi-name', n === 'ななし' ? '' : n); return n; }
+function setUrl(code) { const u = new URL(location.href); if (code) u.searchParams.set('r', code); else u.searchParams.delete('r'); history.replaceState(null, '', u); }
+const roomLink = (code) => SITE + '?r=' + code;
+
+// 音（打った音・ひっくり返る音）
+let ac;
+function tick(f = 520, d = 0.06, v = 0.15) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.value = f; g.gain.value = v;
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
+  } catch {}
+}
+
+// ===== 盤面の描画 =====
+const boardEl = $('board');
+const cells = [], discs = [];
+for (let i = 0; i < 64; i++) {
+  const c = document.createElement('div'); c.className = 'cell'; c.dataset.i = i;
+  const d = document.createElement('div'); d.className = 'disc'; d.innerHTML = '<div class="f k"></div><div class="f w"></div>';
+  c.appendChild(d); boardEl.appendChild(c); cells.push(c); discs.push(d);
+}
+for (const [x, y] of [[2, 2], [6, 2], [2, 6], [6, 6]]) { const s = document.createElement('div'); s.className = 'dot4'; s.style.left = (x * 12.5) + '%'; s.style.top = (y * 12.5) + '%'; boardEl.appendChild(s); }
+let shown = new Array(64).fill(0);
+function clearBoard() { shown = new Array(64).fill(0); discs.forEach((d) => { d.className = "disc"; d.style.transitionDelay = ""; }); }
+
+function drawBoard(board, last, hints, mine, animate = true) {
+  const li = last ? last.i : -1;
+  const lx = li % 8, ly = (li / 8) | 0;
+  let flipped = false, placed = false;
+  for (let i = 0; i < 64; i++) {
+    const v = board[i], p = shown[i], d = discs[i];
+    if (v !== p) {
+      if (!v) { d.className = 'disc'; }
+      else if (!p || !animate) {
+        d.className = 'disc notr ' + (v === 1 ? 'k' : 'w') + (animate ? ' pop' : '');
+        void d.offsetWidth; d.classList.remove('notr');
+        if (animate) placed = true;
+      } else {
+        const dist = Math.max(Math.abs(i % 8 - lx), Math.abs(((i / 8) | 0) - ly));
+        d.style.transitionDelay = (li >= 0 ? dist * 70 : 0) + 'ms';
+        d.className = 'disc ' + (v === 1 ? 'k' : 'w');
+        flipped = true;
+      }
+    }
+    cells[i].classList.toggle('last', i === li && !!v);
+    cells[i].classList.toggle('hint', hints.includes(i));
+    cells[i].classList.toggle('me', mine && hints.includes(i));
+  }
+  shown = board.slice();
+  if (placed) tick(330, 0.08, 0.25);
+  if (flipped) setTimeout(() => tick(700, 0.05, 0.08), 120);
+}
+
+// v: {board, turn, last, hints, mine, names:[黒,白], online:[..], wins:[..], status, me (1/2/0)}
+function render(v) {
+  drawBoard(v.board, v.last, v.hints, v.mine, v.animate !== false);
+  const [k, w] = R.count(v.board);
+  [1, 2].forEach((c) => {
+    const el = $('pl' + c);
+    el.classList.toggle('turn', v.turn === c);
+    const nm = el.querySelector('.nm');
+    nm.textContent = v.names[c - 1] || '---';
+    const sm = document.createElement('small');
+    sm.textContent = (v.me === c ? 'あなた' : '') + (v.wins ? `${v.me === c ? '・' : ''}${v.wins[c - 1]}勝` : '')
+      + (v.turnLabel && v.turn === c ? '・' + v.turnLabel : '');
+    if (sm.textContent) nm.appendChild(sm);
+    el.querySelector('.ct').textContent = c === 1 ? k : w;
+    const on = el.querySelector('.on');
+    on.style.display = v.online ? '' : 'none';
+    if (v.online) on.classList.toggle('y', !!v.online[c - 1]);
+  });
+  const st = $('status');
+  st.textContent = v.status;
+  st.classList.toggle('me', !!v.mine);
+}
+
+// ===== 結果 =====
+function showResult(r) {
+  // r: {winner, counts, me, names, reason, canAgain, rmText}
+  const big = $('resBig');
+  if (!r.winner) { big.textContent = '引き分け'; big.className = 'big draw'; }
+  else if (r.me) {
+    const win = r.winner === r.me;
+    big.textContent = win ? '勝ち！' : '負け…'; big.className = 'big ' + (win ? 'win' : 'lose');
+    if (win) confetti();
+  } else { big.textContent = `${r.names[r.winner - 1]}の勝ち`; big.className = 'big win'; }
+  $('resK').textContent = r.counts[0]; $('resW').textContent = r.counts[1];
+  $('resWhy').textContent = r.reason === 'resign' ? `${r.names[2 - r.winner]}が投了しました`
+    : r.reason === 'leave' ? `${r.names[2 - r.winner]}が退出しました` : '';
+  $('btnAgain').hidden = !r.canAgain;
+  $('btnAgain').disabled = !!r.waitingAgain;
+  $('btnAgain').textContent = r.waitingAgain ? '相手を待っています…' : 'もう一回';
+  $('resRm').textContent = r.rmText || '';
+  $('btnShareRes').hidden = !r.me || !r.winner || r.winner !== r.me;
+  lastResult = r;
+  $('ov').classList.add('on');
+}
+let lastResult = null;
+function hideResult() { $('ov').classList.remove('on'); }
+function confetti() {
+  const cols = ['#e8432f', '#f0b429', '#1f7a4d', '#4a6fa5', '#fff', '#222'];
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('div'); c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw'; c.style.background = cols[i % cols.length];
+    c.style.animationDuration = 1.6 + Math.random() * 1.6 + 's'; c.style.animationDelay = Math.random() * 0.4 + 's';
+    document.body.appendChild(c); setTimeout(() => c.remove(), 4000);
+  }
+}
+$('btnView').onclick = hideResult;
+$('btnShareRes').onclick = () => {
+  const r = lastResult; if (!r) return;
+  const [k, w] = r.counts; const mine = r.me === 1 ? k : w, other = r.me === 1 ? w : k;
+  const opp = r.names[2 - r.me];
+  const text = `リバーシで${opp}に ${mine}-${other} で勝った！⚫⚪\n合言葉を送るだけで友達と対戦できる👇\n#リバーシ部屋 #とんまとラボ`;
+  window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(SITE), '_blank');
+};
+$('btnHome').onclick = () => { hideResult(); goHome(); };
+
+// ===== モード =====
+let mode = null; // 'online' | 'cpu' | 'local'
+let local = null; // CPU・1台2人用の状態
+
+function goHome() {
+  if (mode === 'online') leaveRoom();
+  mode = null; local = null; clearTimeout(cpuT);
+  $('game').classList.remove('face'); $('btnUndo').hidden = true;
+  setUrl(null); hideResult(); show('home');
+}
+
+// ----- CPU・1台で2人 -----
+let cpuT;
+function startLocal(kind, level) {
+  mode = kind;
+  const prev = local;
+  // CPU戦は勝負ごとに先手を交代
+  const human = kind === 'cpu' ? (prev && prev.kind === 'cpu' ? 3 - prev.human : 1) : 0;
+  local = { kind, level, human, board: R.initBoard(), turn: 1, last: null, over: false, hist: [],
+    wins: prev && prev.kind === kind && prev.level === level ? prev.wins : [0, 0] };
+  clearBoard();
+  hideResult(); show('game');
+  $('game').classList.toggle('face', kind === 'local' && $('faceMode').checked);
+  $('stamps').hidden = true; $('watch').textContent = '';
+  $('btnResign').hidden = kind !== 'cpu';
+  $('btnUndo').hidden = false;
+  $('btnQuit').textContent = 'ホームへ';
+  renderLocal();
+  if (kind === 'cpu' && local.turn !== human) cpuT = setTimeout(cpuPlay, 700);
+}
+function localNames() {
+  if (local.kind === 'local') return [$('nameK').value.trim() || '黒', $('nameW').value.trim() || '白'];
+  const me = myName(), cpu = CPU_NAMES[local.level];
+  return local.human === 1 ? [me, cpu] : [cpu, me];
+}
+function renderLocal(pass) {
+  const L = local, isCpu = L.kind === 'cpu';
+  const myTurn = !L.over && (isCpu ? L.turn === L.human : true);
+  const hints = L.over ? [] : R.legal(L.board, L.turn);
+  const names = localNames();
+  let status = L.over ? '終局' : isCpu ? (myTurn ? 'あなたの番です' : 'CPUが考えています…') : `${names[L.turn - 1]}の番です`;
+  render({ board: L.board, turn: L.over ? 0 : L.turn, last: L.last, hints, mine: myTurn, names, online: null,
+    wins: isCpu ? (L.human === 1 ? L.wins : [L.wins[1], L.wins[0]]) : L.wins, status, me: isCpu ? L.human : 0,
+    turnLabel: !isCpu && !L.over ? 'あなたの番' : '' });
+  $('btnUndo').disabled = L.over || !undoTarget();
+  if (pass) toast(`${names[pass - 1]}は置ける場所がないのでパス`);
+}
+// 待った：1台2人なら1手、CPU戦なら自分の前の手まで戻す
+function undoTarget() {
+  const h = local.hist;
+  if (local.kind !== 'cpu') return h.length;
+  for (let n = h.length; n > 0; n--) if (h[n - 1].turn === local.human) return n;
+  return 0;
+}
+function undo() {
+  const n = undoTarget(); if (!n || local.over) return;
+  clearTimeout(cpuT);
+  const snap = local.hist[n - 1];
+  local.hist.length = n - 1;
+  Object.assign(local, { board: snap.board, turn: snap.turn, last: snap.last });
+  renderLocal();
+}
+function localMove(i) {
+  const L = local; if (L.over) return;
+  const r = R.play(L.board, i, L.turn); if (!r) return;
+  L.hist.push({ board: L.board, turn: L.turn, last: L.last });
+  L.board = r.board;
+  const by = L.turn, nt = R.nextTurn(L.board, by);
+  L.last = { i, flipped: r.flipped, by };
+  let pass = 0;
+  if (nt.turn) { pass = nt.pass ? 3 - by : 0; L.turn = nt.turn; }
+  else {
+    L.over = true;
+    const [k, w] = R.count(L.board);
+    const winner = k > w ? 1 : w > k ? 2 : 0;
+    if (L.kind === 'cpu') { if (winner === L.human) L.wins[0]++; else if (winner) L.wins[1]++; }
+    else if (winner) L.wins[winner - 1]++;
+    renderLocal();
+    setTimeout(() => showResult({ winner, counts: [k, w], me: L.kind === 'cpu' ? L.human : 0, names: localNames(), canAgain: true }), 900);
+    return;
+  }
+  renderLocal(pass);
+  if (L.kind === 'cpu' && L.turn !== L.human) cpuT = setTimeout(cpuPlay, pass ? 1200 : 600);
+}
+function cpuPlay() {
+  if (mode !== 'cpu' || local.over || local.turn === local.human) return;
+  const i = R.cpuMove(local.board, local.turn, local.level);
+  if (i >= 0) localMove(i);
+}
+
+// ----- オンライン -----
+let ws = null, room = null, roomCode = null, leaving = false, retry = 0, retryT, pingT, prevStatus = null, prevLastI = null;
+
+async function createRoom() {
+  myName();
+  $('btnCreate').disabled = true; $('homeErr').textContent = '';
+  try {
+    const r = await fetch(API + '/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: 'reversi' }) });
+    const j = await r.json();
+    if (!r.ok || !j.code) throw new Error(j.error || 'エラー');
+    enterRoom(j.code);
+  } catch (e) { $('homeErr').textContent = '部屋を作れませんでした。通信を確かめてもう一度'; }
+  $('btnCreate').disabled = false;
+}
+async function joinRoom(code) {
+  myName();
+  $('homeErr').textContent = '';
+  if (!/^\d{4}$/.test(code)) { $('homeErr').textContent = '合言葉は4桁の数字です'; return; }
+  try {
+    const r = await fetch(API + '/rooms/' + code);
+    const j = await r.json();
+    if (!j.exists) { $('homeErr').textContent = 'その部屋は見つかりません（期限切れかも）'; return; }
+  } catch { $('homeErr').textContent = 'つながりませんでした。通信を確かめてもう一度'; return; }
+  enterRoom(code);
+}
+function enterRoom(code) {
+  mode = 'online'; roomCode = code; room = null; leaving = false; retry = 0; prevStatus = null; prevLastI = null;
+  clearBoard();
+  setUrl(code);
+  $('codeBox').innerHTML = [...code].map((c) => `<b>${c}</b>`).join('');
+  $('lobbyTitle').textContent = '部屋ができました！'; $('waitText').textContent = '友達を待っています';
+  show('lobby');
+  connect();
+}
+function connect() {
+  clearTimeout(retryT);
+  if (ws) { ws.onclose = null; try { ws.close(); } catch {} }
+  const url = `${WS_BASE}/rooms/${roomCode}/ws?pid=${pid}&name=${encodeURIComponent(myName())}`;
+  const sock = new WebSocket(url);
+  ws = sock;
+  sock.onopen = () => { retry = 0; $('banner').classList.remove('on'); clearInterval(pingT); pingT = setInterval(() => { if (sock.readyState === 1) sock.send('ping'); }, 25000); };
+  sock.onmessage = (e) => {
+    if (e.data === 'pong') return;
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    if (m.t === 'state') onState(m.s);
+    else if (m.t === 'stamp') onStamp(m);
+    else if (m.t === 'error') { leaving = true; toast(m.e === 'notfound' ? 'その部屋は見つかりません' : 'エラーが起きました'); goHome(); }
+  };
+  sock.onclose = () => {
+    clearInterval(pingT);
+    if (mode !== 'online' || leaving || ws !== sock) return;
+    $('banner').classList.add('on');
+    retryT = setTimeout(connect, Math.min(8000, 600 * 2 ** retry++));
+  };
+}
+function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); else toast('通信中です。少し待ってね'); }
+function leaveRoom() {
+  leaving = true; clearTimeout(retryT); clearInterval(pingT);
+  if (ws) { try { if (ws.readyState === 1) ws.send(JSON.stringify({ t: 'leave' })); } catch {} const w = ws; setTimeout(() => { try { w.close(); } catch {} }, 300); }
+  ws = null; room = null; roomCode = null;
+  $('banner').classList.remove('on');
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && mode === 'online' && !leaving && (!ws || ws.readyState > 1)) { retry = 0; connect(); }
+  if (document.visibilityState === 'visible') document.title = baseTitle;
+});
+const baseTitle = document.title;
+
+function myColor(s) { return s.colors ? s.colors.indexOf(pid) + 1 : 0; }
+function nameOf(s, c) { const p = s.colors && s.players.find((x) => x.pid === s.colors[c - 1]); return p ? p.name : (s.colors ? '（退出）' : '---'); }
+
+function onState(s) {
+  const prev = room; room = s;
+  const amPlayer = s.players.some((p) => p.pid === pid);
+  const me = amPlayer ? myColor(s) : 0;
+
+  if (s.status === 'waiting') {
+    hideResult();
+    if (prev && prev.status !== 'waiting' && amPlayer) { $('lobbyTitle').textContent = '相手が部屋を出ました'; $('waitText').textContent = '新しい相手を待っています'; }
+    else if (!amPlayer) { $('lobbyTitle').textContent = '部屋に入りました'; }
+    show('lobby');
+    prevStatus = s.status;
+    return;
+  }
+
+  // 新しい対局が始まった
+  const fresh = prevStatus !== 'playing' && s.status === 'playing';
+  if (fresh || $('game').classList.contains('on') === false) {
+    if (fresh) { clearBoard(); hideResult(); }
+    show('game');
+    $('stamps').hidden = !amPlayer;
+    $('game').classList.remove('face'); $('btnUndo').hidden = true;
+    $('btnResign').hidden = false;
+    $('btnQuit').textContent = '部屋を出る';
+    if (fresh && s.round >= 1 && me) toast(me === 1 ? 'あなたは黒（先手）です' : 'あなたは白（後手）です');
+  }
+  const names = [nameOf(s, 1), nameOf(s, 2)];
+  const online = [1, 2].map((c) => { const p = s.players.find((x) => x.pid === (s.colors || [])[c - 1]); return p && p.online; });
+  const wins = [1, 2].map((c) => { const p = s.players.find((x) => x.pid === (s.colors || [])[c - 1]); return p ? p.wins : 0; });
+  const mine = s.status === 'playing' && me && s.turn === me;
+  const oppOnline = me ? online[2 - me] : true;
+  let status;
+  if (s.status === 'over') status = '終局';
+  else if (!me) status = `${names[s.turn - 1]}の番です（観戦中）`;
+  else status = mine ? 'あなたの番です' : `${names[s.turn - 1]}が考えています…`;
+  if (s.status === 'playing' && me && !oppOnline) status += '（相手が通信切れ）';
+  const moved = s.last && s.last.i !== prevLastI;
+  render({ board: s.board, turn: s.status === 'playing' ? s.turn : 0, last: s.last, hints: s.legal, mine, names, online, wins, status, me, animate: !fresh || s.last });
+  $('btnResign').hidden = !(s.status === 'playing' && me);
+  $('watch').textContent = s.watchers ? `👀 ${s.watchers}人が観戦中` : '';
+  if (moved && s.last.pass) toast(`${names[s.last.pass - 1]}は置ける場所がないのでパス`);
+  if (moved && mine && document.visibilityState !== 'visible') { document.title = '⚫ あなたの番｜リバーシ部屋'; }
+  if (moved && mine && navigator.vibrate && navigator.userActivation?.hasBeenActive) { try { navigator.vibrate(30); } catch {} }
+  prevLastI = s.last ? s.last.i : null;
+
+  if (s.status === 'over') {
+    const r = s.result;
+    const opp = me ? s.colors[2 - me] : null;
+    const iWant = s.rematch.includes(pid), oppWants = opp && s.rematch.includes(opp);
+    const delay = prevStatus === 'playing' && r.reason === 'end' ? 900 : 0;
+    const data = { winner: r.winner, counts: r.counts, me, names, reason: r.reason, canAgain: !!me && s.players.length === 2,
+      waitingAgain: iWant, rmText: !me ? '' : oppWants && !iWant ? `${names[2 - me]}が「もう一回」を押しました！` : s.players.length < 2 ? '相手は部屋を出ました' : '' };
+    if (delay) setTimeout(() => { if (room === s) showResult(data); }, delay); else if (prevStatus !== 'over' || $('ov').classList.contains('on')) showResult(data);
+  }
+  prevStatus = s.status;
+}
+function onStamp(m) {
+  if (!room || !room.colors) return;
+  const c = room.colors.indexOf(m.pid) + 1; if (!c) return;
+  const el = $('pl' + c);
+  const b = document.createElement('div'); b.className = 'bubble'; b.textContent = STAMPS[m.k] || '';
+  el.appendChild(b); setTimeout(() => b.remove(), 1700);
+  if (m.pid !== pid) tick(880, 0.08, 0.1);
+}
+
+// ===== 操作 =====
+boardEl.addEventListener('click', (e) => {
+  const c = e.target.closest('.cell'); if (!c || !c.classList.contains('me')) return;
+  const i = +c.dataset.i;
+  if (mode === 'online') {
+    // 先に手元で置いて見せる（サーバーの結果で上書きされる）
+    const me = myColor(room), r = R.play(room.board, i, me);
+    if (r) { drawBoard(r.board, { i }, [], false); cells.forEach((x) => x.classList.remove('hint', 'me')); }
+    send({ t: 'move', i });
+  } else if (mode === 'cpu' || mode === 'local') localMove(i);
+});
+STAMPS.forEach((s, k) => { const b = document.createElement('button'); b.textContent = s; b.onclick = () => send({ t: 'stamp', k }); $('stamps').appendChild(b); });
+
+$('btnCreate').onclick = createRoom;
+$('btnJoin').onclick = () => joinRoom($('joinCode').value.trim());
+$('joinCode').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); if (e.target.value.length === 4) $('btnJoin').focus(); });
+$('joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(e.target.value.trim()); });
+document.querySelectorAll('[data-cpu]').forEach((b) => b.onclick = () => { myName(); local = null; startLocal('cpu', +b.dataset.cpu); });
+$('btnLocal').onclick = () => {
+  store.set('reversi-local', JSON.stringify([$('nameK').value.trim(), $('nameW').value.trim(), $('faceMode').checked]));
+  local = null; startLocal('local', 0);
+};
+$('btnUndo').onclick = undo;
+try { const [k, w, f] = JSON.parse(store.get('reversi-local', '[]')); $('nameK').value = k || ''; $('nameW').value = w || ''; $('faceMode').checked = !!f; } catch {}
+
+// オフラインのときは部屋を使う遊び方を止めて、1台で遊ぶほうへ案内する
+function updateOnline() {
+  const off = !navigator.onLine;
+  $('offNote').hidden = !off;
+  ['btnCreate', 'btnJoin', 'btnEnter'].forEach((id) => { $(id).disabled = off; });
+  if (off) $('soloCard').hidden = false;
+}
+addEventListener('online', updateOnline); addEventListener('offline', updateOnline); updateOnline();
+// 2回目以降オフラインでも開けるように、ページとルールを先に保存しておいてもらう
+if ('serviceWorker' in navigator) navigator.serviceWorker.ready.then(() => { fetch('./', { cache: 'no-cache' }).catch(() => {}); fetch('./engine.js', { cache: 'no-cache' }).catch(() => {}); });
+$('btnResign').onclick = () => {
+  if (!confirm('投了しますか？（負けになります）')) return;
+  if (mode === 'online') send({ t: 'resign' });
+  else if (mode === 'cpu') {
+    local.over = true; local.wins[1]++; clearTimeout(cpuT); renderLocal();
+    showResult({ winner: 3 - local.human, counts: R.count(local.board), me: local.human, names: localNames(), reason: 'resign', canAgain: true });
+  }
+};
+$('btnQuit').onclick = () => {
+  if (mode === 'online' && room && room.status === 'playing' && myColor(room) && !confirm('部屋を出ると負けになります。出ますか？')) return;
+  goHome();
+};
+$('btnLobbyLeave').onclick = goHome;
+$('btnAgain').onclick = () => {
+  if (mode === 'online') { send({ t: 'rematch' }); $('btnAgain').disabled = true; $('btnAgain').textContent = '相手を待っています…'; }
+  else startLocal(local.kind, local.level);
+};
+
+// 招待リンクの共有
+function inviteText(code) { return `リバーシしよう！⚫⚪\n合言葉は「${code}」\n開くだけで入れるよ👇\n${roomLink(code)}`; }
+$('btnLine').onclick = () => { location.href = 'https://line.me/R/share?text=' + encodeURIComponent(inviteText(roomCode)); };
+$('btnCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText(inviteText(roomCode)); toast('コピーしました。友達に貼り付けてね'); }
+  catch { prompt('このリンクを送ってね', roomLink(roomCode)); }
+};
+$('btnShare').onclick = async () => {
+  if (navigator.share) { try { await navigator.share({ title: 'リバーシ部屋', text: inviteText(roomCode).replace(roomLink(roomCode), '').trim(), url: roomLink(roomCode) }); } catch {} }
+  else $('btnCopy').onclick();
+};
+
+// 招待リンクから来たとき
+const inv = new URLSearchParams(location.search).get('r');
+function showInvite(on) {
+  $('inviteCard').hidden = !on; $('inviteActs').hidden = !on; $('normalActs').hidden = on; $('soloCard').hidden = on;
+}
+if (inv && /^\d{4}$/.test(inv)) {
+  $('inviteCode').textContent = inv; showInvite(true);
+  $('btnEnter').onclick = () => joinRoom(inv);
+  $('btnNoInvite').onclick = () => { showInvite(false); setUrl(null); };
+  if (!$('name').value) $('name').focus();
+}
+</script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/next.js"></script>
+</body>
+</html>

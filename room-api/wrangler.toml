@@ -1,0 +1,15 @@
+# 友達と遊ぶ部屋サーバー（リバーシなど）。1部屋 = 1つの Durable Object、WebSocket でリアルタイム通信
+# デプロイ: apps/ で npx wrangler@4 deploy --config room-api/wrangler.toml
+# ローカル: npx wrangler@4 dev --config room-api/wrangler.toml --port 8788
+name = "tonmatolab-rooms"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+# 無料プランでは SQLite 版の Durable Object だけが使える
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]

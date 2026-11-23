@@ -31,5 +31,5 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(fetch(req).then((res) => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
     return res;
-  }).catch(() => caches.match(req).then((hit) => hit || caches.match(new URL('./', self.registration.scope).href))));
+  }).catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match(new URL('./', self.registration.scope).href))));
 });

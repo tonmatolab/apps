@@ -25,6 +25,9 @@ const GAMES = {
   nobiru: { min: 10, max: 40000000000, desc: true }, // 伸ばした長さ（cm）。大きいほど上位。月まで約384億cm
   soccer: { min: 1, max: 100000, desc: true, anon: '名無しの選手' }, // サッカー人生の生涯スコア。大きいほど上位
   soccerq: { min: 1, max: 100000, desc: true, anon: '名無しの選手' }, // サッカー人生・60秒モード（おまかせ）は別ランキング
+  // 試合の仕組みを新しくした（2026年11月）ので、生涯スコアは新しいランキングに。上の2つは旧ルールの記録として残す
+  soccer2: { min: 1, max: 100000, desc: true, anon: '名無しの選手' },
+  soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手' },
   onigiri: { min: 1, max: 100000, desc: true, anon: '名無しの職人' }, // おにぎり握り職人の査定額（円）。大きいほど上位
 };
 const TOP_N = 10;

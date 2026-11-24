@@ -28,7 +28,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { pk_done: 'この節はもう挑戦しました。次の節で！', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
@@ -150,9 +150,6 @@
     // リーグ速報
     $('newsCard').classList.toggle('hidden', !(ST.news && ST.news.length));
     if (ST.news) $('newsList').innerHTML = newsHTML(ST.news);
-    // PKチャレンジのボタン
-    $('pkBtn').textContent = ST.pk && ST.pk.done ? '⚽ PKチャレンジ（この節は挑戦済み）' : `⚽ PKチャレンジ（1節に1回・最大${ST.pk ? ST.pk.reward : 30}万円）`;
-    $('pkBtn').disabled = !!(ST.pk && ST.pk.done);
     // 今週の最優秀選手
     const mv = ST.motw;
     $('motwCard').classList.toggle('hidden', !mv);
@@ -186,13 +183,13 @@
       $('lastBody').innerHTML = `<div class="score"><div class="tm">${crest(H)}${esc(H.name)}</div><div class="sc">${L.home ? L.gf : L.gc} - ${L.home ? L.gc : L.gf}</div><div class="tm">${crest(A)}${esc(A.name)}</div></div>
         <div class="me-row"><div class="rating" style="background:${L.rating ? ratingColor(L.rating) : '#b9c3bb'}">${L.rating ? L.rating.toFixed(1) : '-'}</div>
           <div><div class="sub">${role}</div><div style="font-weight:800;font-size:.86rem">${[L.goals ? `⚽ ${L.goals}ゴール` : '', L.assists ? `👟 ${L.assists}アシスト` : '', L.cs ? '🧱 無失点' : '', L.pay ? `💰 試合給 +${L.pay}万円` : ''].filter(Boolean).join('　') || (!L.mins ? '次こそ出番を' : L.rating >= 6.5 ? '堅実なプレーで貢献' : L.rating < 5.5 ? '見せ場を作れず…' : 'まずまずの出来')}</div></div></div>
-        <ul class="hl">${L.events.map((e) => {
+        ${L.st ? statLineHTML(L.st, me.pos) : ''}${L.log ? matchLogHTML(L.log, us, op, L.ht) : `<ul class="hl">${L.events.map((e) => {
           if (!e.us) return `<li><span class="m">${e.min}'</span><span class="sub">${esc(op.city)}のゴール</span></li>`;
           const mine = e.who === 'me' || e.assist === 'me', mate = !mine && (e.who || e.assist);
           const t = e.who === 'me' ? `あなたの${esc(e.how)}！` : e.who ? `<b>${esc(e.who)}</b>のゴール` : `${esc(us.city)}のゴール`;
           const a = e.assist === 'me' ? '（あなたのアシスト）' : e.assist ? `（${esc(e.assist)}のアシスト）` : '';
           return `<li class="${mine ? 'mine' : mate ? 'mate' : ''}"><span class="m">${e.min}'</span><span>⚽ ${t}${a}</span></li>`;
-        }).join('') || '<li class="empty">スコアレス</li>'}</ul>${L.note ? `<p class="sub">🚑 ${esc(L.note)}</p>` : ''}`;
+        }).join('') || '<li class="empty">スコアレス</li>'}</ul>`}${L.note ? `<p class="sub">🚑 ${esc(L.note)}</p>` : ''}`;
     }
     // シーズン
     const S = me.season, rank = c ? ST.tables[c.lg].findIndex((t) => t.id === c.id) + 1 : '-';
@@ -398,12 +395,6 @@
   };
   $('refreshBtn').onclick = load;
   // カジノ（オンライン：当たり外れはサーバーが決める）
-  // PKチャレンジ（キーパーの飛ぶ方向はサーバーが決める）
-  $('pkBtn').onclick = () => openPK({
-    start: async () => tableErr(await api('/pk/start', {})),
-    kick: async (k) => tableErr(await api('/pk/kick', k)),
-    onClose: () => load(),
-  });
   // 全員共通の台。3分ごとにサーバーが1回だけ回す
   const tableErr = (j) => (j && j.error ? { error: /^[a-z_]+$/.test(j.error) ? errMsg(j.error) : j.error } : j);
   $('casinoBtn').onclick = () => openRouletteTable({

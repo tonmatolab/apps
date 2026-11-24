@@ -1,22 +1,23 @@
-// ===== PKチャレンジの画面（一人用・オンライン共通） =====
-// openPK({ start, kick, onClose })
-//   start()   … 挑戦を始める。{ kicks: すでに蹴った本数, goals } か { error }
-//   kick(k)   … 1本蹴る。k = { dir: 'L'|'C'|'R', high, power }。{ goal, why, dive, n, goals, reward } か { error }
-// 狙う場所を選ぶ → 動くゲージを真ん中で止める → キーパーとの勝負。5本でゴール数に応じた賞金。
+// ===== PKの画面（試合中のPK：一人用の「じっくり」で自分がキッカーのとき） =====
+// openPK({ start, kick, onClose, kicks, title, desc, mustKick, closeLabel })
+//   start()   … 始める。{ kicks: すでに蹴った本数, goals } か { error }
+//   kick(k)   … 1本蹴る。k = { dir: 'L'|'C'|'R', high, power }。{ goal, why, dive, n, goals, done, doneMsg } か { error }
+//   kicks     … 蹴る本数（試合中のPKは1本）、mustKick … 蹴り終わるまで閉じられない
+//   onClose({ goals, kicks }) … 閉じたとき
+// 狙う場所を選ぶ → 動くゲージを真ん中で止める → キーパーとの勝負。
 'use strict';
 (() => {
   const ZONES = [['L', true], ['C', true], ['R', true], ['L', false], ['C', false], ['R', false]];
   const X = { L: -96, C: 0, R: 96 };
-  const fmt = (v) => `${v.toLocaleString()}万円`;
 
   window.openPK = async function openPK(opt) {
-    const P = SL.PK;
+    const P = SL.PK, KICKS = opt.kicks || P.kicks;
     let n = 0, goals = 0, aim = null, busy = false, raf = 0, t0 = 0, done = false;
     const dots = [];
     const bg = document.createElement('div'); bg.className = 'ov-bg';
     bg.innerHTML = `<div class="sheet pkgame">
-      <div class="rl-head"><b>⚽ PKチャレンジ</b><span class="pk-dots"></span></div>
-      <p class="sub" style="margin:2px 0 8px">5本蹴って、1ゴール${P.perGoal}万円・全部決めたら＋${P.perfect}万円。1節に1回</p>
+      <div class="rl-head"><b>⚽ ${opt.title || 'PK'}</b><span class="pk-dots"></span></div>
+      <p class="sub" style="margin:2px 0 8px">${opt.desc || ''}</p>
       <div class="pk-field">
         <div class="pk-goal">${ZONES.map(([d, h], i) => `<button class="pk-zone" data-i="${i}" aria-label="${d}${h ? '上' : '下'}"></button>`).join('')}
           <div class="pk-keeper"><svg viewBox="0 0 44 62" width="44" height="62"><path d="M12 24 L2 8 M32 24 L42 8" stroke="#ffd04a" stroke-width="7" stroke-linecap="round"/><circle cx="2" cy="8" r="4.5" fill="#fff"/><circle cx="42" cy="8" r="4.5" fill="#fff"/>
@@ -27,11 +28,11 @@
       <div class="pk-msg">狙う場所をタップ</div>
       <div class="pk-meter hidden"><div class="pk-sweet"></div><div class="pk-needle"></div></div>
       <button class="btn gold hidden" data-act="shoot">蹴る！</button>
-      <button class="btn ghost" data-act="close">やめる</button></div>`;
+      <button class="btn ghost${opt.mustKick ? ' hidden' : ''}" data-act="close">やめる</button></div>`;
     document.body.appendChild(bg);
     const $q = (s) => bg.querySelector(s);
     const msg = (t, cls = '') => { $q('.pk-msg').innerHTML = t; $q('.pk-msg').className = 'pk-msg ' + cls; };
-    const paintDots = () => { $q('.pk-dots').innerHTML = Array.from({ length: P.kicks }, (_, i) => `<i class="${dots[i] === true ? 'ok' : dots[i] === false ? 'ng' : ''}"></i>`).join(''); };
+    const paintDots = () => { $q('.pk-dots').innerHTML = Array.from({ length: KICKS },(_, i) => `<i class="${dots[i] === true ? 'ok' : dots[i] === false ? 'ng' : ''}"></i>`).join(''); };
     const keeper = $q('.pk-keeper'), ball = $q('.pk-ball'), needle = $q('.pk-needle');
 
     const st = await opt.start();
@@ -76,10 +77,10 @@
       msg(r.goal ? '⚽ ゴール！！' : r.why === 'saved' ? '🧤 止められた…' : r.why === 'over' ? '💨 強すぎて枠の外…' : '😣 弱すぎてキーパーの正面…', r.goal ? 'win' : 'lose');
       await new Promise((ok) => setTimeout(ok, 1100));
       busy = false;
-      if (r.reward != null) {
+      if (r.done || n >= KICKS) {
         done = true; reset();
-        msg(`${goals}/${P.kicks}本成功！ 賞金 <b>${fmt(r.reward)}</b>${goals === P.kicks ? '<br>🎉 パーフェクト！' : ''}`, 'win');
-        $q('[data-act="close"]').textContent = '閉じる';
+        msg(r.doneMsg || (r.goal ? '⚽ ゴール！！' : '決められなかった…'), r.goal ? 'win' : 'lose');
+        const cb = $q('[data-act="close"]'); cb.textContent = opt.closeLabel || '閉じる'; cb.classList.remove('hidden', 'ghost'); cb.classList.add('primary');
         return;
       }
       reset(); msg(`${n + 1}本目：狙う場所をタップ`);
@@ -88,7 +89,7 @@
       const z = e.target.closest('.pk-zone'); if (z) return choose(+z.dataset.i);
       const a = e.target.closest('[data-act]'); if (!a) return;
       if (a.dataset.act === 'shoot') shoot();
-      if (a.dataset.act === 'close' && !busy) { cancelAnimationFrame(raf); bg.remove(); if (opt.onClose) opt.onClose(); }
+      if (a.dataset.act === 'close' && !busy) { cancelAnimationFrame(raf); bg.remove(); if (opt.onClose) opt.onClose({ goals, kicks: n }); }
     });
   };
 })();

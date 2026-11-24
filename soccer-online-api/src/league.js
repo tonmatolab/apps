@@ -46,6 +46,8 @@ export class League extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS world (k TEXT PRIMARY KEY, v TEXT)');
     // NPC選手の名簿。クラブごとに1行（30行）。節ごとには書かない（成長・移籍が入るまでは作ったときだけ）
     this.sql.exec('CREATE TABLE IF NOT EXISTS rosters (club INTEGER PRIMARY KEY, data TEXT)');
+    // NPCの今季の成績（1行。節ごとに書く）
+    this.sql.exec('CREATE TABLE IF NOT EXISTS npcstats (k TEXT PRIMARY KEY, v TEXT)');
     const fresh = this.loadState();
     this.ensureSchedule(fresh);
     await this.armAlarm();
@@ -73,6 +75,8 @@ export class League extends DurableObject {
     for (const r of this.sql.exec('SELECT club, data FROM rosters ORDER BY club')) this.npcs.push(...JSON.parse(r.data));
     this.rostersDirty = false;
     if (!this.npcs.length) { this.npcs = G.SL.newNpcWorld(this.w.clubs, G.NPC_SEED); this.rostersDirty = true; }
+    const ns = this.sql.exec("SELECT v FROM npcstats WHERE k = 'season'").toArray()[0];
+    this.npcSeason = ns ? JSON.parse(ns.v) : { season: this.w.season, stats: {} };
     this.accounts = new Map(); // hash -> account id
     for (const r of this.sql.exec('SELECT id, hash FROM accounts')) this.accounts.set(r.hash, r.id);
     this.members = new Map(); // player id -> member
@@ -137,8 +141,6 @@ export class League extends DurableObject {
     T.nextAt = Date.now() + this.rlMs();
     this.saveWorld(); // 回の番号と次の時刻を残す（1日480行ほど）
   }
-  // PKは1節に1回（節が進むと新しく挑戦できる）
-  pkKey() { const w = this.w; return w.season + '-' + w.phase + '-' + w.week + '-' + w.offLeft; }
   // ログインボーナス：日本時間で1日1回、毎日同じ額（毎日来ないと損をする作りにしない）
   loginBonus(m) {
     if (m.status === 'draft' || m.status === 'retired') return null;
@@ -164,7 +166,8 @@ export class League extends DurableObject {
   tick() {
     const w = this.w, all = [...this.members.values()];
     if (w.phase === 'season') {
-      G.playMatchday(w, all);
+      this.npcSeason = G.playMatchday(w, all, this.npcs, this.npcSeason);
+      this.sql.exec("INSERT OR REPLACE INTO npcstats (k, v) VALUES ('season', ?)", JSON.stringify(this.npcSeason));
       if (w.week >= G.SEASON_WEEKS) G.endSeason(w, all);
       for (const m of all) if (m.status === 'active' || m.status === 'off') this.saveMember(m);
       if (this.failNext) { this.failNext = false; throw new Error('テスト用の失敗（途中まで保存したところで止める）'); }
@@ -209,7 +212,8 @@ export class League extends DurableObject {
         if (this.env.DEV !== '1') return err('not_found', 404);
         if (!body || !Array.isArray(body.accounts) || !Array.isArray(body.players) || !body.world) return err('bad_dump');
         this.atomic(() => {
-          this.sql.exec('DELETE FROM accounts'); this.sql.exec('DELETE FROM players'); this.sql.exec('DELETE FROM world'); this.sql.exec('DELETE FROM rosters');
+          this.sql.exec('DELETE FROM accounts'); this.sql.exec('DELETE FROM players'); this.sql.exec('DELETE FROM world'); this.sql.exec('DELETE FROM rosters'); this.sql.exec('DELETE FROM npcstats');
+          for (const r of body.npcstats || []) this.sql.exec('INSERT INTO npcstats (k, v) VALUES (?, ?)', r.k, r.v);
           for (const r of body.rosters || []) this.sql.exec('INSERT INTO rosters (club, data) VALUES (?, ?)', r.club, r.data);
           for (const a of body.accounts) this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', a.id, a.hash, a.created);
           for (const p of body.players) this.sql.exec('INSERT INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', p.id, p.account, p.active, p.data);
@@ -228,6 +232,7 @@ export class League extends DurableObject {
           players: this.sql.exec('SELECT id, account, active, data FROM players').toArray(),
           world: (this.sql.exec("SELECT v FROM world WHERE k = 'w'").toArray()[0] || {}).v || null,
           rosters: this.sql.exec('SELECT club, data FROM rosters ORDER BY club').toArray(),
+          npcstats: this.sql.exec('SELECT k, v FROM npcstats').toArray(),
         };
         return json(dump);
       }
@@ -242,32 +247,8 @@ export class League extends DurableObject {
         const bonus = this.loginBonus(m);
         return json({ ...this.stateView(m), bonus });
       }
-      // PK戦チャレンジ：始める（キーパーの飛ぶ方向5本分をサーバーで決めて保存）
-      if (req.method === 'POST' && path === '/pk/start') {
-        if (m.status === 'draft' || m.status === 'retired') return err('not_now');
-        const key = this.pkKey();
-        if (m.pk && m.pk.key === key && m.pk.done) return err('pk_done');
-        if (!m.pk || m.pk.key !== key) { m.pk = { key, dives: Array.from({ length: G.SL.PK.kicks }, () => G.SL.pkDive()), kicks: [], done: false }; this.saveMember(m); }
-        return json({ kicks: m.pk.kicks.length, goals: m.pk.kicks.filter((x) => x.goal).length });
-      }
-      // 1本蹴る。5本目で賞金を払って保存
-      if (req.method === 'POST' && path === '/pk/kick') {
-        const pk = m.pk;
-        if (!pk || pk.key !== this.pkKey() || pk.done) return err('not_now');
-        const k = { dir: body.dir, high: body.high === true, power: Number(body.power) };
-        if (!G.SL.pkCheckKick(k)) return err('bad_kick');
-        const r = G.SL.pkResult(k, pk.dives[pk.kicks.length]);
-        pk.kicks.push({ ...k, goal: r.goal });
-        let reward = null;
-        if (pk.kicks.length >= G.SL.PK.kicks) {
-          pk.done = true;
-          const goals = pk.kicks.filter((x) => x.goal).length;
-          reward = G.SL.pkReward(goals); m.pl.money += reward;
-          if (goals === G.SL.PK.kicks) G.addNews(this.w, `⚽ ${m.pl.name}がPKチャレンジで5本全部成功！`);
-          this.saveMember(m);
-        }
-        return json({ ...r, n: pk.kicks.length, goals: pk.kicks.filter((x) => x.goal).length, reward, money: m.pl.money });
-      }
+      // PKチャレンジは終了（試合中のPKに変わった）。古い画面から呼ばれたとき用
+      if (req.method === 'POST' && (path === '/pk/start' || path === '/pk/kick')) return err('pk_ended', 410);
       if (req.method === 'POST' && path === '/join') {
         if (m.status !== 'draft') return err('not_now');
         const e = G.join(m, this.w, Number(body.i), [...this.members.values()]); if (e) return err(e);
@@ -399,7 +380,7 @@ export class League extends DurableObject {
     const cr = p.club != null ? (w.records.clubs[p.club] || null) : null;
     return {
       world: this.worldView(), clubs: this.clubsView(), tables, next,
-      results: w.last ? { week: w.last.week, year: w.last.year, list: w.last.results.filter((r) => r.lg === lg || r.goals.some((g) => g.who || g.assist)) } : null,
+      results: w.last ? { week: w.last.week, year: w.last.year, list: w.last.results.filter((r) => r.lg === lg || r.goals.some((g) => g.human)) } : null,
       scorers: this.ranking(lg, 'goals'), assisters: this.ranking(lg, 'assists'), mates, squad: p.club != null ? this.squadView(p.club, m) : null, seasonHistory: w.history.slice(-3),
       motw: w.motw || null, records: { ...w.records, clubs: undefined }, clubRecord: cr, cohort, debutYear: m.debutYear,
       cup: w.cup ? { results: w.cup.results, alive: w.cup.alive, winner: w.cup.winner } : null,
@@ -407,7 +388,6 @@ export class League extends DurableObject {
       caps: { club: G.CLUB_CAP, gk: G.GK_CAP, salary: G.SALARY_CAP },
       casino: this.tableView(m),
       news: (w.news || []).slice(0, 12),
-      pk: { done: !!(m.pk && m.pk.key === this.pkKey() && m.pk.done), kicks: m.pk && m.pk.key === this.pkKey() ? m.pk.kicks.length : 0, reward: G.SL.pkReward(G.SL.PK.kicks) },
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
         grow: p.growKnown ? p.grow : null, cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,

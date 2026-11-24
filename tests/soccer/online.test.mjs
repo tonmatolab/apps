@@ -47,11 +47,9 @@ try {
   check((await call('/state', { code: 'XXXX-XXXX-XXXX-XXXX' })).status === 401, '間違ったコードは拒否');
   check((await call('/training', { code: A, body: { k: 'sht' } })).status === 200, '練習を変えられる');
   // お金・ミニゲーム
+  // PKチャレンジは終了（試合中のPKになった）。古い画面から呼ばれても何も起きない
   const pk = await call('/pk/start', { code: A, body: {} });
-  check(pk.status === 200, 'PKを始められる');
-  let pkLast; for (let i = 0; i < 5; i++) pkLast = await call('/pk/kick', { code: A, body: { dir: 'L', high: false, power: .5 } });
-  check(pkLast.j.reward != null, 'PKを5本蹴ると賞金が出る');
-  check((await call('/pk/start', { code: A, body: {} })).j.error === 'pk_done', 'PKは1節に1回');
+  check(pk.status === 410 && pk.j.error === 'pk_ended', 'PKチャレンジは終了している');
   const bet = await call('/casino/bet', { code: A, body: { bets: [{ k: 'red', a: 10 }] } });
   check(bet.status === 200 && bet.j.myBets.length === 1, 'ルーレットに賭けられる');
   // 節の途中で失敗させると、保存が取り消される
@@ -64,6 +62,17 @@ try {
   check(afterFail.casino.myBets.length === 1, '失敗しても賭けは残っている');
   const ok = await call('/dev/tick', { body: { n: 1 } });
   check(ok.status === 200 && ok.j.world.week === before.world.week + 1, '失敗のあと、普通に1節進む');
+  // 新しい試合（Phase 2）：自分の試合の流れ・細かい成績、全員向けの結果にNPCの名前も出る
+  {
+    const st1 = (await call('/state', { code: A })).j, L = st1.me.last;
+    check(L && Array.isArray(L.log) && Array.isArray(L.ht) && L.ht.length === 2, '前の試合に名前つきの流れと前半のスコアがある');
+    check(L.role === 'injured' || L.role === 'bench' || (L.st && L.st.pa >= 0), '出場したら細かい成績（パスなど）がある');
+    const goals = st1.results.list.flatMap((r) => r.goals);
+    check(goals.length > 0 && goals.every((g) => typeof g.who === 'string'), `結果のゴールに名前がある（${goals.length}点）`);
+    const ex0 = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j;
+    const ns = JSON.parse(ex0.npcstats.find((r) => r.k === 'season').v);
+    check(Object.keys(ns.stats).length > 300, `NPCの今季の成績が保存される（${Object.keys(ns.stats).length}人）`);
+  }
   // シーズンを最後まで → オフ → 新シーズン
   await call('/dev/tick', { body: { n: 17 } });
   let st = (await call('/state', { code: A })).j;

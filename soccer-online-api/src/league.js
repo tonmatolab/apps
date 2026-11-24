@@ -198,7 +198,9 @@ export class League extends DurableObject {
         const q = url.searchParams, lg = q.get('lg') === 'all' ? null : Math.max(0, Math.min(2, Number(q.get('lg')) || 0));
         const cat = G.SL.RANK_CATS[q.get('cat')] ? q.get('cat') : 'goals', who = ['all', 'npc', 'user'].includes(q.get('who')) ? q.get('who') : 'all';
         const me = await this.me(req);
-        return json({ lg, cat, who, ...G.SL.ranking(this.seasonEntries(), cat, { lg, who, n: 20, meKey: me ? 'u:' + me.id : null }) });
+        const r = G.SL.ranking(this.seasonEntries(), cat, { lg, who, n: 20, meKey: me ? 'u:' + me.id : null });
+        const pub = (x) => (x ? { ...x, key: x.type === 'npc' ? x.key : undefined } : null); // 本物のプレイヤーの内部IDは出さない
+        return json({ lg, cat, who, top: r.top.map(pub), mine: pub(r.mine), total: r.total });
       }
       if (req.method === 'POST' && path === '/signup') return this.signup(req, body);
       if (req.method === 'POST' && path === '/dev/tick') {

@@ -53,7 +53,9 @@
 
   /* タイトル */
   .hero { border-radius: 26px; overflow: hidden; box-shadow: var(--shadow); background: #1c7a3f; position: relative; }
-  .hero svg { display: block; width: 100%; height: auto; }
+  .hero svg, .hero img { display: block; width: 100%; height: auto; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .hero + .logo { margin-top: 12px; }
   .logo { text-align: center; margin: 18px 0 4px; }
   .logo h1 { font-family: var(--head); font-weight: 400; font-size: clamp(2.2rem, 11vw, 3.1rem); line-height: 1.1; margin: 0; letter-spacing: .02em; }
   .logo h1 span { color: var(--green); }
@@ -479,9 +481,9 @@
 <main>
   <!-- ===== タイトル ===== -->
   <section id="scrTitle">
-    <div class="hero" id="heroArt"></div>
+    <div class="hero" id="heroArt"><img src="hero.jpg" width="1200" height="675" alt="サッカー人生：背番号10の選手がボールを抱えてスタジアムに立つ" fetchpriority="high"></div>
     <div class="logo">
-      <h1>サッカー<span>人生</span></h1>
+      <h1 class="vh">サッカー<span>人生</span></h1>
       <p>入団から引退、そして次の世代へ</p>
     </div>
     <div class="stack" style="margin-top:14px">
@@ -962,7 +964,11 @@ function treeHead(gen) {
 }
 
 function renderTitle() {
-  $('heroArt').innerHTML = heroSVG();
+  // タイトル画面の絵は hero.jpg（index.html に直接書いている）。読み込めなかったときだけ、前の絵（SVG）に戻す
+  const hi = $('heroArt').querySelector('img');
+  const fallback = () => { $('heroArt').innerHTML = heroSVG(); document.querySelector('#scrTitle .logo h1').classList.remove('vh'); };
+  if (hi && hi.complete && !hi.naturalWidth) fallback();
+  else if (hi) hi.onerror = fallback;
   const sv = loadSave();
   $('saveNote').classList.toggle('hidden', saveStatus !== 'broken' && saveStatus !== 'newer');
   $('saveNote').textContent = saveStatus === 'newer' ? '⚠️ 新しい版のセーブデータがあります。ページを再読み込みしてください（データは残っています）'

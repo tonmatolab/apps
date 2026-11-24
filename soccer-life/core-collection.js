@@ -127,9 +127,9 @@
     ['lmf', '最後まで自分らしく', '外れても、拍手は鳴りやまなかった。', '引退試合で失敗する', (c) => c.last && !c.last.hit],
     ['rC', 'プロとして', 'プロとして生き抜いた。', '生涯ランクC以上', (c) => c.score >= 1800],
     ['rB', '実力者', '確かな実力の持ち主。', '生涯ランクB以上', (c) => c.score >= 2800],
-    ['rA', '名選手', '誰もが認める名選手。', '生涯ランクA以上', (c) => c.score >= 3800],
-    ['rS', 'スター', '国中が知るスター。', '生涯ランクS以上', (c) => c.score >= 4800],
-    ['rSS', 'レジェンド', '語り継がれる伝説。', '生涯ランクSS', (c) => c.score >= 6500],
+    ['rA', '名選手', '誰もが認める名選手。', '生涯ランクA以上', (c) => c.score >= SL.RANK_MIN.A],
+    ['rS', 'スター', '国中が知るスター。', '生涯ランクS以上', (c) => c.score >= SL.RANK_MIN.S],
+    ['rSS', 'レジェンド', '語り継がれる伝説。', '生涯ランクSS', (c) => c.score >= SL.RANK_MIN.SS],
     ['pot', '自分を知る者', '自分の限界を知り、その先を目指した。', '才能を完全に見抜く', (c) => c.potKnown],
     ['pot90', '天賦の才', '生まれ持った才能が違った。', '才能90以上で生まれる', (c) => c.pot >= 90],
     ['gkg', 'ゴールを決めたGK', 'キーパーなのに点を取った。', 'GKでゴールを決める', (c) => c.pos === 'GK' && c.T.goals >= 1],
@@ -145,7 +145,7 @@
     ['ch_lowpot', '凡才の逆襲', '才能がなくても、ここまで来た。', '縛り「凡才」を達成', (c) => c.ch === 'lowpot'],
     ['ch_norest', '休まない人', '休まず走り続けた。', '縛り「休養禁止」を達成', (c) => c.ch === 'norest'],
     ['ch_keeper', 'GKの道を極めた', 'キーパー一筋で代表の柱に。', '縛り「GKの道」を達成', (c) => c.ch === 'keeper'],
-    ['quickS', '60秒の奇跡', 'たった60秒で伝説になった。', '60秒モードでランクS以上', (c) => c.mode === 'quick' && c.score >= 4800],
+    ['quickS', '60秒の奇跡', 'たった60秒で伝説になった。', '60秒モードでランクS以上', (c) => c.mode === 'quick' && c.score >= SL.RANK_MIN.S],
     ['patient', 'じっくり派', '一週一週を大切に生きた。', 'じっくりモードで15シーズン以上', (c) => c.mode === 'normal' && c.seasons >= 15],
     ['ace', 'エースナンバー', 'チームの顔の背番号を背負った。', 'エースの背番号（FW9・MF10・DF4・GK1）を着ける', (c) => c.nums.has(ACE[c.pos])],
     ['nums', '背番号コレクター', 'いろんな番号を背負った。', '5種類以上の背番号を着ける', (c) => c.nums.size >= 5],
@@ -225,7 +225,7 @@
     st.combos += (sum.family && sum.family.combo) || 0;
     st.earned += sum.earned || 0;
     if (sum.lastMatch && sum.lastMatch.hit) st.lastHits++;
-    if (kind === 'quick') { st.quick++; if (sum.score >= 4800) st.quickS++; }
+    if (kind === 'quick') { st.quick++; if (sum.score >= SL.RANK_MIN.S) st.quickS++; }
     if (kind === 'online') st.online++;
     for (const id of sum.titles || []) if (!col.titles[id]) { col.titles[id] = { by: sum.name, y: sum.endYear }; newT.push(id); }
     for (const a of ACHIEVEMENTS) { const [n, g] = a[3](col); if (n >= g && !before.has(a[0]) && !col.ach[a[0]]) { col.ach[a[0]] = Date.now(); newA.push(a[0]); } }

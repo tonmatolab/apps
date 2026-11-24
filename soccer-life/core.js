@@ -214,10 +214,10 @@ const SL = (() => {
   };
   function challengeCleared(s, score) {
     switch (s.challenge) {
-      case 'loyal': return s.history.length >= 15 && score >= 3800;
-      case 'domestic': return score >= 4800;
+      case 'loyal': return s.history.length >= 15 && score >= RANK_MIN.A;
+      case 'domestic': return score >= RANK_MIN.S;
       case 'weak': return !!s.challengeDone;
-      case 'lowpot': return score >= 3800;
+      case 'lowpot': return score >= RANK_MIN.A;
       case 'norest': return s.totals.apps >= 300;
       case 'keeper': return s.caps >= 80;
       default: return false;
@@ -1118,8 +1118,12 @@ const SL = (() => {
     return { t: 'いぶし銀', d: '派手さはなくても、監督に信頼され続けた。' };
   }
 
+  // 生涯ランクの基準（生涯スコア）。試合の仕組みを新しくしたとき（2026年11月）に、もとのゲームと同じくらいの割合になるよう決め直した
+  // （SS：上位4%くらい、S以上：上位2割くらい）。称号・実績・縛りの達成もこの数字を使う
+  const RANK_MIN = { SS: 5700, S: 4500, A: 3800, B: 2800, C: 1800 };
   function rankLetter(score) {
-    return score >= 6500 ? 'SS' : score >= 4800 ? 'S' : score >= 3800 ? 'A' : score >= 2800 ? 'B' : score >= 1800 ? 'C' : 'D';
+    const R = RANK_MIN;
+    return score >= R.SS ? 'SS' : score >= R.S ? 'S' : score >= R.A ? 'A' : score >= R.B ? 'B' : score >= R.C ? 'C' : 'D';
   }
 
   function retire(s) {
@@ -1238,7 +1242,7 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, RANK_MIN, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, prepareWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, requestTransfer, transferFee, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,

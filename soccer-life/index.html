@@ -1235,6 +1235,14 @@ function awardHistoryHTML(recs, lg, meName) {
   return `<ul class="list awh">${list.map((r) => { const A = r.lg[lg]; return `<li style="display:block"><b>${r.year}年</b> 🏆 ${esc(A.champion || '-')}
     <div class="sub">⚽ 得点王 ${A.scorer.map((x) => `${nm(x)}（${x.v}）`).join('・') || '-'}　⭐ MVP ${nm(A.mvp)}${A.rookie ? `　🌱 新人王 ${nm(A.rookie)}` : ''}</div></li>`; }).join('')}</ul>`;
 }
+// NPCのレジェンド（引退した名選手。スコアの高い順）。一人用・オンライン共通
+function legendsHTML(list, n = 10) {
+  const L = (list || []).slice(0, n);
+  if (!L.length) return '<p class="empty">まだいません（活躍したNPCが引退すると載ります）</p>';
+  return `<ol class="rklist">${L.map((l, i) => `<li style="align-items:flex-start"><span class="no">${i + 1}</span><span class="nm">${esc(l.name)} <span class="tag t-${l.pos}" style="font-size:.6rem">${l.pos}</span>
+    <span class="sub" style="display:block;font-weight:600">${l.years}・${esc(l.clubs.join('→'))}</span>
+    <span class="sub" style="display:block;font-weight:600">${l.apps}試合 ${l.goals}G ${l.assists}A${l.pos === 'GK' || l.pos === 'DF' ? ` 無失点${l.cs}` : ''}・最高${l.best}${l.awards.length ? `・${esc(l.awards.slice(-2).join('、'))}` : ''}</span></span><span class="v">${l.score.toLocaleString()}</span></li>`).join('')}</ol>`;
+}
 let rankView = null;
 function renderRankTab(el) {
   const c = SL.clubOf(S);
@@ -1243,7 +1251,8 @@ function renderRankTab(el) {
   if (S.season) entries.push(SL.userEntry(S.p, S.season, S.clubs, { key: 'me', me: true }));
   const data = SL.ranking(entries, rankView.cat, { lg: +rankView.lg, who: rankView.who, n: 10 });
   el.innerHTML = `<h2>📊 今季の個人ランキング</h2>${rankingHTML(rankView, data, { userLabel: 'あなた' })}
-    <h2 style="margin-top:14px">🏅 歴代の受賞者（${SL.LEAGUES[+rankView.lg].name}）</h2>${awardHistoryHTML(S.leagueHistory, rankView.lg, S.p.name)}`;
+    <h2 style="margin-top:14px">🏅 歴代の受賞者（${SL.LEAGUES[+rankView.lg].name}）</h2>${awardHistoryHTML(S.leagueHistory, rankView.lg, S.p.name)}
+    <h2 style="margin-top:14px">🌟 NPCレジェンド</h2>${legendsHTML(S.npcLegends)}`;
   bindRanking(el, rankView, () => renderRankTab(el));
 }
 

@@ -283,6 +283,11 @@ export class League extends DurableObject {
         if (!(body.k in G.SL.TRAINING) || (body.k === 'gk' && m.pl.pos !== 'GK')) return err('bad_training');
         m.training = body.k; this.saveMember(m); return json({ ok: true });
       }
+      // オフに移籍を希望する（1回だけ・人気-1）
+      if (req.method === 'POST' && path === '/request') {
+        const e = G.requestTransfer(m, this.w, [...this.members.values()]); if (e) return err(e);
+        this.saveMember(m); return json(this.stateView(m));
+      }
       if (req.method === 'POST' && path === '/decide') {
         const e = G.decide(m, this.w, body.choice, [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
@@ -397,7 +402,7 @@ export class League extends DurableObject {
       world: this.worldView(), clubs: this.clubsView(), tables, next,
       results: w.last ? { week: w.last.week, year: w.last.year, list: w.last.results.filter((r) => r.lg === lg || r.goals.some((g) => g.human)) } : null,
       scorers: this.ranking(lg, 'goals'), assisters: this.ranking(lg, 'assists'), mates, squad: p.club != null ? this.squadView(p.club, m) : null, seasonHistory: w.history.slice(-3),
-      motw: w.motw || null, records: { ...w.records, clubs: undefined }, clubRecord: cr, cohort, debutYear: m.debutYear,
+      motw: w.motw || null, records: { ...w.records, clubs: undefined, npcLegends: (w.records.npcLegends || []).slice(0, 20) }, clubRecord: cr, cohort, debutYear: m.debutYear,
       cup: w.cup ? { results: w.cup.results, alive: w.cup.alive, winner: w.cup.winner } : null,
       shop: m.status === 'draft' || m.status === 'retired' ? [] : G.SL.shopList(G.adapter(m, w)),
       caps: { club: G.CLUB_CAP, gk: G.GK_CAP, salary: G.SALARY_CAP },

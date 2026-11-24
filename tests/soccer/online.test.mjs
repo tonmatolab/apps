@@ -97,6 +97,15 @@ try {
   }
   check(st.world.phase === 'off' && st.me.status === 'off', 'シーズンが終わってオフになる');
   check(st.me.history.length === 1, '経歴に1シーズン分が記録される');
+  // オフに移籍を希望する（1回だけ）
+  {
+    const r1 = await call('/request', { code: A, body: {} });
+    check(r1.status === 200 && r1.j.me.offer && r1.j.me.offer.requested, `オフに移籍を希望できる（${r1.status}${r1.j && r1.j.error ? ' ' + r1.j.error : ''}）`);
+    check(r1.j.me.offer.list.filter((o) => !o.stay).every((o) => typeof o.fee === 'number'), '移籍のオファーに移籍金が付く');
+    const r2 = await call('/request', { code: A, body: {} });
+    check(r2.status === 400 && r2.j.error === 'already', '移籍の希望は1回だけ');
+    check(Array.isArray(st.records.npcLegends), 'NPCレジェンドの一覧が画面に届く');
+  }
   await call('/dev/tick', { body: { n: 2 } });
   st = (await call('/state', { code: A })).j;
   check(st.world.phase === 'season' && st.me.status === 'active', 'オフが終わって新シーズン');

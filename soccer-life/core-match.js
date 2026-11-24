@@ -219,7 +219,7 @@
         const L = x.line, pos = x.slot === 'GK' ? 'GK' : x.p.pos;
         let r = 6.1 + L.g * .9 + L.a * .55 + (L.sot - L.g) * .08 + (L.pa ? (L.pok / L.pa - .74) * 1 : 0)
           + L.tk * .1 + L.it * .09 + L.cl * .04 + (gf > gc ? .3 : gf < gc ? -.3 : 0) - L.yc * .3 - L.rc * 1.2 + cond(x) * .1 + gauss() * .3;
-        if (pos === 'GK') r += L.sv * .2 - L.gc * .3 + (x.start && gc === 0 ? .55 : 0) + .05;
+        if (pos === 'GK') r += L.sv * .14 - L.gc * .2 + (x.start && gc === 0 ? .38 : 0) + .17; // GKは失点・無失点に左右されすぎないように（強いGKだけが賞を取りすぎないため）
         if (pos === 'DF') r += -L.gc * .17 + (x.start && gc === 0 ? .5 : 0) + .25;
         if (pos === 'MF') r += .02;
         if (pos === 'FW') r += L.g ? 0 : -.08;

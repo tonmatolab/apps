@@ -385,6 +385,19 @@ export function decide(m, w, choice, members = []) {
   m.status = 'decided'; m.offer = null; trimLog(m);
   return null;
 }
+// オフに自分から移籍を希望する（1回だけ）。移籍のオファーを出し直してもらう（満員のクラブは外す）
+export function requestTransfer(m, w, members = []) {
+  if (m.status !== 'off' || !m.offer || m.offer.forced) return 'not_now';
+  if (m.offer.requested) return 'already';
+  const s = adapter(m, w);
+  const fresh = SL.offers(s, { request: true });
+  m.offer.res.transfers = fresh.transfers.filter((t) => !clubFull(members, t.club, m.pl.pos, m)).map((t) => capSalary(w, t));
+  m.offer.requested = true;
+  m.pl.fame = clamp(m.pl.fame - 1, 0, 100);
+  m.log.push({ y: w.year, age: m.pl.age, k: 'request', t: `${w.year}年オフ、${w.clubs[m.pl.club].name}に移籍を希望した。` });
+  trimLog(m);
+  return null;
+}
 function autoDecide(m, w, members) {
   const o = m.offer, res = o.res;
   if (o.forced) return retire(m, w);

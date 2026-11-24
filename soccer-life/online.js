@@ -28,7 +28,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
@@ -227,6 +227,7 @@
         <div class="stack" style="margin-top:10px" id="ol-offerList">${o.forced ? '' : o.list.map((x, i) => offerCard(x, i, x.stay ? '<span class="badge stay">残留</span>' : club(x.club).lg === 0 ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('')}</div>
         <div class="stack" style="margin-top:10px">
           ${!o.forced && !o.expiring && !o.released ? `<button class="btn primary" data-c="stay">${esc(c.city)}に残る（契約あと${me.contract}年）</button>` : ''}
+          ${!o.forced && !o.requested ? '<button class="btn" id="ol-requestBtn">📣 移籍を希望する（オファーが増える・人気-1）</button>' : ''}
           ${o.forced || o.canRetire ? `<button class="btn ${o.forced ? 'primary' : 'ghost'}" data-c="retire">👋 引退する</button>` : ''}
         </div>
         <p class="sub" style="margin:8px 0 0">選ばなかった場合は、オフ終了時に自動で決まります（残留できれば残留、なければ年俸が高いオファー）</p></div>`;
@@ -238,6 +239,8 @@
       };
       el.querySelectorAll('#ol-offerList .offer').forEach((b) => b.onclick = () => pick(+b.dataset.i));
       el.querySelectorAll('[data-c]').forEach((b) => b.onclick = () => pick(b.dataset.c));
+      const rq = el.querySelector('#ol-requestBtn');
+      if (rq) rq.onclick = async () => { rq.disabled = true; const j = await api('/request', {}); if (j.error) { rq.disabled = false; return toast(errMsg(j.error)); } setState(j); renderHome(); toast('移籍を希望した。オファーが届いた'); };
     } else if (me.status === 'decided') {
       el.innerHTML = `<div class="card"><h2>✅ 契約済み</h2><p style="margin:0;font-weight:700">${esc(club(me.club).name)}で新シーズンを待とう。開幕は約${w.offLeft * w.tickMin}分後。</p></div>`;
     } else if (me.status === 'retired') {
@@ -353,7 +356,7 @@
         const h = club(r.h), a = club(r.a);
         const g = r.goals.filter((x) => x.who || x.assist).map((x) => `${x.min}' ${esc(x.who || '')}${x.assist ? `（A ${esc(x.assist)}）` : ''}`).join('、');
         return `<li style="display:block"><span class="dot" style="background:${h.color}"></span>${esc(h.city)} <b class="num">${r.gh} - ${r.ga}</b> ${esc(a.city)} <span class="dot" style="background:${a.color};margin-left:4px"></span><span class="sub">${SL.LEAGUES[r.lg].short}</span>${g ? `<div class="sub">⚽ ${g}</div>` : ''}</li>`;
-      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">欧州 ${esc(x.champions[0])}／1部 ${esc(x.champions[1])}／2部 ${esc(x.champions[2])}</span></li>`).join('')}</ul>` : ''}${ST.seasonHistory.some((x) => x.awards) ? `<h2 style="margin-top:12px">🏅 歴代の受賞者（${SL.LEAGUES[lg].name}）</h2>${awardHistoryHTML(ST.seasonHistory.map((x) => x.awards).filter(Boolean), String(lg))}` : ''}${cupResultsHTML()}`;
+      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">欧州 ${esc(x.champions[0])}／1部 ${esc(x.champions[1])}／2部 ${esc(x.champions[2])}</span></li>`).join('')}</ul>` : ''}${ST.seasonHistory.some((x) => x.awards) ? `<h2 style="margin-top:12px">🏅 歴代の受賞者（${SL.LEAGUES[lg].name}）</h2>${awardHistoryHTML(ST.seasonHistory.map((x) => x.awards).filter(Boolean), String(lg))}` : ''}<h2 style="margin-top:12px">🌟 NPCレジェンド</h2>${legendsHTML(ST.records && ST.records.npcLegends)}${cupResultsHTML()}`;
     } else {
       const aw = me.trophies.map((t) => `<li>🏆 ${esc(t)}</li>`).concat(me.awards.map((t) => `<li>🏅 ${esc(t)}</li>`));
       body.innerHTML = `<div class="bigstat"><div>通算出場<b>${me.totals.apps}</b></div><div>通算G<b>${me.totals.goals}</b></div><div>通算A<b>${me.totals.assists}</b></div><div>代表<b>${me.caps}</b></div></div>

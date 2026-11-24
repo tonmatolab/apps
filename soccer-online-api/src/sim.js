@@ -7,6 +7,8 @@ const { train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp,
   trackRecords, healWeek, condDown, newCup, cupPair, cupFinish, newRecords } = SL._;
 const { POS, GROW, LEAGUES, SEASON_WEEKS, mainStats, ovr, startChance } = SL;
 
+// 休眠：これだけ来ていないプレイヤーは、オフの終わりにクラブの枠を空けて休眠にする（戻ってきたら空いているクラブを選び直す）
+export const DORMANT_MS = 14 * 24 * 3600000;
 export const OFF_TICKS = 2; // オフシーズンの長さ（節の何回分か。30分ごとなら1時間）。この間に契約を選ぶ
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
 export const CLUB_CAP = 6, GK_CAP = 2;
@@ -58,6 +60,7 @@ export function migrateMember(m, w) {
   if (m.pl.potLo == null) Object.assign(m.pl, SL._.potRange(m.pl.pot));
   SL.gtypeOf(m.pl); // 成長の型がなければ名前から決める（Phase 4）
   if (m.status !== 'draft' && m.status !== 'retired' && m.debutYear == null) m.debutYear = (m.history[0] && m.history[0].year) || w.year;
+  if (!m.seenAt) m.seenAt = Date.now(); // 最後に来た時刻（休眠の判定。以前のデータは今を入れる）
   return m;
 }
 export function migrateWorld(w) {
@@ -98,7 +101,7 @@ const emptySeason = () => ({ apps: 0, starts: 0, goals: 0, assists: 0, cs: 0, mi
 const emptyTotals = () => ({ apps: 0, starts: 0, goals: 0, assists: 0, cs: 0, rating: 0, mins: 0 });
 
 export function newMember(id, account, name, pos, opt = {}) {
-  const pl = newPlayer(name, pos, opt.bonus || 0);
+  const pl = newPlayer(name, pos, opt.bonus || 0, 18, opt.appeal || null);
   const m = {
     id, account, gen: opt.gen || 1, lineage: opt.lineage || [], parent: opt.parent || null,
     pl, status: 'draft', training: pos === 'GK' ? 'gk' : mainStats(pos)[0],
@@ -138,7 +141,8 @@ export function join(m, w, i, members = []) {
   SL.joinClub(adapter(m, w), o);
   addNews(w, `🆕 ${m.pl.name}（${m.pl.pos}）が${w.clubs[o.club].name}に入団${m.gen > 1 ? `。${m.gen}代目` : ''}`);
   m.draft = null; m.season = emptySeason(); m.cupSeason = emptySeason();
-  m.debutYear = w.year;
+  if (m.debutYear == null) m.debutYear = w.year; // 休眠から戻ったときは最初のデビューの年のまま
+  m.returning = false;
   m.status = w.phase === 'season' ? 'active' : 'decided';
   trimLog(m);
   return null;
@@ -399,6 +403,14 @@ export function requestTransfer(m, w, members = []) {
   trimLog(m);
   return null;
 }
+// 休眠から戻ってきた：入団の画面からやり直す（能力・経歴・お金はそのまま）
+export function wake(m, w, members = []) {
+  if (m.status !== 'dormant') return false;
+  m.status = 'draft'; m.returning = true;
+  m.draft = draftOffers(m, w, members);
+  addNews(w, `👋 ${m.pl.name}が休眠から戻ってきた`);
+  return true;
+}
 function autoDecide(m, w, members) {
   const o = m.offer, res = o.res;
   if (o.forced) return retire(m, w);
@@ -408,8 +420,13 @@ function autoDecide(m, w, members) {
   SL.accept(adapter(m, w), list[0]);
   m.status = 'decided'; m.offer = null;
 }
-export function finishOffseason(w, members) {
+export function finishOffseason(w, members, now = Date.now()) {
   for (const m of members) if (m.status === 'off') autoDecide(m, w, members);
+  // 長く来ていないプレイヤーは休眠：クラブの枠を空ける。本人の時間も止まる（年をとらない・試合に出ない）
+  for (const m of members) if (m.status === 'decided' && now - (m.seenAt || now) > DORMANT_MS) {
+    m.status = 'dormant'; m.prevClub = m.pl.club; m.pl.club = null; m.dormantSince = w.year;
+    addNews(w, `💤 ${m.pl.name}が休眠に入った（戻ってきたら、空いているクラブから選び直せる）`);
+  }
   startSeason(w);
   for (const m of members) if (m.status === 'decided') {
     m.status = 'active'; m.season = emptySeason(); m.cupSeason = emptySeason(); m.last = null; m.lastCup = null;
@@ -435,10 +452,10 @@ export function retire(m, w) {
   for (const [cid, x] of per) if (x.apps >= 10) pushTop(clubRec(w, cid).legends, { name: sm.name, apps: x.apps, goals: x.goals, v: x.apps });
   return m.summary;
 }
-export function nextGeneration(old, id, name, pos, w, members = []) {
+export function nextGeneration(old, id, name, pos, w, members = [], appeal = null) {
   const sm = old.summary;
   const lineage = old.lineage.concat([{ gen: old.gen, name: sm.name, pos: sm.pos, title: sm.title, letter: sm.letter, score: sm.score, apps: sm.apps, goals: sm.goals, cs: sm.cs, years: `${sm.startYear}-${sm.endYear}` }]);
-  const m = newMember(id, old.account, name, pos, { gen: old.gen + 1, lineage, bonus: SL.inheritBonus(sm), parent: { name: sm.name, title: sm.title } });
+  const m = newMember(id, old.account, name, pos, { gen: old.gen + 1, lineage, bonus: SL.inheritBonus(sm), parent: { name: sm.name, title: sm.title }, appeal });
   m.draft = draftOffers(m, w, members);
   return m;
 }

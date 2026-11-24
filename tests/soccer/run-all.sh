@@ -3,6 +3,7 @@
 #   bash tests/soccer/run-all.sh          … ルール・セーブ・オンライン（手元のサーバーを起動）
 #   bash tests/soccer/run-all.sh --quick  … オンライン以外（数秒）
 set -e
+set -o pipefail # パイプの途中（node）の失敗も止める
 cd "$(dirname "$0")/../.."
 echo "== ルール（決まったシードの結果が記録と同じか）"; node tests/soccer/rules.test.js
 echo "== 世界（クラブ・NPC・名簿）"; node tests/soccer/world.test.js

@@ -49,6 +49,31 @@ const SL = (() => {
     return GTYPE[p.gtype];
   }
 
+  // ----- 成長の見通し：伸び盛り / まだ伸びる / ピーク / 下り坂（今年と来年）。成長の時期が分かってから見える -----
+  const OUTLOOK = {
+    rise: { label: '伸び盛り', icon: '📈', desc: '練習も試合も、どんどん身になる時期' },
+    grow: { label: 'まだ伸びる', icon: '↗️', desc: '伸びは少しずつゆるやかに' },
+    peak: { label: 'ピーク', icon: '⭐', desc: 'いちばん脂がのっている時期。結果を出そう' },
+    down: { label: '下り坂', icon: '↘️', desc: '少しずつ衰えていく。出場を続けると衰えがゆるやか' },
+  };
+  function outlookAt(p, age) {
+    const peak = GROW[p.grow] ? GROW[p.grow].peak : 28, room = p.pot - ovr(p);
+    if (age < peak - 2 && room >= 4) return 'rise';
+    if (age < peak && room >= 1) return 'grow';
+    if (age <= peak + 1) return 'peak';
+    return 'down';
+  }
+  function growthOutlook(p) {
+    if (!p.growKnown) return null;
+    const a = outlookAt(p, p.age), b = outlookAt(p, p.age + 1);
+    return { now: a, next: b, ...OUTLOOK[a], nextLabel: OUTLOOK[b].label, nextIcon: OUTLOOK[b].icon };
+  }
+  // ----- 必殺技の名前（ゴールの流れや号外に出る）。10文字まで -----
+  function cleanMove(raw) {
+    const t = [...String(raw || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').replace(/\s+/g, ' ').trim()].slice(0, 10).join('');
+    return t || null;
+  }
+
   // ----- 練習メニュー -----
   const TRAINING = {
     sht: { name: 'シュート練習', icon: '🎯', stats: ['sht'] },
@@ -131,7 +156,9 @@ const SL = (() => {
     return CLUB_SEED.map((d, id) => ({ id, name: d.name, short: d.short, mark: d.mark, city: d.short, lg: d.lg, str: d.str, atk: d.atk, dfn: d.dfn, depth: d.depth, youth: d.youth, money: d.money, pop: d.pop, recruit: d.recruit, color: d.color, nat: d.nat }));
   }
 
-  function newPlayer(name, pos, bonus = 0, age = 18) {
+  // 得意能力に選べる能力（ポジションで使う主な能力。GKはセービングも）
+  const appealChoices = (pos) => (pos === 'GK' ? ['gk'] : []).concat(mainStats(pos).filter((k) => k !== 'gk'));
+  function newPlayer(name, pos, bonus = 0, age = 18, appeal = null) {
     const stats = {};
     const main = mainStats(pos);
     const early = (age - 18) * 2; // 早くプロ入りした子は少しだけ育っている
@@ -143,8 +170,9 @@ const SL = (() => {
     const gr = pick(['early', 'normal', 'normal', 'normal', 'late']);
     const gtype = pickGtype();
     const pot = clamp(ri(66, 86) + bonus, 60, 99);
+    if (appeal && appealChoices(pos).includes(appeal)) stats[appeal] = Math.min(99, stats[appeal] + 6); else appeal = null;
     return {
-      name, pos, age, stats, exp: {},
+      name, pos, age, stats, exp: {}, appeal,
       pot, ...potRange(pot), grow: gr, gtype, growKnown: false,
       cond: 0, fatigue: 0, injury: 0, fame: 5 + bonus, money: START_MONEY, // プロ契約の支度金
       club: null, salary: 0, contract: 0, number: 30,
@@ -229,7 +257,7 @@ const SL = (() => {
     const s = {
       v: 1, year: opt.year || START_YEAR, week: 0, gen: opt.gen || 1,
       lineage: opt.lineage || [], clubs: opt.clubs || newWorld(), leagueHistory: opt.leagueHistory || [], npcLegends: opt.npcLegends || [],
-      p: newPlayer(name, pos, opt.bonus || 0, opt.age || 18),
+      p: newPlayer(name, pos, opt.bonus || 0, opt.age || 18, opt.appeal || null),
       phase: 'draft', history: [], news: [], totals: emptyTotals(),
       trophies: [], awards: [], caps: 0, natGoals: 0, wc: [],
       training: pos === 'GK' ? 'gk' : mainStats(pos)[0],
@@ -578,7 +606,7 @@ const SL = (() => {
   function train(p, k, amt) {
     const main = POS[p.pos].w[k] >= .12, gt = gtypeOf(p);
     const cap = Math.min(99, p.pot + (main ? 6 : -10) + gt.cap);
-    amt *= gt.mul(k);
+    amt *= gt.mul(k) * (p.appeal === k ? 1.25 : 1); // 成長の型と得意能力
     const over = p.age - GROW[p.grow].peak;
     const ageF = over <= 0 ? (p.age <= 21 ? 1.15 : 1) : Math.max(.15, .55 - over * .1);
     const head = clamp((cap - p.stats[k]) / (cap - 30), 0, 1.2);
@@ -702,6 +730,7 @@ const SL = (() => {
   }
 
   function goalHow(p) {
+    if (p.move && chance(.35)) return `必殺の「${p.move}」`; // 自分で名付けた必殺技
     const k = Object.entries({ sht: p.stats.sht, drb: p.stats.drb, spd: p.stats.spd, phy: p.stats.phy }).sort((a, b) => b[1] - a[1])[0][0];
     return pick({
       sht: ['豪快なミドルシュート', '狙いすましたコントロールショット', 'ゴール左隅に突き刺す', '直接フリーキックを沈める'],
@@ -1242,7 +1271,7 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, RANK_MIN, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, prepareWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, requestTransfer, transferFee, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,

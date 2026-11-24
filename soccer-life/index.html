@@ -417,6 +417,10 @@
   .navrow button b { display: block; font-size: 1rem; }
   .olnav { margin-top: 8px; }
   .pc { cursor: pointer; }
+  .standing { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 6px 14px 10px; font-size: .74rem; font-weight: 700; color: var(--sub); }
+  .standing .st { color: var(--green); }
+  .prof .mv { display: flex; gap: 6px; margin-top: 4px; }
+  .prof .mv input { flex: 1; min-width: 0; }
   .prof h3 { margin: 0 0 2px; }
   .prof .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
   .prof .chips span { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-size: .74rem; font-weight: 700; }
@@ -545,6 +549,8 @@
     <div class="card">
       <h2>ポジション</h2>
       <div class="poses" id="poses"></div>
+      <h2 style="margin-top:12px">💪 得意能力 <span class="sub" style="margin-left:auto">最初から+6・練習で伸びやすい</span></h2>
+      <div class="tabs rk" id="appeals"></div>
       <p class="sub hidden" id="inheritNote" style="margin:10px 0 0;font-weight:800;color:var(--green)"></p>
     </div>
     <div class="card">
@@ -701,6 +707,8 @@
     <div class="card">
       <h2>ポジション</h2>
       <div class="poses" id="ol-poses"></div>
+      <h2 style="margin-top:12px">💪 得意能力 <span class="sub" style="margin-left:auto">最初から+6・練習で伸びやすい</span></h2>
+      <div class="tabs rk" id="ol-appeals"></div>
     </div>
     <div class="stack" style="margin-top:16px">
       <button class="btn primary" id="ol-signupBtn">プロになる ▶</button>
@@ -1008,7 +1016,9 @@ function renderCreate(ctx = null) {
     $('inheritNote').textContent = home + (b ? `親の活躍で才能ボーナス +${b}！` : '才能ボーナスはなし。自分の手でつかめ！');
   }
   $('poses').innerHTML = Object.entries(SL.POS).map(([k, v]) => `<button class="pos${k === selPos ? ' on' : ''}" data-p="${k}"><b>${posTag(k)}${v.name}</b><span>${v.desc}</span></button>`).join('');
-  $('poses').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPos = b.dataset.p; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); });
+  const pickAp = () => appealPicker($('appeals'), selPos, selAppeal, (k) => { selAppeal = k; });
+  $('poses').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPos = b.dataset.p; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); pickAp(); });
+  pickAp();
   $('pols').innerHTML = Object.entries(SL.POLICY).map(([k, v]) => `<button class="pos${k === selPol ? ' on' : ''}" data-k="${k}"><b>${v.name}</b><span>${v.desc}</span></button>`).join('');
   $('pols').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPol = b.dataset.k; $('pols').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); });
   const setMode = (m) => {
@@ -1027,17 +1037,18 @@ function renderCreate(ctx = null) {
   const setChal = (k) => {
     selChal = k;
     $('chals').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x.dataset.ch === k));
-    if (k === 'keeper') { selPos = 'GK'; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x.dataset.p === 'GK')); }
+    if (k === 'keeper') { selPos = 'GK'; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x.dataset.p === 'GK')); appealPicker($('appeals'), 'GK', selAppeal, (a) => { selAppeal = a; }); }
     $('chalNote').textContent = k ? `🎯 縛り「${SL.CHALLENGES[k].name}」：${SL.CHALLENGES[k].goal}で達成。達成すると専用の称号が手に入る` : '';
   };
   $('chals').querySelectorAll('.pos').forEach((b) => b.onclick = () => setChal(b.dataset.ch));
   setChal('');
   show('scrCreate');
 }
+let selAppeal = null;
 function toDraft() {
   const name = [...$('nameIn').value.normalize('NFKC').replace(/[<>&"'`\\]/g, '').trim()].slice(0, 12).join('') || '名無しの選手';
   if (selChal === 'keeper') selPos = 'GK';
-  const extra = selChal ? { challenge: selChal } : {};
+  const extra = { ...(selChal ? { challenge: selChal } : {}), appeal: SL.appealChoices(selPos).includes(selAppeal) ? selAppeal : null };
   if (createCtx) S = SL.nextGeneration(S, name, selPos, extra);
   else { store.set('lastName', name); S = SL.newGame(name, selPos, extra); }
   S.mode = selMode; store.set('mode', selMode);
@@ -1063,6 +1074,8 @@ let tab = 'table';
 let lastGrowth = {};
 function renderGame() {
   const p = S.p, c = SL.clubOf(S), L = SL.LEAGUES[c.lg], o = SL.ovr(p);
+  const dep = SL.depthOf(S.npcs || [], c.id, { pos: p.pos, ovr: o }, S.childPro && S.childPro.club === c.id ? [{ pos: S.childPro.pos, ovr: S.childPro.ovr }] : []);
+  const ol = SL.growthOutlook(p);
   $('pCard').innerHTML = `<div class="band" style="background:${c.color}"></div>
     <div class="in"><div class="av">${avatar(c.color, p.number, p.age, p.pos)}</div>
       <div class="who"><div class="nm">${esc(p.name)}</div>
@@ -1073,7 +1086,8 @@ function renderGame() {
       <div>疲労<b>${Math.round(p.fatigue)}</b><div class="bar"><i style="width:${p.fatigue}%;background:${p.fatigue > 65 ? 'var(--red)' : '#f2b300'}"></i></div></div>
       <div>人気<b>${Math.round(p.fame)}</b><div class="bar"><i style="width:${p.fame}%;background:var(--blue)"></i></div></div>
       <div>${p.injury ? 'ケガ' : '貯金'}<b style="font-size:${p.injury ? '.95rem' : '.78rem'}">${p.injury ? `🚑 ${p.injury}週` : man(p.money)}</b></div>
-    </div>`;
+    </div>
+    <div class="standing"><span class="${dep.starter ? 'st' : ''}">👥 ${esc(dep.text)}</span>${ol ? `<span>${ol.icon} ${ol.label}（来年 ${ol.nextIcon}${ol.nextLabel}）</span>` : ''}</div>`;
   $('radar').innerHTML = radarSVG(p);
   $('statHead').innerHTML = `📊 能力 <span class="potline">${p.potLo === p.potHi ? `才能 <b style="color:var(--gold)">${p.pot}</b>（見抜いた）` : `才能の見立て ${p.potLo}〜${p.potHi}`}</span>`;
   const main = SL.mainStats(p.pos);
@@ -1170,6 +1184,14 @@ function fixNumbers(rows) {
   }
   return out;
 }
+// ----- 得意能力のボタン（作成画面。一人用・オンライン共通） -----
+function appealPicker(el, pos, cur, onPick) {
+  const ch = SL.appealChoices(pos);
+  const sel = ch.includes(cur) ? cur : ch[0];
+  el.innerHTML = ch.map((k) => `<button data-k="${k}" class="${k === sel ? 'on' : ''}">${SL.STATS[k]}</button>`).join('');
+  el.querySelectorAll('button').forEach((b) => b.onclick = () => { el.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); onPick(b.dataset.k); });
+  onPick(sel);
+}
 // ----- 選手プロフィール（一人用・オンライン共通） -----
 // d：{ name, pos, age, ovr, best, number, club, stats, grow, gtype, growKnown, salary, contract, totals, season, awards, trophies, history }
 function profileHTML(d) {
@@ -1183,6 +1205,8 @@ function profileHTML(d) {
     <div class="sub">${d.age}歳・背番号${d.number || '-'}${d.club ? `・${esc(d.club.name)}` : ''}</div>
     <div class="chips"><span>${style ? style.name : '-'}</span><span>${G ? `${G.name}（ピーク${G.peak}歳ごろ）` : '成長の時期：まだ分からない'}</span><span>${T ? T.name : '成長の型：まだ分からない'}</span></div>
     ${T ? `<p class="sub" style="margin:0 0 4px">${esc(T.desc)}</p>` : ''}
+    <div class="chips">${d.appeal ? `<span>💪 得意：${SL.STATS[d.appeal]}</span>` : ''}${d.outlook ? `<span>${d.outlook.icon} ${d.outlook.label} → 来年 ${d.outlook.nextIcon}${d.outlook.nextLabel}</span>` : '<span>成長の見通し：成長の時期が分かると見える</span>'}${d.depth ? `<span>👥 ${esc(d.depth.text)}</span>` : ''}</div>
+    <h2 style="margin:10px 0 2px">⚡ 必殺技</h2>${d.canEditMove ? `<div class="mv"><input class="t" id="mvIn" maxlength="10" placeholder="例：雷鳴シュート" value="${esc(d.move || '')}"><button class="btn small" id="mvBtn">決める</button></div><p class="sub" style="margin:4px 0 0">ゴールを決めたとき、ときどき試合の流れに出ます（10文字まで）</p>` : `<p class="sub" style="margin:0">${d.move ? esc(d.move) : 'なし'}</p>`}
     <div class="grid"><div>総合力<b>${d.ovr}</b></div><div>キャリア最高<b>${Math.max(d.best || 0, d.ovr)}</b></div><div>年俸<b style="font-size:.82rem">${man(d.salary || 0)}</b></div>
       <div>通算出場<b>${apps}</b></div><div>通算ゴール<b>${goals}</b></div><div>通算アシスト<b>${assists}</b></div></div>
     <h2 style="margin:10px 0 2px">✨ 特殊能力</h2>
@@ -1190,7 +1214,15 @@ function profileHTML(d) {
     <h2 style="margin:10px 0 2px">🏅 タイトル</h2><p class="sub" style="margin:0">${(d.trophies || []).length}個のチームタイトル・${(d.awards || []).length}個の個人賞${(d.awards || []).length ? '：' + d.awards.slice(-4).map(esc).join('、') : ''}</p>
     ${hist.length ? `<h2 style="margin:10px 0 2px">📜 最近の経歴</h2><ul class="awh">${hist.map((h) => `<li><span style="flex:1"><b>${h.year}</b> ${esc(h.club)}（${h.lg}）</span><span class="sub">${h.apps}試${h.goals}G${h.assists}A・総合${h.ovr || '-'}・${man(h.salary || 0)}</span></li>`).join('')}</ul>` : ''}</div>`;
 }
-function openProfile(d) { sheet(profileHTML(d), [{ label: '閉じる', cls: 'primary' }]); }
+function openProfile(d) {
+  const p = sheet(profileHTML(d), [{ label: '閉じる', cls: 'primary' }]);
+  // 必殺技の名前を決める（d.onMove(名前) は保存して、結果の名前を返す）
+  setTimeout(() => {
+    const b = document.getElementById('mvBtn'); if (!b || !d.onMove) return;
+    b.onclick = async () => { const v = await d.onMove(document.getElementById('mvIn').value); if (v !== undefined) { document.getElementById('mvIn').value = v || ''; toast(v ? `必殺技「${v}」に決めた！` : '必殺技を消した'); } };
+  }, 0);
+  return p;
+}
 // ----- チーム（名簿）。オンライン（online.js）からも使う -----
 // rows：{ type: 'npc'|'user', me, name, pos, age, ovr, style, nat, no }
 function squadHTML(c, rows, reserves = 0) {
@@ -1972,7 +2004,9 @@ $('gNav').addEventListener('click', (e) => {
 $('pCard').addEventListener('click', () => {
   if (!S) return;
   const p = S.p;
-  openProfile({ name: p.name, pos: p.pos, age: p.age, ovr: SL.ovr(p), best: p.best, number: p.number, club: SL.clubOf(S), stats: p.stats, grow: p.grow, gtype: SL.gtypeOf(p) && p.gtype, growKnown: p.growKnown,
+  const c0 = SL.clubOf(S);
+  openProfile({ appeal: p.appeal, move: p.move, canEditMove: true, onMove: (v) => { p.move = SL.cleanMove(v); save(); return p.move; }, outlook: SL.growthOutlook(p), depth: SL.depthOf(S.npcs || [], c0.id, { pos: p.pos, ovr: SL.ovr(p) }),
+    name: p.name, pos: p.pos, age: p.age, ovr: SL.ovr(p), best: p.best, number: p.number, club: SL.clubOf(S), stats: p.stats, grow: p.grow, gtype: SL.gtypeOf(p) && p.gtype, growKnown: p.growKnown,
     salary: p.salary, contract: p.contract, totals: S.totals, season: S.season, awards: S.awards, trophies: S.trophies, history: S.history });
 });
 $('menuBtn').onclick = renderTitle;

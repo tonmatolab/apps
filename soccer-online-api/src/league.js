@@ -183,7 +183,9 @@ export class League extends DurableObject {
     if (!code) return null;
     const acc = this.accounts.get(await sha(code));
     if (!acc) return null;
-    return this.members.get(this.byAccount.get(acc)) || null;
+    const m = this.members.get(this.byAccount.get(acc)) || null;
+    if (m) m.seenAt = Date.now();
+    return m;
   }
 
   async fetch(req) {
@@ -210,6 +212,12 @@ export class League extends DurableObject {
         return json({ ok: true, world: this.worldView() });
       }
       // 開発用：節の途中でわざと失敗させ、保存が取り消されることを確かめる
+      // 開発用：全員の「最後に来た時刻」を ms だけ昔にする（休眠のテスト用）
+      if (req.method === 'POST' && path === '/dev/seen') {
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        const ago = Number(body.ms) || 0; for (const x of this.members.values()) x.seenAt = Date.now() - ago;
+        return json({ ok: true });
+      }
       if (req.method === 'POST' && path === '/dev/fail-tick') {
         if (this.env.DEV !== '1') return err('not_found', 404);
         this.failNext = true;
@@ -253,6 +261,7 @@ export class League extends DurableObject {
       const m = await this.me(req);
       if (!m) return err('unauthorized', 401);
       if (req.method === 'GET' && path === '/state') {
+        if (G.wake(m, this.w, [...this.members.values()])) { this.saveMember(m); this.saveWorld(); }
         const bonus = this.loginBonus(m);
         return json({ ...this.stateView(m), bonus });
       }
@@ -288,6 +297,14 @@ export class League extends DurableObject {
         const e = G.requestTransfer(m, this.w, [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
       }
+      // 必殺技の名前（10文字まで。空なら消す）
+      if (req.method === 'POST' && path === '/move') {
+        const raw = String(body.move || '').trim();
+        const v = raw ? cleanName(raw) : null;
+        if (raw && !v) return err('bad_move');
+        m.pl.move = v ? [...v].slice(0, 10).join('') : null;
+        this.saveMember(m); return json(this.stateView(m));
+      }
       if (req.method === 'POST' && path === '/decide') {
         const e = G.decide(m, this.w, body.choice, [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
@@ -296,7 +313,7 @@ export class League extends DurableObject {
         if (m.status !== 'retired') return err('not_now');
         const name = cleanName(body.name); if (!name) return err('bad_name');
         if (!G.POS[body.pos]) return err('bad_pos');
-        const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w, [...this.members.values()]);
+        const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w, [...this.members.values()], G.SL.appealChoices(body.pos).includes(body.appeal) ? body.appeal : null);
         this.atomic(() => { this.saveMember(m, 0); this.saveMember(nm); });
         this.members.delete(m.id); this.members.set(nm.id, nm); this.byAccount.set(nm.account, nm.id);
         return json(this.stateView(nm));
@@ -311,7 +328,7 @@ export class League extends DurableObject {
   async signup(req, body) {
     const name = cleanName(body.name); if (!name) return err('bad_name');
     if (!G.POS[body.pos]) return err('bad_pos');
-    if (this.members.size >= MAX_PLAYERS) return err('full', 503);
+    if ([...this.members.values()].filter((x) => x.status !== 'dormant').length >= MAX_PLAYERS) return err('full', 503);
     const ip = req.headers.get('CF-Connecting-IP') || 'local';
     const now = Date.now(), hits = (this.signups.get(ip) || []).filter((t) => now - t < 3600000);
     if (hits.length >= SIGNUP_PER_HOUR) return err('too_many', 429);
@@ -319,7 +336,7 @@ export class League extends DurableObject {
     const code = newCode(), hash = await sha(code), acc = crypto.randomUUID();
     this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', acc, hash, now);
     this.accounts.set(hash, acc);
-    const m = G.newMember(crypto.randomUUID(), acc, name, body.pos);
+    const m = G.newMember(crypto.randomUUID(), acc, name, body.pos, { appeal: G.SL.appealChoices(body.pos).includes(body.appeal) ? body.appeal : null });
     m.draft = G.draftOffers(m, this.w, [...this.members.values()]);
     this.members.set(m.id, m); this.byAccount.set(acc, m.id); this.saveMember(m);
     return json({ code, state: this.stateView(m) });
@@ -410,6 +427,8 @@ export class League extends DurableObject {
       news: (w.news || []).slice(0, 12),
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
+        appeal: p.appeal || null, move: p.move || null, outlook: G.SL.growthOutlook(p), returning: !!m.returning,
+        depth: p.club != null ? G.SL.depthOf(this.npcs, p.club, { pos: p.pos, ovr: G.ovr(p) }, [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: G.ovr(x.pl) }))) : null,
         grow: p.growKnown ? p.grow : null, gtype: p.growKnown ? p.gtype : null, best: Math.max(p.best || 0, G.ovr(p)), cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,

@@ -265,6 +265,21 @@
     return Object.entries(SKILLS).filter(([, d]) => d.ok(p)).sort((a, b) => b[1].m(p) - a[1].m(p)).slice(0, 3).map(([k]) => k);
   }
 
+  // ----- チーム内の立ち位置：同じポジションで何番手か、先発（4-4-2）に入っているか -----
+  // me：{ pos, ovr }。humans：同じクラブの本物のプレイヤー（自分以外。{ pos, ovr }）。本物のプレイヤーは選ばれやすい（+3）ぶんも入れる
+  const XI = { GK: 1, DF: 4, MF: 4, FW: 2 };
+  function depthOf(npcs, clubId, me, humans = []) {
+    const seats = humans.concat([me]).map((h) => ({ pos: h.pos }));
+    const sq = clubSquad(npcs, clubId, seats);
+    const list = sq.npcs.filter((p) => p.pos === me.pos).map((p) => ovr(p)).concat(humans.filter((h) => h.pos === me.pos).map((h) => h.ovr + 3));
+    list.sort((a, b) => b - a);
+    const mine = me.ovr + 3, rank = list.filter((v) => v > mine).length + 1, slots = XI[me.pos];
+    const starter = rank <= slots;
+    const gap = starter ? 0 : Math.max(1, (list[slots - 1] || 0) - mine + 1);
+    const label = starter ? (rank === 1 ? 'エース格のレギュラー' : 'レギュラー') : rank <= slots + 2 ? 'レギュラー争い' : '控え';
+    return { rank, slots, starter, gap, label, text: `${me.pos} ${rank}番手（先発${slots}枠）・${label}${starter ? '' : `・先発まで総合+${gap}`}` };
+  }
+
   // 画面に見せる1人分（能力の細かい値は出さない）
   function npcView(p) { return { id: p.id, type: 'npc', name: p.name, nat: p.nat, pos: p.pos, age: p.age, ovr: ovr(p), style: STYLES[p.style] ? STYLES[p.style].name : '', no: p.no, skills: skillsOf(p), reborn: p.reborn || 0 }; }
 
@@ -276,6 +291,6 @@
     return s;
   }
 
-  Object.assign(SL, { SKILLS, skillsOf, SQUAD_SIZE, upgradeWorld, SQUAD_QUOTA, STYLES, NAME_POOLS, FAMOUS_COUNT: FAMOUS.length, styleOf, newNpcWorld, clubSquad, npcView });
+  Object.assign(SL, { depthOf, SKILLS, skillsOf, SQUAD_SIZE, upgradeWorld, SQUAD_QUOTA, STYLES, NAME_POOLS, FAMOUS_COUNT: FAMOUS.length, styleOf, newNpcWorld, clubSquad, npcView });
   SL._.worldRng = makeRng; SL._.hashStr = hashStr; SL._.FAMOUS = FAMOUS; SL._.npcName = fullName; SL._.makeNpc = makeNpc; SL._.awkwardName = awkward; SL._.ABROAD = { EU: ABROAD_EU, JP: ABROAD_JP };
 })(typeof SL !== 'undefined' ? SL : require('./core.js'));

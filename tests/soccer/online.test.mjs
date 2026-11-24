@@ -157,6 +157,29 @@ try {
   check(st.me.status === 'retired' && st.me.summary && st.me.summary.titles.length > 0, '引退して称号が付く');
   const ng = await call('/nextgen', { code: users[1].code, body: { name: '通し 二世', pos: 'FW' } });
   check(ng.status === 200 && ng.j.me.gen === 2 && ng.j.me.lineage.length === 1, '次の世代を始められる');
+  // 得意能力・必殺技・立ち位置・見通し
+  {
+    const su = await call('/signup', { body: { name: '得意 確認', pos: 'MF', appeal: 'pas' } });
+    check(su.status === 200 && su.j.state.me.appeal === 'pas', '得意能力を選んで登録できる');
+    // （ポジションに合わない得意能力は world.test.js で確認。ここで登録を増やすと、同じIPの登録の上限に当たる）
+    const C2 = su.j.code; await call('/join', { code: C2, body: { i: 0 } });
+    const mv = await call('/move', { code: C2, body: { move: '雷鳴シュートとても長い名前' } });
+    check(mv.status === 200 && mv.j.me.move === '雷鳴シュートとても長', `必殺技の名前を決められる（10文字まで：${mv.j.me && mv.j.me.move}）`);
+    check((await call('/move', { code: C2, body: { move: 'しね' } })).j.error === 'bad_move', '使えない言葉は必殺技にできない');
+    const st2 = (await call('/state', { code: C2 })).j;
+    check(st2.me.depth && st2.me.depth.rank >= 1 && /番手/.test(st2.me.depth.text), `チーム内の立ち位置が分かる（${st2.me.depth && st2.me.depth.text}）`);
+    // 休眠：長く来ていない人は、オフの終わりに枠を空ける → 戻ってきたらクラブを選び直す
+    const debut = st2.me.debutYear;
+    await call('/dev/seen', { body: { ms: 15 * 24 * 3600000 } });
+    for (let k = 0; k < 25; k++) { const w = (await call('/public')).j.world; if (w.phase === 'season' && w.week === 0 && k > 0) break; await call('/dev/tick', { body: { n: 1 } }); }
+    const exD = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j;
+    const dm = exD.players.map((p) => JSON.parse(p.data)).find((m) => m.pl.name === '得意 確認');
+    check(dm && dm.status === 'dormant' && dm.pl.club == null && dm.prevClub != null, `長く来ていない人は休眠になり、クラブの枠を空ける（${dm && dm.status}）`);
+    const back = (await call('/state', { code: C2 })).j;
+    check(back.me.status === 'draft' && back.me.returning && back.me.draft.length > 0 && back.me.move === '雷鳴シュートとても長', '戻ってくると、空いているクラブから選び直せる（必殺技などはそのまま）');
+    const jn = await call('/join', { code: C2, body: { i: 0 } });
+    check(jn.status === 200 && (jn.j.me.status === 'active' || jn.j.me.status === 'decided') && jn.j.me.debutYear === debut && !jn.j.me.returning, '選び直すとまた試合に出られる（デビューの年はそのまま）');
+  }
   { const bad = log.split(/\r?\n/).filter((l) => /Uncaught|TypeError|ReferenceError/.test(l)); check(!bad.length, 'サーバーのログにエラーがない' + (bad.length ? '：' + bad.slice(0, 4).join(' / ').slice(0, 600) : '')); }
 } catch (e) {
   failures++; console.log('  ✗ 例外: ' + (e.stack || e));

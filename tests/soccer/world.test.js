@@ -70,5 +70,30 @@ check(JSON.stringify(SL.newNpcWorld(clubs, 99)) !== JSON.stringify(npcs), 'シ�
   check(v.name && v.ovr > 0 && v.style && !('stats' in v), '画面用の形には能力の細かい値を出さない');
 }
 
+// ----- 得意能力・成長の見通し・必殺技・立ち位置 -----
+{
+  SL.setRng(require('./lib').seeded(5));
+  check(JSON.stringify(SL.appealChoices('GK')) === JSON.stringify(['gk', 'phy']) && SL.appealChoices('FW').includes('sht'), '得意能力に選べるのはポジションの主な能力');
+  let a = 0, b = 0;
+  for (let i = 0; i < 300; i++) { a += SL._.newPlayer('得 ' + i, 'FW', 0, 18, 'sht').stats.sht; b += SL._.newPlayer('普 ' + i, 'FW').stats.sht; }
+  check(a / 300 - b / 300 > 5, `得意能力は最初から高い（平均 +${(a / 300 - b / 300).toFixed(1)}）`);
+  check(SL._.newPlayer('x', 'FW', 0, 18, 'gk').appeal === null, 'ポジションに合わない得意能力は付かない');
+  const grow = (ap) => { let t = 0; for (let i = 0; i < 200; i++) { const p = SL._.newPlayer('伸 ' + i, 'FW', 0, 18, ap); p.gtype = 'steady'; p.stats.sht = 50; const v = p.stats.sht; for (let w = 0; w < 18; w++) SL._.train(p, 'sht', 1.7); t += p.stats.sht - v; } return t / 200; };
+  check(grow('sht') > grow('spd') * 1.1, `得意能力は練習で伸びやすい（シュート：得意 +${grow('sht').toFixed(1)} / ほか +${grow('spd').toFixed(1)}）`);
+  const p = SL._.newPlayer('見通し', 'MF'); p.grow = 'normal';
+  check(SL.growthOutlook(p) === null, '成長の時期が分かるまでは見通しも見えない');
+  p.growKnown = true; p.pot = SL.ovr(p) + 20;
+  const seq = [18, 24, 27, 29, 33].map((age) => { p.age = age; return SL.growthOutlook(p).now; });
+  check(JSON.stringify(seq) === JSON.stringify(['rise', 'rise', 'grow', 'peak', 'down']), `年齢で見通しが変わる（${seq.join('→')}）`);
+  check(SL.cleanMove(' 雷鳴<シュート>とても長い名前 ') === '雷鳴シュートとても長' && SL.cleanMove('   ') === null, '必殺技の名前は10文字まで・記号は消す');
+  const shooter = { name: '技', pos: 'FW', stats: { spd: 70, sht: 80, pas: 60, drb: 70, def: 40, phy: 70, gk: 10 }, move: '雷鳴シュート' };
+  let n = 0; for (let i = 0; i < 200; i++) if (SL._.goalHow(shooter).includes('雷鳴シュート')) n++;
+  check(n > 40 && n < 110, `必殺技がゴールの説明にときどき出る（200回中${n}回）`);
+  const clubs = SL._.newWorld(), npcs = SL.newNpcWorld(clubs, 1);
+  const top = SL.depthOf(npcs, 13, { pos: 'FW', ovr: 90 }), low = SL.depthOf(npcs, 13, { pos: 'FW', ovr: 40 });
+  check(top.rank === 1 && top.starter && top.gap === 0, `強ければ1番手のレギュラー（${top.text}）`);
+  check(!low.starter && low.gap > 0 && low.rank > 2, `弱ければ控えで、先発まであといくつか分かる（${low.text}）`);
+}
+
 console.log(`world: ${failed() ? failed() + ' failed' : 'all passed'}`);
 process.exitCode = failed() ? 1 : 0;

@@ -28,7 +28,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
@@ -82,14 +82,16 @@
   }
 
   // ===== 作成 =====
-  let selPos = 'FW';
+  let selPos = 'FW', selAppeal = null;
   function renderCreate(next = false) {
     $('createTitle').textContent = next ? '子どもの名前は？' : 'あなたの名前は？';
     $('signupBtn').textContent = next ? '次の世代を始める ▶' : 'プロになる ▶';
     $('signupBtn').dataset.next = next ? '1' : '';
     if (next) { const sur = String(ST.me.name).split(/[\s　]+/); $('nameIn').value = sur.length > 1 ? sur[0] + ' ' : ''; }
     $('poses').innerHTML = Object.entries(SL.POS).map(([k, v]) => `<button class="pos${k === selPos ? ' on' : ''}" data-p="${k}"><b>${posTag(k)}${v.name}</b><span>${v.desc}</span></button>`).join('');
-    $('poses').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPos = b.dataset.p; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); });
+    const pickAp = () => appealPicker($('appeals'), selPos, selAppeal, (k) => { selAppeal = k; });
+    $('poses').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPos = b.dataset.p; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); pickAp(); });
+    pickAp();
     $('signupMsg').textContent = '';
     show('scrCreate');
   }
@@ -97,12 +99,12 @@
     const name = $('nameIn').value.trim(); if (!name) { $('signupMsg').textContent = '名前を入れてください'; return; }
     $('signupBtn').disabled = true;
     if ($('signupBtn').dataset.next) {
-      const j = await api('/nextgen', { name, pos: selPos });
+      const j = await api('/nextgen', { name, pos: selPos, appeal: selAppeal });
       $('signupBtn').disabled = false;
       if (j.error) { $('signupMsg').textContent = errMsg(j.error); return; }
       setState(j); return route();
     }
-    const j = await api('/signup', { name, pos: selPos });
+    const j = await api('/signup', { name, pos: selPos, appeal: selAppeal });
     $('signupBtn').disabled = false;
     if (j.error) { $('signupMsg').textContent = errMsg(j.error); return; }
     CODE = j.code; store.set('code', CODE); setState(j.state);
@@ -124,7 +126,8 @@
 
   // ===== 入団 =====
   function renderDraft() {
-    $('draftList').innerHTML = ST.me.draft.map((o, i) => offerCard(o, i)).join('');
+    // 休眠から戻ってきた人には、ひとこと（能力・経歴・お金はそのまま）
+    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + ST.me.draft.map((o, i) => offerCard(o, i)).join('');
     $('draftList').querySelectorAll('.offer').forEach((b) => b.onclick = async () => {
       const j = await api('/join', { i: +b.dataset.i });
       if (j.error) return toast(errMsg(j.error));
@@ -146,6 +149,8 @@
           <div class="cl">${posTag(me.pos)} ${c ? `背番号<b>${me.number}</b>・` : ''}${me.age}歳${me.gen > 1 ? `・${me.gen}代目` : ''}<br>${c ? `<b>${esc(c.name)}</b><br>${SL.LEAGUES[c.lg].name}・年俸 ${man(me.salary)}` : '所属なし'}</div></div>
         <div class="ov"><b style="color:${me.ovr >= 80 ? 'var(--gold)' : 'var(--ink)'}">${me.ovr}</b><span>総合力</span></div></div>
       <div class="meters"><div>調子<b>${['↓', '↘', '→', '↗', '↑'][me.cond + 2]}</b></div><div>疲労<b>${me.fatigue}</b></div><div>人気<b>${me.fame}</b></div><div>${me.injury ? 'ケガ' : '貯金'}<b style="font-size:.78rem">${me.injury ? `🚑 ${me.injury}週` : man(me.money)}</b></div></div>`;
+    // 立ち位置と成長の見通し（選手カードの下）
+    if (me.depth || me.outlook) $('pCard').insertAdjacentHTML('beforeend', `<div class="standing">${me.depth ? `<span class="${me.depth.starter ? 'st' : ''}">👥 ${esc(me.depth.text)}</span>` : ''}${me.outlook ? `<span>${me.outlook.icon} ${me.outlook.label}（来年 ${me.outlook.nextIcon}${me.outlook.nextLabel}）</span>` : ''}</div>`);
     renderStatus();
     // リーグ速報
     $('newsCard').classList.toggle('hidden', !(ST.news && ST.news.length));
@@ -425,7 +430,9 @@
     $('pCard').addEventListener('click', () => {
       if (!ST || !ST.me || ST.me.club == null) return;
       const me = ST.me;
-      openProfile({ name: me.name, pos: me.pos, age: me.age, ovr: me.ovr, best: me.best, number: me.number, club: club(me.club), stats: me.stats, grow: me.grow, gtype: me.gtype, growKnown: !!me.grow,
+      openProfile({ appeal: me.appeal, move: me.move, outlook: me.outlook, depth: me.depth, canEditMove: true,
+        onMove: async (v) => { const j = await api('/move', { move: v }); if (j.error) { toast(errMsg(j.error)); return undefined; } setState(j); return j.me.move; },
+        name: me.name, pos: me.pos, age: me.age, ovr: me.ovr, best: me.best, number: me.number, club: club(me.club), stats: me.stats, grow: me.grow, gtype: me.gtype, growKnown: !!me.grow,
         salary: me.salary, contract: me.contract, totals: me.totals, season: me.season, awards: me.awards, trophies: me.trophies, history: me.history });
     });
   }

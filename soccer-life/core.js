@@ -213,7 +213,7 @@ const SL = (() => {
     if (opt.challenge === 'keeper') pos = 'GK';
     const s = {
       v: 1, year: opt.year || START_YEAR, week: 0, gen: opt.gen || 1,
-      lineage: opt.lineage || [], clubs: opt.clubs || newWorld(),
+      lineage: opt.lineage || [], clubs: opt.clubs || newWorld(), leagueHistory: opt.leagueHistory || [],
       p: newPlayer(name, pos, opt.bonus || 0, opt.age || 18),
       phase: 'draft', history: [], news: [], totals: emptyTotals(),
       trophies: [], awards: [], caps: 0, natGoals: 0, wc: [],
@@ -769,14 +769,17 @@ const SL = (() => {
     const tbl = standings(s, c.lg);
     const avgR = avg(S.ratings);
     const awards = [];
-    const npcG = ri(...L.npcGoals), npcA = ri(...L.npcAssists);
     if (rank === 1 && S.apps >= 5) awards.push(`${L.short}リーグ優勝`);
-    if (S.goals > npcG) awards.push(`${L.short}得点王`);
-    if (S.assists > npcA) awards.push(`${L.short}アシスト王`);
-    if (S.apps >= 14 && avgR >= 7.25 && (rank <= 3 || S.goals > npcG)) awards.push(`${L.short}MVP`);
-    if (S.apps >= 12 && avgR >= 6.85) awards.push(`${L.short}ベストイレブン`);
-    if (c.lg !== 0 && s.history.length === 0 && S.apps >= 8 && avgR >= 6.5) awards.push('新人王');
-    if (c.lg === 0 && S.apps >= 15 && avgR >= 7.6 && (S.goals + S.assists >= 18 || S.cs >= 9)) awards.push('世界年間最優秀選手');
+    // 個人賞：NPCと同じ表に並べて、実際の成績で決める（core-awards.js）。昇格・降格の前に決める
+    const entries = SL.npcEntries(s.npcs || [], s.npcSeason || {}, s.clubs);
+    entries.push(SL.userEntry(p, S, s.clubs, { key: 'me', me: true, rookie: s.history.length === 0 && p.age <= 21 }));
+    const aw = SL.seasonAwards(entries, (lg) => standings(s, lg).map((x) => x.c.id));
+    awards.push(...(aw.won.get('me') || []));
+    const champions = Object.fromEntries(LEAGUES.map((x) => [x.id, standings(s, x.id)[0].c.name]));
+    const awRec = SL.awardsRecord(s.year, aw, champions);
+    s.leagueHistory = (s.leagueHistory || []).concat([awRec]).slice(-40);
+    SL.stampNpcAwards(s.npcs || [], aw.won, s.year);
+    const myLg = awRec.lg[c.lg], npcG = myLg.scorer.length ? myLg.scorer[0].v : 0, npcA = myLg.assist.length ? myLg.assist[0].v : 0;
 
     // 昇格・降格
     const moves = [];
@@ -827,7 +830,7 @@ const SL = (() => {
     else if (top === 'リーグ優勝') addPaper(s, 'title', `${c.short} V!!`, `${ln}歓喜の頂点`, `${c.name}が${L.short}リーグ優勝。${p.name}も${S.apps}試合に出場し栄冠に貢献した。`);
     const rivalRow = rivalSeason(s);
     s.phase = 'off';
-    return { row, table: tbl.map((x) => ({ id: x.c.id, name: x.c.name, ...x.t })), awards: real, moves, promoted, relegated, npcG, npcA, best: S.best, rival: rivalRow };
+    return { row, table: tbl.map((x) => ({ id: x.c.id, name: x.c.name, ...x.t })), awards: real, moves, promoted, relegated, npcG, npcA, best: S.best, rival: rivalRow, league: myLg, world: awRec.world };
   }
 
   // ライバルの1年（ざっくり計算）
@@ -1114,7 +1117,7 @@ const SL = (() => {
     const bonus = inheritBonus(sum);
     const lineage = s.lineage.concat([{ gen: s.gen, name: sum.name, pos: sum.pos, title: sum.title, score: sum.score, letter: sum.letter, goals: sum.goals, assists: sum.assists, cs: sum.cs, apps: sum.apps, caps: sum.caps,
       years: `${sum.startYear}-${sum.endYear}`, clubs: sum.clubs, combo: sum.family.combo, jointApps: sum.family.jointApps, wc: sum.wc.some((w) => w.reached === '優勝'), child: name }]);
-    const opt = { gen: s.gen + 1, lineage, bonus, clubs: s.clubs, npcs: s.npcs, mode: s.mode, parent: { name: sum.name, title: sum.title, combo: sum.family.combo, jointApps: sum.family.jointApps } };
+    const opt = { gen: s.gen + 1, lineage, bonus, clubs: s.clubs, npcs: s.npcs, leagueHistory: s.leagueHistory, mode: s.mode, parent: { name: sum.name, title: sum.title, combo: sum.family.combo, jointApps: sum.family.jointApps } };
     const kid = s.p.kidsBorn[0];
     if (s.childPro) Object.assign(opt, { year: s.year, age: Math.min(s.childPro.age, 30), homeClub: s.childPro.club });
     else if (kid) opt.year = Math.max(s.year, kid.year + 18);

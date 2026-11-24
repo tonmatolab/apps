@@ -168,7 +168,7 @@ export class League extends DurableObject {
     if (w.phase === 'season') {
       this.npcSeason = G.playMatchday(w, all, this.npcs, this.npcSeason);
       this.sql.exec("INSERT OR REPLACE INTO npcstats (k, v) VALUES ('season', ?)", JSON.stringify(this.npcSeason));
-      if (w.week >= G.SEASON_WEEKS) G.endSeason(w, all);
+      if (w.week >= G.SEASON_WEEKS) { G.endSeason(w, all, this.npcs, this.npcSeason); this.saveRosters(); } // NPCの受賞を名簿に残す（シーズンに1回・30行）
       for (const m of all) if (m.status === 'active' || m.status === 'off') this.saveMember(m);
       if (this.failNext) { this.failNext = false; throw new Error('テスト用の失敗（途中まで保存したところで止める）'); }
     } else {
@@ -193,6 +193,13 @@ export class League extends DurableObject {
       if (req.method === 'GET' && path === '/public') return json(this.publicView());
       // 全国ランキング（ログインしていれば自分の順位も返す）
       if (req.method === 'GET' && path === '/rankings') return json(this.rankingsView(await this.me(req)));
+      // 今季の個人ランキング（NPCも含む）：?lg=0〜2&cat=goals|assists|rating|defense|saves|cs&who=all|npc|user
+      if (req.method === 'GET' && path === '/ranking') {
+        const q = url.searchParams, lg = q.get('lg') === 'all' ? null : Math.max(0, Math.min(2, Number(q.get('lg')) || 0));
+        const cat = G.SL.RANK_CATS[q.get('cat')] ? q.get('cat') : 'goals', who = ['all', 'npc', 'user'].includes(q.get('who')) ? q.get('who') : 'all';
+        const me = await this.me(req);
+        return json({ lg, cat, who, ...G.SL.ranking(this.seasonEntries(), cat, { lg, who, n: 20, meKey: me ? 'u:' + me.id : null }) });
+      }
       if (req.method === 'POST' && path === '/signup') return this.signup(req, body);
       if (req.method === 'POST' && path === '/dev/tick') {
         if (this.env.DEV !== '1') return err('not_found', 404);
@@ -353,6 +360,12 @@ export class League extends DurableObject {
 
   publicView() {
     return { world: this.worldView(), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, news: (this.w.news || []).slice(0, 8), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
+  }
+  // 今季の個人成績の表（NPC＋本物のプレイヤー）。メモリから作るだけで、書き込みはしない
+  seasonEntries() {
+    const w = this.w, stats = this.npcSeason && this.npcSeason.season === w.season ? this.npcSeason.stats : {};
+    const act = [...this.members.values()].filter((m) => m.status !== 'draft' && m.status !== 'retired' && m.pl.club != null && m.season);
+    return G.SL.npcEntries(this.npcs, stats, w.clubs).concat(act.map((m) => G.SL.userEntry(m.pl, m.season, w.clubs, { key: 'u:' + m.id })));
   }
   // クラブの名簿（NPC＋本物のプレイヤー）。本物のプレイヤーが入った分、同じポジションのNPCが控え組に回る
   squadView(clubId, me) {

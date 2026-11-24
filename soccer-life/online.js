@@ -302,6 +302,17 @@
     body.querySelectorAll('.nrkinds button').forEach((b) => b.onclick = () => { nrKind = b.dataset.k; renderNational(body); });
   }
 
+  // 今季の個人ランキング（NPCも含む。サーバーで並べたものを読む）
+  let RV = null;
+  async function renderRanking(body, me, lg) {
+    if (!RV) RV = { lg: String(lg), cat: me.pos === 'GK' ? 'saves' : me.pos === 'DF' ? 'defense' : me.pos === 'MF' ? 'assists' : 'goals', who: 'all' };
+    const v = { ...RV };
+    if (!body.querySelector('.rklist')) body.innerHTML = '<p class="empty">読み込み中…</p>';
+    const j = await api(`/ranking?lg=${v.lg}&cat=${v.cat}&who=${v.who}`);
+    if (tab !== 'rank' || JSON.stringify(v) !== JSON.stringify(RV)) return;
+    body.innerHTML = '<h2>📊 今季の個人ランキング</h2>' + rankingHTML(RV, j && !j.error ? j : { top: [], total: 0, mine: null }, { userLabel: '本物のプレイヤー' });
+    bindRanking(body, RV, () => renderRanking(body, me, lg));
+  }
   function renderTab() {
     document.querySelectorAll('#ol-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
     const me = ST.me, lg = me.club != null ? club(me.club).lg : 1, body = $('tabBody');
@@ -310,8 +321,7 @@
         <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
         ${ST.tables[L.id].map((t, i) => { const c = club(t.id); return `<tr class="${t.id === me.club ? 'me' : ''}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}${c.humans ? `<span class="hum">👤${c.humans}</span>` : ''}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf - t.ga > 0 ? '+' : ''}${t.gf - t.ga}</td><td><b>${t.p}</b></td></tr>`; }).join('')}</table></div>`).join('');
     } else if (tab === 'rank') {
-      const list = (rows) => rows.length ? `<ol class="list">${rows.map((r, i) => `<li${r.name === me.name ? ' style="background:var(--chip)"' : ''}><span class="no">${i + 1}</span><span class="nm">${esc(r.name)} <span class="sub">${esc(r.club)}</span></span><span class="v">${r.v}</span></li>`).join('')}</ol>` : '<p class="empty">まだいません</p>';
-      body.innerHTML = `<h2>⚽ 得点ランキング（${SL.LEAGUES[lg].short}・プレイヤー）</h2>${list(ST.scorers)}<h2 style="margin-top:12px">👟 アシストランキング</h2>${list(ST.assisters)}`;
+      renderRanking(body, me, lg);
     } else if (tab === 'mates') {
       body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `${ST.squad ? squadHTML(club(me.club), ST.squad.rows, ST.squad.reserves) + '<h2 style="margin-top:12px">👥 本物のプレイヤーの今季</h2>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>`}${ST.mates.length ? `<ul class="list">${ST.mates.map((m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`).join('')}</ul>` : '<p class="empty">ほかのプレイヤーはまだいません。友達を誘おう</p>'}`;
     } else if (tab === 'national') {
@@ -343,7 +353,7 @@
         const h = club(r.h), a = club(r.a);
         const g = r.goals.filter((x) => x.who || x.assist).map((x) => `${x.min}' ${esc(x.who || '')}${x.assist ? `（A ${esc(x.assist)}）` : ''}`).join('、');
         return `<li style="display:block"><span class="dot" style="background:${h.color}"></span>${esc(h.city)} <b class="num">${r.gh} - ${r.ga}</b> ${esc(a.city)} <span class="dot" style="background:${a.color};margin-left:4px"></span><span class="sub">${SL.LEAGUES[r.lg].short}</span>${g ? `<div class="sub">⚽ ${g}</div>` : ''}</li>`;
-      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">欧州 ${esc(x.champions[0])}／1部 ${esc(x.champions[1])}／2部 ${esc(x.champions[2])}</span></li>`).join('')}</ul>` : ''}${cupResultsHTML()}`;
+      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">欧州 ${esc(x.champions[0])}／1部 ${esc(x.champions[1])}／2部 ${esc(x.champions[2])}</span></li>`).join('')}</ul>` : ''}${ST.seasonHistory.some((x) => x.awards) ? `<h2 style="margin-top:12px">🏅 歴代の受賞者（${SL.LEAGUES[lg].name}）</h2>${awardHistoryHTML(ST.seasonHistory.map((x) => x.awards).filter(Boolean), String(lg))}` : ''}${cupResultsHTML()}`;
     } else {
       const aw = me.trophies.map((t) => `<li>🏆 ${esc(t)}</li>`).concat(me.awards.map((t) => `<li>🏅 ${esc(t)}</li>`));
       body.innerHTML = `<div class="bigstat"><div>通算出場<b>${me.totals.apps}</b></div><div>通算G<b>${me.totals.goals}</b></div><div>通算A<b>${me.totals.assists}</b></div><div>代表<b>${me.caps}</b></div></div>

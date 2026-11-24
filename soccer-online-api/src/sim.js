@@ -276,25 +276,23 @@ export function playMatchday(w, members, npcs = [], npcSeason = null) {
 // ----- シーズン終了 -----
 const avg = (a) => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 100) / 100 : 0;
 
-export function endSeason(w, members) {
+// npcs・npcSeason：NPCの名簿と今季の成績（個人賞をNPCも含めて決める）。NPCの受賞は npcs に書き込む
+export function endSeason(w, members, npcs = [], npcSeason = null) {
   const active = members.filter((m) => m.status === 'active' && m.pl.club != null);
   const rankOf = (cid) => standings(w, w.clubs[cid].lg).findIndex((x) => x.c.id === cid) + 1;
-  // 得点王・アシスト王は「NPCの最多」と「本物のプレイヤーの最多」の両方を上回った人
-  const npc = LEAGUES.map((L) => ({ g: ri(...L.npcGoals), a: ri(...L.npcAssists) }));
-  const best = LEAGUES.map((L) => {
-    const inL = active.filter((m) => w.clubs[m.pl.club].lg === L.id);
-    return { g: Math.max(0, ...inL.map((m) => m.season.goals)), a: Math.max(0, ...inL.map((m) => m.season.assists)) };
-  });
   const champions = LEAGUES.map((L) => standings(w, L.id)[0].c.name);
+  // 個人賞：NPCと本物のプレイヤーを同じ表に並べ、実際の成績で決める（core-awards.js）
+  const stats = npcSeason && npcSeason.season === w.season ? npcSeason.stats : {};
+  const entries = SL.npcEntries(npcs, stats, w.clubs).concat(active.map((m) => SL.userEntry(m.pl, m.season, w.clubs, { key: 'u:' + m.id, rookie: m.history.length === 0 && m.pl.age <= 21 })));
+  const awd = SL.seasonAwards(entries, (lg) => standings(w, lg).map((x) => x.c.id));
+  SL.stampNpcAwards(npcs, awd.won, w.year);
+  const awRec = SL.awardsRecord(w.year, awd, champions);
+  for (const L of LEAGUES) { const A = awRec.lg[L.id]; if (A.scorer.length) addNews(w, `⚽ ${w.year}年 ${L.short}得点王：${A.scorer.map((x) => x.name).join('・')}（${A.scorer[0].v}点）／MVP：${A.mvp ? A.mvp.name : '-'}`); }
   for (const m of active) {
     const p = m.pl, S = m.season, c = w.clubs[p.club], L = LEAGUES[c.lg], rank = rankOf(c.id), avgR = avg(S.ratings);
     const aw = [];
     if (rank === 1 && S.apps >= 5) aw.push(`${L.short}リーグ優勝`);
-    if (S.goals > npc[c.lg].g && S.goals === best[c.lg].g) aw.push(`${L.short}得点王`);
-    if (S.assists > npc[c.lg].a && S.assists === best[c.lg].a) aw.push(`${L.short}アシスト王`);
-    if (S.apps >= 14 && avgR >= 7.25 && (rank <= 3 || S.goals > npc[c.lg].g)) aw.push(`${L.short}MVP`);
-    if (S.apps >= 12 && avgR >= 6.85) aw.push(`${L.short}ベストイレブン`);
-    if (c.lg !== 0 && m.history.length === 0 && S.apps >= 8 && avgR >= 6.5) aw.push('新人王');
+    aw.push(...(awd.won.get('u:' + m.id) || []));
     if (w.cup && w.cup.winner === c.id && m.cupSeason && m.cupSeason.apps > 0) aw.push(c.lg === 2 ? 'カップ優勝（2部から）' : 'カップ優勝');
     p.money += p.salary;
     p.fame = clamp(p.fame + aw.length * 4 + (avgR >= 7 ? 3 : 0), 0, 100);
@@ -305,7 +303,7 @@ export function endSeason(w, members) {
     T.apps += S.apps; T.starts += S.starts; T.goals += S.goals; T.assists += S.assists; T.cs += S.cs; T.mins += S.mins; T.rating += S.ratings.reduce((x, y) => x + y, 0);
     for (const k of Object.keys(SL.LINE_KEYS).concat(['motm'])) T[k] = (T[k] || 0) + (S[k] || 0);
     for (const x of aw) (x.includes('優勝') || x.includes('昇格') ? m.trophies : m.awards).push(`${w.year} ${x}`);
-    const big = aw.filter((x) => /得点王|アシスト王|MVP|カップ優勝/.test(x));
+    const big = aw.filter((x) => /得点王|アシスト王|MVP|最優秀|カップ優勝/.test(x));
     if (big.length) addNews(w, `🏆 ${m.pl.name}が${w.year}年の${big.join('・')}`);
     if (aw.length) m.log.push({ y: w.year, age: p.age, k: 'award', t: `${w.year}年、${c.name}で${aw.join('・')}。` });
     m.seasonAwards = aw;
@@ -332,7 +330,7 @@ export function endSeason(w, members) {
     x.str = clamp(Math.round(x.str + (CLUB_SEED[x.id].str - x.str) * .3 + gauss() * 1.5 + (p2.includes(x) ? 3 : 0) - (r1.includes(x) ? 2 : 0)), 44, 90);
     if (x.atk != null) { x.atk += x.str - old; x.dfn += x.str - old; }
   }
-  w.history.push({ year: w.year, champions, moves: [...r1.map((x) => `${x.name} が2部へ降格`), ...p2.map((x) => `${x.name} が1部へ昇格`)] });
+  w.history.push({ year: w.year, champions, moves: [...r1.map((x) => `${x.name} が2部へ降格`), ...p2.map((x) => `${x.name} が1部へ昇格`)], awards: awRec });
   if (w.history.length > 30) w.history.shift();
 
   // 代表（W杯は全員で同じ大会にしたいので、最小構成ではまだやらない）

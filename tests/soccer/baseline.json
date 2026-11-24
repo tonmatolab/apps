@@ -3,53 +3,53 @@
  "stats": {
   "careers": 111,
   "score": [
-   202,
-   3749,
-   5122
+   509,
+   3838,
+   5513
   ],
   "goals": [
    0,
-   2,
-   164
+   3,
+   171
   ],
   "apps": [
-   23,
+   65,
    317,
-   347
+   346
   ],
   "caps": [
    0,
-   68,
-   95
+   66,
+   96
   ],
   "titles": [
-   3,
+   4,
    35,
-   47
+   46
   ],
   "letters": {
-   "A": 36,
-   "S": 15,
-   "B": 25,
-   "C": 12,
-   "SS": 2,
-   "D": 21
+   "A": 29,
+   "B": 22,
+   "S": 24,
+   "SS": 3,
+   "C": 13,
+   "D": 20
   },
   "challenges": {
    "loyal": [
-    13,
+    11,
     16
    ],
    "domestic": [
-    3,
+    9,
     12
    ],
    "weak": [
-    2,
+    5,
     12
    ],
    "lowpot": [
-    3,
+    2,
     12
    ],
    "norest": [
@@ -57,14 +57,14 @@
     12
    ],
    "keeper": [
-    9,
+    8,
     12
    ]
   },
-  "distinctTitles": 101,
-  "achievements": 36,
-  "rouletteReturn": 0.967,
-  "pkGoalRate": 0.739
+  "distinctTitles": 104,
+  "achievements": 37,
+  "rouletteReturn": 0.966,
+  "pkGoalRate": 0.732
  },
- "fingerprint": "79e7e55c"
+ "fingerprint": "f8fe76af"
 }

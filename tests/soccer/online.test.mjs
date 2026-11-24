@@ -73,9 +73,28 @@ try {
     const ns = JSON.parse(ex0.npcstats.find((r) => r.k === 'season').v);
     check(Object.keys(ns.stats).length > 300, `NPCの今季の成績が保存される（${Object.keys(ns.stats).length}人）`);
   }
+  // 今季の個人ランキング（NPCも含む）
+  {
+    const rk = await call('/ranking?lg=1&cat=goals&who=all', { code: A });
+    check(rk.status === 200 && rk.j.top.length > 0 && rk.j.top.some((r) => r.type === 'npc'), '個人ランキングにNPCが載る');
+    check(rk.j.top.every((r, i) => i === 0 || rk.j.top[i - 1].v >= r.v), '個人ランキングは大きい順');
+    const ru = await call('/ranking?lg=all&cat=assists&who=user', { code: A });
+    check(ru.status === 200 && ru.j.top.every((r) => r.type === 'user'), '本物のプレイヤーだけに絞れる');
+    check((await call('/ranking?lg=9&cat=xxx&who=zzz')).status === 200, 'おかしな指定でも落ちない');
+  }
   // シーズンを最後まで → オフ → 新シーズン
   await call('/dev/tick', { body: { n: 17 } });
   let st = (await call('/state', { code: A })).j;
+  {
+    const h = st.seasonHistory.at(-1);
+    check(h && h.awards && h.awards.lg[1].scorer.length && h.awards.lg[1].mvp && h.awards.lg[1].xi.length === 11, 'シーズン終了で個人賞（得点王・MVP・ベストイレブン）が記録される');
+    const ex2 = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j;
+    const npcAw = ex2.rosters.flatMap((r) => JSON.parse(r.data)).filter((p) => p.aw && p.aw.length).length;
+    check(npcAw >= 30, `NPCの受賞が名簿に保存される（${npcAw}人）`);
+    const myRow = st.me.history.at(-1), mine = (w) => myRow.awards.some((a) => a.endsWith(w));
+    const L = h.awards.lg[{ 欧州: 0, '1部': 1, '2部': 2 }[myRow.lg]];
+    check(mine('得点王') === L.scorer.some((x) => x.name === st.me.name), '自分の得点王と記録が一致');
+  }
   check(st.world.phase === 'off' && st.me.status === 'off', 'シーズンが終わってオフになる');
   check(st.me.history.length === 1, '経歴に1シーズン分が記録される');
   await call('/dev/tick', { body: { n: 2 } });

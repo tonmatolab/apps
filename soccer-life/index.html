@@ -410,6 +410,20 @@
   .hl.log li.half { justify-content: center; font-size: .7rem; color: var(--sub); font-weight: 800; background: none; border: 0; padding: 4px 0 0; }
   .hl.log li.opp { color: var(--sub); }
   .statline { margin: 6px 0 0; font-size: .74rem; }
+  .tabs.rk { margin: 0 0 6px; flex-wrap: wrap; }
+  .tabs.rk button { font-size: .72rem; padding: 4px 8px; flex: 1 0 auto; white-space: nowrap; }
+  .rklist, .awh { list-style: none; margin: 0; padding: 0; font-size: .82rem; }
+  .rklist li, .awh li { display: flex; gap: 8px; align-items: center; padding: 6px 2px; border-bottom: 1px dashed var(--line); }
+  .rklist .no { width: 1.6em; text-align: center; font-family: var(--num); font-weight: 800; color: var(--sub); }
+  .rklist .nm { flex: 1; min-width: 0; font-weight: 700; }
+  .rklist .v { font-family: var(--num); font-weight: 800; }
+  .rklist li.me { background: var(--chip); font-weight: 800; }
+  .rklist li.gap { justify-content: center; color: var(--sub); }
+  .awh .usr { font-weight: 800; }
+  .awbox { background: var(--chip); border-radius: 12px; padding: 8px 10px; margin: 8px 0; font-size: .78rem; }
+  .awbox > div:not(.sub) { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-top: 1px solid var(--line); }
+  .awbox > div:not(.sub) > span:first-child { color: var(--sub); white-space: nowrap; }
+  .awbox > div:not(.sub) > span:last-child { text-align: right; }
   /* PK */
   .sheet.pkgame { background: #14532d; color: #f3f7f2; }
   .pkgame .sub { color: #c5dccb; }
@@ -581,7 +595,7 @@
     </div>
     <div class="card">
       <div class="tabs" id="tabs">
-        <button data-t="table" class="on">順位表</button><button data-t="team">チーム</button><button data-t="cup">カップ</button><button data-t="rec">記録</button><button data-t="career">経歴</button><button data-t="ach">実績</button>
+        <button data-t="table" class="on">順位表</button><button data-t="team">チーム</button><button data-t="rank">ランキング</button><button data-t="cup">カップ</button><button data-t="rec">記録</button><button data-t="career">経歴</button><button data-t="ach">実績</button>
       </div>
       <div id="tabBody"></div>
     </div>
@@ -744,6 +758,7 @@
 <script src="core.js"></script>
 <script src="core-world.js"></script>
 <script src="core-match.js"></script>
+<script src="core-awards.js"></script>
 <script src="core-collection.js"></script>
 <script src="core-games.js"></script>
 <script src="save.js"></script>
@@ -1096,6 +1111,8 @@ function renderTab() {
   } else if (tab === 'team') {
     const me = S.p, sq = SL.clubSquad(S.npcs || [], c.id, [{ pos: me.pos }]);
     $('tabBody').innerHTML = squadHTML(c, sq.npcs.map(SL.npcView).concat([{ type: 'user', me: true, name: me.name, pos: me.pos, age: me.age, ovr: SL.ovr(me), no: me.number, nat: '日本', style: '' }]), sq.reserves.length);
+  } else if (tab === 'rank') {
+    renderRankTab($('tabBody'));
   } else if (tab === 'cup') {
     $('tabBody').innerHTML = cupTabHTML();
   } else if (tab === 'rec') {
@@ -1136,6 +1153,46 @@ function squadHTML(c, rows, reserves = 0) {
     ${list.map((x) => `<tr class="${x.me ? 'me' : ''}"><td>${x.no || ''}</td><td class="l">${x.type === 'user' ? '👤 ' : ''}${esc(x.name)} ${nat(x.nat)}</td><td><span class="tag t-${x.pos}">${x.pos}</span></td><td>${x.age}</td><td><b>${x.ovr}</b></td><td class="l" style="font-weight:600;font-size:.7rem">${esc(x.style || '')}</td></tr>`).join('')}</table></div>
     <p class="sub" style="margin:8px 0 0;font-size:.72rem">👤 は本物のプレイヤー。1クラブ22人で、本物のプレイヤーが入ると同じポジションのNPCが控え組に回ります${reserves ? `（いま${reserves}人が控え組）` : ''}</p>`;
 }
+// ----- 個人ランキング（NPCも本物のプレイヤーも同じ表）。一人用・オンライン共通の見た目 -----
+// view：{ lg, cat, who }、data：SL.ranking の結果、opt.onPick(view) で切り替え
+function rankingHTML(view, data, opt = {}) {
+  const chip = (k, v, label) => `<button data-${k}="${v}" class="${view[k] === v ? 'on' : ''}">${label}</button>`;
+  const cats = Object.entries(SL.RANK_CATS);
+  const C = SL.RANK_CATS[view.cat];
+  const fmt = (v) => (C.dec ? v.toFixed(C.dec) : v);
+  const row = (r) => `<li class="${r.me ? 'me' : ''}"><span class="no">${r.rank}</span><span class="nm">${r.type === 'user' ? '👤 ' : ''}${esc(r.name)} <span class="tag t-${r.pos}" style="font-size:.6rem">${r.pos}</span> <span class="sub">${esc(r.club)}・${r.apps}試</span></span><span class="v">${fmt(r.v)}</span></li>`;
+  return `<div class="tabs rk" data-row="lg">${SL.LEAGUES.map((L) => chip('lg', String(L.id), L.short)).join('')}</div>
+    <div class="tabs rk" data-row="cat">${cats.map(([k, c]) => chip('cat', k, c.icon + c.name)).join('')}</div>
+    <div class="tabs rk" data-row="who">${chip('who', 'all', '全員')}${chip('who', 'npc', 'NPC')}${chip('who', 'user', opt.userLabel || '本物のプレイヤー')}</div>
+    <p class="sub" style="margin:4px 0">${C.note ? esc(C.note) + '。' : ''}${view.cat === 'rating' ? `出場${SL.MIN_RATE_APPS}試合以上。` : ''}${data.total}人</p>
+    ${data.top.length ? `<ol class="list rklist">${data.top.map(row).join('')}${data.mine && !data.top.some((r) => r.me) ? `<li class="gap">…</li>${row(data.mine)}` : ''}</ol>` : '<p class="empty">まだいません</p>'}`;
+}
+function bindRanking(el, view, rerender) {
+  el.querySelectorAll('.tabs.rk button').forEach((b) => b.addEventListener('click', () => {
+    for (const k of ['lg', 'cat', 'who']) if (b.dataset[k] != null) view[k] = b.dataset[k];
+    rerender();
+  }));
+}
+// 歴代の受賞者（新しい順）。recs：SL.awardsRecord の配列
+function awardHistoryHTML(recs, lg, meName) {
+  const list = (recs || []).filter((r) => r.lg && r.lg[lg]).slice(-10).reverse();
+  if (!list.length) return '<p class="empty">まだ記録がありません（シーズンが終わるとたまります）</p>';
+  const nm = (x) => (x ? `<span class="${x.type === 'user' ? 'usr' : ''}">${x.type === 'user' ? '👤' : ''}${esc(x.name)}</span>` : '-');
+  return `<ul class="list awh">${list.map((r) => { const A = r.lg[lg]; return `<li style="display:block"><b>${r.year}年</b> 🏆 ${esc(A.champion || '-')}
+    <div class="sub">⚽ 得点王 ${A.scorer.map((x) => `${nm(x)}（${x.v}）`).join('・') || '-'}　⭐ MVP ${nm(A.mvp)}${A.rookie ? `　🌱 新人王 ${nm(A.rookie)}` : ''}</div></li>`; }).join('')}</ul>`;
+}
+let rankView = null;
+function renderRankTab(el) {
+  const c = SL.clubOf(S);
+  if (!rankView) rankView = { lg: String(c.lg), cat: S.p.pos === 'GK' ? 'saves' : S.p.pos === 'DF' ? 'defense' : S.p.pos === 'MF' ? 'assists' : 'goals', who: 'all' };
+  const entries = SL.npcEntries(S.npcs || [], S.npcSeason || {}, S.clubs);
+  if (S.season) entries.push(SL.userEntry(S.p, S.season, S.clubs, { key: 'me', me: true }));
+  const data = SL.ranking(entries, rankView.cat, { lg: +rankView.lg, who: rankView.who, n: 10 });
+  el.innerHTML = `<h2>📊 今季の個人ランキング</h2>${rankingHTML(rankView, data, { userLabel: 'あなた' })}
+    <h2 style="margin-top:14px">🏅 歴代の受賞者（${SL.LEAGUES[+rankView.lg].name}）</h2>${awardHistoryHTML(S.leagueHistory, rankView.lg, S.p.name)}`;
+  bindRanking(el, rankView, () => renderRankTab(el));
+}
+
 // ----- カップ戦 -----
 function cupTabHTML() {
   const cup = S.cup, me = S.p.club;
@@ -1373,6 +1430,14 @@ async function offseason() {
   await contractStep();
 }
 
+// 今季の個人賞（自分のリーグ）。本物のプレイヤーは👤
+function leagueAwardsHTML(A, world) {
+  const nm = (x) => (x ? `${x.type === 'user' ? '👤<b>' : ''}${esc(x.name)}${x.type === 'user' ? '</b>' : ''}` : '-');
+  const rows = [['⚽ 得点王', A.scorer.map((x) => `${nm(x)}（${x.v}）`).join('・')], ['👟 アシスト王', A.assist.map((x) => `${nm(x)}（${x.v}）`).join('・')], ['⭐ MVP', nm(A.mvp)],
+    ...['FW', 'MF', 'DF', 'GK'].map((p) => [`🏅 最優秀${p}`, nm(A.best[p])]), ...(A.rookie ? [['🌱 新人王', nm(A.rookie)]] : []), ['🌍 世界年間最優秀', nm(world)]];
+  return `<div class="awbox"><div class="sub" style="font-weight:800;margin-bottom:2px">今季の個人賞</div>${rows.map(([k, v]) => `<div><span>${k}</span><span>${v || '-'}</span></div>`).join('')}
+    <div class="sub" style="margin-top:4px">ベストイレブン：${A.xi.map((x) => (x.type === 'user' ? `👤<b>${esc(x.name)}</b>` : esc(x.name))).join('・')}</div></div>`;
+}
 function reviewHTML(r) {
   const me = SL.clubOf(S, r.row.clubId);
   const st = r.awards.map((a, i) => `<span class="stamp" style="animation-delay:${.2 + i * .25}s">${esc(a)}</span>`).join('');
@@ -1381,7 +1446,7 @@ function reviewHTML(r) {
   return `<div class="kick">${r.row.year}年シーズン終了</div><h3>${esc(me.name)} は <span style="color:var(--green)">${r.row.rank}位</span></h3>
     <div class="bigstat"><div>出場<b>${r.row.apps}</b></div><div>${big[0]}<b>${big[1]}</b></div><div>${S.p.pos === 'FW' ? 'アシスト' : 'ゴール'}<b>${S.p.pos === 'FW' ? r.row.assists : r.row.goals}</b></div><div>平均評価<b>${r.row.rating ? r.row.rating.toFixed(2) : '-'}</b></div></div>
     <div style="text-align:center;margin:8px 0">${st || '<p class="sub">今季はタイトルなし。来季こそ！</p>'}</div>
-    <p class="note sub" style="font-weight:700">得点王争い：リーグ最多 ${r.npcG}点（あなた ${r.row.goals}点）</p>
+    ${r.league ? leagueAwardsHTML(r.league, r.world) : `<p class="note sub" style="font-weight:700">得点王争い：リーグ最多 ${r.npcG}点（あなた ${r.row.goals}点）</p>`}
     <div class="card" style="box-shadow:none;background:var(--chip);margin-top:10px;font-size:.84rem;font-weight:700">${top}</div>
     ${r.rival ? `<div class="rivalrow"><span class="ic">🔥</span><span>ライバル <b>${esc(S.rival.name)}</b><br><span class="sub">${esc(r.rival.club)}・${r.rival.apps}試合 ${r.rival.goals}G ${r.rival.assists}A</span></span><span class="h2h">${r.rival.awards.length ? r.rival.awards.map(esc).join('<br>') : ''}</span></div>` : ''}
     ${r.moves.length ? `<p class="note sub">${r.moves.map(esc).join('<br>')}</p>` : ''}

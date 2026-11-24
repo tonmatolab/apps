@@ -50,30 +50,57 @@ const SL = (() => {
 
   // ----- リーグとクラブ（すべて架空） -----
   const LEAGUES = [
-    { id: 0, name: '欧州プレミアリーグ', short: '欧州', npcGoals: [11, 18], npcAssists: [7, 12] },
-    { id: 1, name: '国内1部リーグ', short: '1部', npcGoals: [9, 15], npcAssists: [6, 10] },
-    { id: 2, name: '国内2部リーグ', short: '2部', npcGoals: [8, 14], npcAssists: [5, 9] },
+    { id: 0, name: '欧州リーグ', short: '欧州', npcGoals: [11, 18], npcAssists: [7, 12] },
+    { id: 1, name: '国内1部', short: '1部', npcGoals: [9, 15], npcAssists: [6, 10] },
+    { id: 2, name: '国内2部', short: '2部', npcGoals: [8, 14], npcAssists: [5, 9] },
   ];
+  // クラブ（ID 0〜29 は保存データの所属に使っているので変えない）。lg は新しい世界を始めるときの所属リーグ。
+  // short：画面で使う略称（同じ都市のクラブも見分けられる）、mark：エンブレムの文字、nat：地元の国（NPCの国籍の割合に使う）
+  // 特徴8項目：str 総合力 / atk 攻撃力 / dfn 守備力（数値）、depth 選手層 / youth 若手育成 / money 資金力 / pop 人気 / recruit 獲得力（1〜5）
   const CLUB_SEED = [
-    // 欧州
-    ['ロンドン・ロイヤルズ', 'ロンドン', 0, 87, '#c8102e'], ['マドリード・コロナ', 'マドリード', 0, 88, '#f2f2f2'],
-    ['ミラノ・ドゥオーモ', 'ミラノ', 0, 84, '#1b3f8b'], ['ミュンヘン・アドラー', 'ミュンヘン', 0, 86, '#d4002a'],
-    ['パリ・ルミエール', 'パリ', 0, 83, '#0a2a5c'], ['バルセロナ・モザイク', 'バルセロナ', 0, 85, '#a50044'],
-    ['マンチェスター・スチール', 'マンチェスター', 0, 82, '#6cabdd'], ['アムステルダム・カナルズ', 'アムステルダム', 0, 78, '#ff6a13'],
-    ['リスボン・ナビガドーレス', 'リスボン', 0, 77, '#00843d'], ['ドルトムント・ゲルブ', 'ドルトムント', 0, 80, '#fde100'],
+    // 欧州リーグ
+    { name: 'マンチェスター・スカイ', short: 'マンチェスター', mark: 'マン', lg: 0, str: 87, atk: 89, dfn: 85, depth: 5, youth: 3, money: 5, pop: 5, recruit: 5, color: '#6cabdd', nat: 'イングランド' },
+    { name: 'マドリード・ロイヤル', short: 'マドリード', mark: 'マド', lg: 0, str: 88, atk: 90, dfn: 85, depth: 5, youth: 3, money: 5, pop: 5, recruit: 5, color: '#f2f2f2', nat: 'スペイン' },
+    { name: 'リヴァプール・レッドスター', short: 'リヴァプール', mark: 'リヴ', lg: 0, str: 84, atk: 86, dfn: 82, depth: 4, youth: 3, money: 4, pop: 5, recruit: 4, color: '#c8102e', nat: 'イングランド' },
+    { name: 'ミュンヘン・バイエル', short: 'ミュンヘン', mark: 'ミュ', lg: 0, str: 86, atk: 87, dfn: 85, depth: 5, youth: 4, money: 5, pop: 5, recruit: 4, color: '#9b0d2a', nat: 'ドイツ' },
+    { name: 'パリ・エトワール', short: 'パリ', mark: 'パリ', lg: 0, str: 83, atk: 87, dfn: 79, depth: 4, youth: 3, money: 5, pop: 4, recruit: 5, color: '#0a2a5c', nat: 'フランス' },
+    { name: 'バルセロナ・ブラウ', short: 'バルセロナ', mark: 'バル', lg: 0, str: 85, atk: 87, dfn: 82, depth: 4, youth: 5, money: 4, pop: 5, recruit: 4, color: '#a50044', nat: 'スペイン' },
+    { name: 'ミラノ・ロッソ', short: 'ミラノ', mark: 'ミラ', lg: 0, str: 81, atk: 80, dfn: 83, depth: 4, youth: 3, money: 4, pop: 4, recruit: 3, color: '#7a0c14', nat: 'イタリア' },
+    { name: 'アムステルダム・アヤックス', short: 'アムステルダム', mark: 'アム', lg: 0, str: 77, atk: 79, dfn: 74, depth: 3, youth: 5, money: 3, pop: 3, recruit: 3, color: '#ff6a13', nat: 'オランダ' },
+    { name: 'リスボン・ベンフィカ', short: 'リスボン', mark: 'リス', lg: 0, str: 76, atk: 77, dfn: 75, depth: 3, youth: 5, money: 3, pop: 3, recruit: 3, color: '#00843d', nat: 'ポルトガル' },
+    { name: 'ポルト・ドラゴンズ', short: 'ポルト', mark: 'ポル', lg: 0, str: 75, atk: 75, dfn: 76, depth: 3, youth: 4, money: 3, pop: 3, recruit: 3, color: '#1f4fa0', nat: 'ポルトガル' },
     // 国内1部
-    ['東京ブルーウイングス', '東京', 1, 71, '#1e5bc6'], ['大阪ファイアーズ', '大阪', 1, 70, '#e8432f'],
-    ['横浜オーシャンズ', '横浜', 1, 68, '#0b7fb5'], ['名古屋シャチホコFC', '名古屋', 1, 67, '#d69a00'],
-    ['神戸ポートスターズ', '神戸', 1, 66, '#5a2d82'], ['広島レッドウェーブ', '広島', 1, 64, '#b3122e'],
-    ['札幌スノーベアーズ', '札幌', 1, 63, '#4c4c4c'], ['福岡ハカタSC', '福岡', 1, 62, '#0e3a75'],
-    ['仙台ダテFC', '仙台', 1, 60, '#f0c400'], ['新潟スワンズ', '新潟', 1, 59, '#f07a1a'],
+    { name: '鹿島アントレイズ', short: '鹿島', mark: '鹿島', lg: 1, str: 72, atk: 71, dfn: 74, depth: 4, youth: 3, money: 4, pop: 4, recruit: 4, color: '#b5122e', nat: '日本' },
+    { name: '浦和レッドフォース', short: '浦和', mark: '浦和', lg: 1, str: 71, atk: 72, dfn: 70, depth: 4, youth: 2, money: 5, pop: 5, recruit: 4, color: '#d7261e', nat: '日本' },
+    { name: '柏サンキングス', short: '柏', mark: '柏', lg: 1, str: 63, atk: 64, dfn: 62, depth: 2, youth: 4, money: 2, pop: 2, recruit: 2, color: '#f5c400', nat: '日本' },
+    { name: '東京シティFC', short: '東京C', mark: '東C', lg: 1, str: 68, atk: 67, dfn: 69, depth: 3, youth: 4, money: 4, pop: 4, recruit: 3, color: '#1e3c8c', nat: '日本' },
+    { name: '町田ゼルヴィオ', short: '町田', mark: '町田', lg: 1, str: 70, atk: 68, dfn: 73, depth: 3, youth: 2, money: 4, pop: 3, recruit: 4, color: '#0f6e8c', nat: '日本' },
+    { name: '川崎フロンティア', short: '川崎', mark: '川崎', lg: 1, str: 73, atk: 76, dfn: 70, depth: 4, youth: 4, money: 4, pop: 4, recruit: 4, color: '#31a7e0', nat: '日本' },
+    { name: '横浜マリナーズ', short: '横浜', mark: '横浜', lg: 1, str: 67, atk: 69, dfn: 65, depth: 3, youth: 3, money: 4, pop: 4, recruit: 3, color: '#0b7fb5', nat: '日本' },
+    { name: '名古屋グリフォン', short: '名古屋', mark: '名古', lg: 1, str: 65, atk: 63, dfn: 67, depth: 3, youth: 2, money: 4, pop: 3, recruit: 3, color: '#d64f1a', nat: '日本' },
+    { name: '大阪ガンバルディ', short: '大阪G', mark: '阪G', lg: 1, str: 66, atk: 68, dfn: 64, depth: 3, youth: 5, money: 3, pop: 4, recruit: 3, color: '#203a8f', nat: '日本' },
+    { name: '神戸ヴィクトリア', short: '神戸', mark: '神戸', lg: 1, str: 69, atk: 70, dfn: 68, depth: 3, youth: 2, money: 5, pop: 4, recruit: 5, color: '#8a1538', nat: '日本' },
     // 国内2部
-    ['静岡ティーグリーン', '静岡', 2, 58, '#2f9e44'], ['京都ミヤコFC', '京都', 2, 57, '#7b2c8f'],
-    ['千葉ポートFC', '千葉', 2, 56, '#ffcc00'], ['熊本ボルケーノ', '熊本', 2, 54, '#d6332b'],
-    ['金沢ゴールドリーフ', '金沢', 2, 53, '#c9a227'], ['岡山ピーチーズ', '岡山', 2, 52, '#e96b8a'],
-    ['長野アルプス', '長野', 2, 51, '#3d7a5a'], ['愛媛オレンジーズ', '愛媛', 2, 50, '#f28c28'],
-    ['沖縄シーサーズ', '沖縄', 2, 48, '#1aa3c4'], ['群馬ホットスプリングス', '群馬', 2, 47, '#a0522d'],
+    { name: '水戸ホーリーブルーム', short: '水戸', mark: '水戸', lg: 2, str: 53, atk: 54, dfn: 52, depth: 2, youth: 4, money: 1, pop: 2, recruit: 1, color: '#3a5fb0', nat: '日本' },
+    { name: '千葉ユナイテッドFC', short: '千葉', mark: '千葉', lg: 2, str: 57, atk: 58, dfn: 56, depth: 2, youth: 3, money: 2, pop: 3, recruit: 2, color: '#ffcc00', nat: '日本' },
+    { name: '東京ヴェルデ', short: '東京V', mark: '東V', lg: 2, str: 60, atk: 61, dfn: 59, depth: 3, youth: 5, money: 2, pop: 3, recruit: 2, color: '#00843d', nat: '日本' },
+    { name: '清水エスパルタ', short: '清水', mark: '清水', lg: 2, str: 59, atk: 60, dfn: 58, depth: 3, youth: 3, money: 3, pop: 3, recruit: 3, color: '#ff8c00', nat: '日本' },
+    { name: '京都サンガード', short: '京都', mark: '京都', lg: 2, str: 56, atk: 55, dfn: 57, depth: 2, youth: 3, money: 2, pop: 2, recruit: 2, color: '#6a2c8f', nat: '日本' },
+    { name: '大阪セレスト', short: '大阪C', mark: '阪C', lg: 2, str: 61, atk: 62, dfn: 60, depth: 3, youth: 4, money: 3, pop: 3, recruit: 3, color: '#e05a9a', nat: '日本' },
+    { name: '岡山ファルコンズ', short: '岡山', mark: '岡山', lg: 2, str: 52, atk: 51, dfn: 53, depth: 2, youth: 2, money: 1, pop: 2, recruit: 1, color: '#a6192e', nat: '日本' },
+    { name: '広島サンフォース', short: '広島', mark: '広島', lg: 2, str: 58, atk: 57, dfn: 60, depth: 3, youth: 4, money: 2, pop: 3, recruit: 2, color: '#5b2d8e', nat: '日本' },
+    { name: '福岡アヴィオン', short: '福岡', mark: '福岡', lg: 2, str: 55, atk: 56, dfn: 54, depth: 2, youth: 2, money: 2, pop: 2, recruit: 2, color: '#0e3a75', nat: '日本' },
+    { name: '長崎ヴァレリア', short: '長崎', mark: '長崎', lg: 2, str: 54, atk: 53, dfn: 56, depth: 2, youth: 3, money: 2, pop: 2, recruit: 2, color: '#1aa3c4', nat: '日本' },
   ];
+  const CLUB_TRAITS = { str: '総合力', atk: '攻撃力', dfn: '守備力', depth: '選手層', youth: '若手育成', money: '資金力', pop: '人気', recruit: '獲得力' };
+  // 保存済みの世界のクラブに、名前・色・特徴を付け直す（所属リーグ lg と今の強さ str はそのまま。経歴に残ったクラブ名は書き換えない）
+  function applyClubData(clubs) {
+    for (const c of clubs) {
+      const d = CLUB_SEED[c.id]; if (!d) continue;
+      Object.assign(c, { name: d.name, short: d.short, mark: d.mark, city: d.short, color: d.color, nat: d.nat, atk: d.atk + (c.str - d.str), dfn: d.dfn + (c.str - d.str), depth: d.depth, youth: d.youth, money: d.money, pop: d.pop, recruit: d.recruit });
+    }
+    return clubs;
+  }
 
   const FIRST = ['蓮', '大翔', '陽翔', '湊', '颯太', '悠真', '翼', '海斗', '陸', '律', '葵', 'ひなた', '凛', '光', '晴', '空', '奏', '瑛太', '樹', '純'];
   const SURNAMES = ['佐藤', '鈴木', '高橋', '田中', '伊藤', '渡辺', '中村', '小林', '加藤', '吉田', '山口', '松本', '井上', '木村', '清水', '黒川', '神崎', '速水', '真田', '桐生'];
@@ -87,7 +114,7 @@ const SL = (() => {
 
   // ===== 新しいゲーム =====
   function newWorld() {
-    return CLUB_SEED.map(([name, city, lg, str, color], id) => ({ id, name, city, lg, str, color }));
+    return CLUB_SEED.map((d, id) => ({ id, name: d.name, short: d.short, mark: d.mark, city: d.short, lg: d.lg, str: d.str, atk: d.atk, dfn: d.dfn, depth: d.depth, youth: d.youth, money: d.money, pop: d.pop, recruit: d.recruit, color: d.color, nat: d.nat }));
   }
 
   function newPlayer(name, pos, bonus = 0, age = 18) {
@@ -146,6 +173,7 @@ const SL = (() => {
     s.p.kidsBorn = s.p.kidsBorn || [];
     if (s.p.potLo == null) Object.assign(s.p, potRange(s.p.pot));
     s.records = s.records || newRecords();
+    if (SL.upgradeWorld && (!Array.isArray(s.npcs) || !s.clubs[0].short)) SL.upgradeWorld(s); // クラブの新しい名前・NPC（core-world.js）
     if (!s.rival) { s.rival = newRival(s); if (s.p.club != null && s.rival.club === s.p.club) s.rival.club = (s.rival.club + 1) % 10 + 10; }
     return s;
   }
@@ -193,6 +221,8 @@ const SL = (() => {
       parent: opt.parent || null,
     };
     s.records = newRecords();
+    // NPC選手（core-world.js）。次の世代は親の世界の選手をそのまま引き継ぐ
+    s.npcs = opt.npcs || (SL.newNpcWorld ? SL.newNpcWorld(s.clubs, ri(1, 999999999)) : []);
     if (opt.challenge && CHALLENGES[opt.challenge]) {
       s.challenge = opt.challenge;
       if (s.challenge === 'lowpot') { s.p.pot = Math.min(s.p.pot, 70); Object.assign(s.p, potRange(s.p.pot)); }
@@ -603,7 +633,7 @@ const SL = (() => {
       if (m.goals >= 3) s.family.hats = (s.family.hats || 0) + 1;
       if (m.goals >= 3 && [1, 5, 10, 20].includes(s.family.hats)) {
         addLog(s, 'hat', s.family.hats === 1 ? `${s.year}年、${wk}でプロ初のハットトリックを達成。` : `${s.year}年、${wk}で通算${s.family.hats}度目のハットトリック。`);
-        addPaper(s, 'hat', `${lastName(p.name)}ハット!!`, `${co.city}戦で圧巻の${m.goals}発`, `${p.name}が${co.name}戦で${m.goals}得点。スタジアムは総立ちとなった。`);
+        addPaper(s, 'hat', `${lastName(p.name)}ハット!!`, `${co.short}戦で圧巻の${m.goals}発`, `${p.name}が${co.name}戦で${m.goals}得点。スタジアムは総立ちとなった。`);
       }
       if (m.combo && s.family.combo === 1) {
         addLog(s, 'family', `${s.year}年、${co.name}戦で子の${kid.name}のゴールをアシスト。史上まれな「親子弾」として話題になった。`);
@@ -733,16 +763,17 @@ const SL = (() => {
     if (s.challenge === 'weak' && !s.challengeDone && c.id === s.challengeClub && c.lg === 1 && rank === 1) {
       s.challengeDone = s.year;
       addLog(s, 'challenge', `${s.year}年、最弱と呼ばれた${c.name}を1部優勝に導いた。`);
-      addPaper(s, 'title', `${c.city} 奇跡のV`, '最弱クラブが頂点へ', `かつてリーグ最弱だった${c.name}が1部優勝。${p.name}は入団から${s.history.length + 1}年目で悲願を果たした。`);
+      addPaper(s, 'title', `${c.short} 奇跡のV`, '最弱クラブが頂点へ', `かつてリーグ最弱だった${c.name}が1部優勝。${p.name}は入団から${s.history.length + 1}年目で悲願を果たした。`);
     }
     // クラブ力の変動（2部→1部の昇格組は補強で少し強くなる）
     for (const x of s.clubs) {
-      const base = CLUB_SEED[x.id][3];
+      const base = CLUB_SEED[x.id].str, old = x.str;
       x.str = clamp(Math.round(x.str + (base - x.str) * .3 + gauss() * 1.5 + (p2.includes(x) ? 3 : 0) - (r1.includes(x) ? 2 : 0)), 44, 90);
+      if (x.atk != null) { x.atk += x.str - old; x.dfn += x.str - old; }
     }
 
     const real = awards.filter(Boolean);
-    if (real.some((a) => a.startsWith('カップ優勝'))) addPaper(s, 'cup', `${c.city} カップ制覇`, real.includes('カップ優勝（2部から）') ? '2部から大番狂わせ' : '一発勝負を勝ち抜く', `${c.name}がカップ戦を制した。${p.name}も${S.cup.apps}試合に出場し${S.cup.goals ? `${S.cup.goals}得点` : '優勝に貢献'}。`);
+    if (real.some((a) => a.startsWith('カップ優勝'))) addPaper(s, 'cup', `${c.short} カップ制覇`, real.includes('カップ優勝（2部から）') ? '2部から大番狂わせ' : '一発勝負を勝ち抜く', `${c.name}がカップ戦を制した。${p.name}も${S.cup.apps}試合に出場し${S.cup.goals ? `${S.cup.goals}得点` : '優勝に貢献'}。`);
     const salary = p.salary;
     p.money += salary;
     p.fame = clamp(p.fame + real.length * 4 + (avgR >= 7 ? 3 : 0), 0, 100);
@@ -762,7 +793,7 @@ const SL = (() => {
     else if (top === '欧州リーグ優勝') addPaper(s, 'title', `${ln} 欧州制覇`, `${c.name}で頂点に`, `${p.name}所属の${c.name}が欧州リーグを制した。`);
     else if (top === '得点王') addPaper(s, 'scorer', `${ln}得点王`, `${S.goals}発でキング襲名`, `${p.name}が${S.goals}得点で${L.short}リーグ得点王に輝いた。`);
     else if (top === 'MVP') addPaper(s, 'mvp', `${ln} MVP`, `平均評価${avgR.toFixed(2)}の圧巻`, `${p.name}が${L.short}リーグのMVPに選ばれた。`);
-    else if (top === 'リーグ優勝') addPaper(s, 'title', `${c.city} V!!`, `${ln}歓喜の頂点`, `${c.name}が${L.short}リーグ優勝。${p.name}も${S.apps}試合に出場し栄冠に貢献した。`);
+    else if (top === 'リーグ優勝') addPaper(s, 'title', `${c.short} V!!`, `${ln}歓喜の頂点`, `${c.name}が${L.short}リーグ優勝。${p.name}も${S.apps}試合に出場し栄冠に貢献した。`);
     const rivalRow = rivalSeason(s);
     s.phase = 'off';
     return { row, table: tbl.map((x) => ({ id: x.c.id, name: x.c.name, ...x.t })), awards: real, moves, promoted, relegated, npcG, npcA, best: S.best, rival: rivalRow };
@@ -1050,7 +1081,7 @@ const SL = (() => {
     const bonus = inheritBonus(sum);
     const lineage = s.lineage.concat([{ gen: s.gen, name: sum.name, pos: sum.pos, title: sum.title, score: sum.score, letter: sum.letter, goals: sum.goals, assists: sum.assists, cs: sum.cs, apps: sum.apps, caps: sum.caps,
       years: `${sum.startYear}-${sum.endYear}`, clubs: sum.clubs, combo: sum.family.combo, jointApps: sum.family.jointApps, wc: sum.wc.some((w) => w.reached === '優勝'), child: name }]);
-    const opt = { gen: s.gen + 1, lineage, bonus, clubs: s.clubs, mode: s.mode, parent: { name: sum.name, title: sum.title, combo: sum.family.combo, jointApps: sum.family.jointApps } };
+    const opt = { gen: s.gen + 1, lineage, bonus, clubs: s.clubs, npcs: s.npcs, mode: s.mode, parent: { name: sum.name, title: sum.title, combo: sum.family.combo, jointApps: sum.family.jointApps } };
     const kid = s.p.kidsBorn[0];
     if (s.childPro) Object.assign(opt, { year: s.year, age: Math.min(s.childPro.age, 30), homeClub: s.childPro.club });
     else if (kid) opt.year = Math.max(s.year, kid.year + 18);
@@ -1126,14 +1157,14 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, STATS, POS, GROW, TRAINING, LEAGUES, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, STATS, POS, GROW, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,
     CHALLENGES, SHOP, shopList, buy, narrowPot, CUP_WEEKS,
     migrate, inheritBonus, lastMatchInfo, playLastMatch, familyTitle, POLICY, autoDraft, autoYear, autoLastMatch, lastName,
     // オンライン版のサーバーが同じルールで試合を回すための部品
-    _: { rnd, challengeCleared, trackRecords, healWeek, condDown, newCup, cupPair, cupFinish, newRecords, potRange, train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp, sig, roundRobin, wageFor, rookieOffers, newPlayer, assignNumber, goalHow, assistHow, CLUB_SEED, rankLetter, legendTitle },
+    _: { applyClubData, rnd, challengeCleared, trackRecords, healWeek, condDown, newCup, cupPair, cupFinish, newRecords, potRange, train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp, sig, roundRobin, wageFor, rookieOffers, newPlayer, assignNumber, goalHow, assistHow, CLUB_SEED, rankLetter, legendTitle },
   };
 })();
 

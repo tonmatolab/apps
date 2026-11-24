@@ -28,7 +28,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { pk_done: 'この節はもう挑戦しました。次の節で！', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（1,500人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { pk_done: 'この節はもう挑戦しました。次の節で！', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
@@ -36,7 +36,7 @@
   // ----- 見た目の部品 -----
   function textOn(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) > 170 ? '#1d2433' : '#ffffff'; }
   const club = (id) => ST.clubs[id];
-  const crest = (c) => `<div class="crest" style="background:${c.color};color:${textOn(c.color)}">${esc(c.city.slice(0, 2))}</div>`;
+  const crest = (c) => `<div class="crest" style="background:${c.color};color:${textOn(c.color)}">${esc(c.mark || c.city.slice(0, 2))}</div>`;
   const posTag = (p) => `<span class="tag t-${p}">${p}</span>`;
   const man = (v) => v >= 10000 ? `${(v / 10000).toFixed(1)}億円` : `${v.toLocaleString()}万円`;
   const ratingColor = (r) => r >= 8 ? '#e0a100' : r >= 7 ? '#17924c' : r >= 6 ? '#5f8f6c' : r >= 5 ? '#8a96a0' : '#e5483a';
@@ -316,7 +316,7 @@
       const list = (rows) => rows.length ? `<ol class="list">${rows.map((r, i) => `<li${r.name === me.name ? ' style="background:var(--chip)"' : ''}><span class="no">${i + 1}</span><span class="nm">${esc(r.name)} <span class="sub">${esc(r.club)}</span></span><span class="v">${r.v}</span></li>`).join('')}</ol>` : '<p class="empty">まだいません</p>';
       body.innerHTML = `<h2>⚽ 得点ランキング（${SL.LEAGUES[lg].short}・プレイヤー）</h2>${list(ST.scorers)}<h2 style="margin-top:12px">👟 アシストランキング</h2>${list(ST.assisters)}`;
     } else if (tab === 'mates') {
-      body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>${ST.mates.length ? `<ul class="list">${ST.mates.map((m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`).join('')}</ul>` : '<p class="empty">ほかのプレイヤーはまだいません。友達を誘おう</p>'}`;
+      body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `${ST.squad ? squadHTML(club(me.club), ST.squad.rows, ST.squad.reserves) + '<h2 style="margin-top:12px">👥 本物のプレイヤーの今季</h2>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>`}${ST.mates.length ? `<ul class="list">${ST.mates.map((m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`).join('')}</ul>` : '<p class="empty">ほかのプレイヤーはまだいません。友達を誘おう</p>'}`;
     } else if (tab === 'national') {
       renderNational(body);
     } else if (tab === 'cohort') {
@@ -369,7 +369,7 @@
     if (j.error === 'unauthorized') { CODE = null; store.del('code'); return renderStart(); }
     if (j.error) { toast(errMsg(j.error)); return ST ? route() : renderStart(); }
     setState(j); route();
-    if (j.bonus) toast(`🎁 ログインボーナス +${j.bonus.amount}万円（${j.bonus.streak}日連続）`);
+    if (j.bonus) toast(`🎁 ログインボーナス +${j.bonus.amount}万円`);
   }
 
   // 自動では何度も取りに行かない（無料枠を守る）。節が進んだ直後に1回だけ取り直す

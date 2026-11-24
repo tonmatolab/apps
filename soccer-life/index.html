@@ -578,7 +578,7 @@
     </div>
     <div class="card">
       <div class="tabs" id="tabs">
-        <button data-t="table" class="on">順位表</button><button data-t="cup">カップ</button><button data-t="rec">記録</button><button data-t="career">経歴</button><button data-t="ach">実績</button>
+        <button data-t="table" class="on">順位表</button><button data-t="team">チーム</button><button data-t="cup">カップ</button><button data-t="rec">記録</button><button data-t="career">経歴</button><button data-t="ach">実績</button>
       </div>
       <div id="tabBody"></div>
     </div>
@@ -740,6 +740,7 @@
 </main>
 
 <script src="core.js"></script>
+<script src="core-world.js"></script>
 <script src="core-collection.js"></script>
 <script src="core-games.js"></script>
 <script src="save.js"></script>
@@ -780,7 +781,7 @@ function textOn(hex) {
   const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
   return (r * .299 + g * .587 + b * .114) > 170 ? '#1d2433' : '#ffffff';
 }
-const crest = (c) => `<div class="crest cr" style="background:${c.color};color:${textOn(c.color)}">${esc(c.city.slice(0, 2))}</div>`;
+const crest = (c) => `<div class="crest cr" style="background:${c.color};color:${textOn(c.color)}">${esc(c.mark || c.city.slice(0, 2))}</div>`;
 const posTag = (pos) => `<span class="tag t-${pos}">${pos}</span>`;
 const condFace = (c) => ['↓ 絶不調', '↘ 不調', '→ 普通', '↗ 好調', '↑ 絶好調'][c + 2];
 const condColor = (c) => ['#e5483a', '#f28c28', '#8a96a0', '#2fa85e', '#17924c'][c + 2];
@@ -1079,6 +1080,9 @@ function renderTab() {
     $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${c.lg === 1 ? '（下位2チームは2部へ降格）' : c.lg === 2 ? '（上位2チームが1部へ昇格）' : ''}</div>
     <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>試</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
     ${tb.map((x, i) => `<tr class="${x.c.id === c.id ? 'me' : ''} ${zone(i)}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${x.c.color}"></span>${esc(x.c.name)}</td><td>${x.t.w + x.t.d + x.t.l}</td><td>${x.t.w}</td><td>${x.t.d}</td><td>${x.t.l}</td><td>${x.t.gf - x.t.ga > 0 ? '+' : ''}${x.t.gf - x.t.ga}</td><td><b>${x.t.p}</b></td></tr>`).join('')}</table></div>`;
+  } else if (tab === 'team') {
+    const me = S.p, sq = SL.clubSquad(S.npcs || [], c.id, [{ pos: me.pos }]);
+    $('tabBody').innerHTML = squadHTML(c, sq.npcs.map(SL.npcView).concat([{ type: 'user', me: true, name: me.name, pos: me.pos, age: me.age, ovr: SL.ovr(me), no: me.number, nat: '日本', style: '' }]), sq.reserves.length);
   } else if (tab === 'cup') {
     $('tabBody').innerHTML = cupTabHTML();
   } else if (tab === 'rec') {
@@ -1100,6 +1104,21 @@ function renderTab() {
       ${items.length + wc.length ? `<ul class="ach">${items.concat(wc).join('')}</ul>` : '<p class="sub" style="text-align:center">まだタイトルはありません。最初の栄冠を目指そう</p>'}
       ${S.news.length ? `<p class="sub" style="margin:10px 0 0">${S.news.map(esc).join('　')}</p>` : ''}${scrapHTML()}`;
   }
+}
+// ----- チーム（名簿）。オンライン（online.js）からも使う -----
+// rows：{ type: 'npc'|'user', me, name, pos, age, ovr, style, nat, no }
+function squadHTML(c, rows, reserves = 0) {
+  const T = SL.CLUB_TRAITS, star = (n) => '★'.repeat(n) + '<span style="opacity:.25">' + '★'.repeat(5 - n) + '</span>';
+  const traits = c.atk == null ? '' : `<div class="sub" style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px 8px;margin:0 0 8px;font-size:.72rem">
+    ${['str', 'atk', 'dfn'].map((k) => `<span>${T[k]} <b class="num">${c[k]}</b></span>`).join('')}
+    ${['depth', 'youth', 'money', 'pop', 'recruit'].map((k) => `<span style="white-space:nowrap">${T[k]} ${star(c[k])}</span>`).join('')}</div>`;
+  const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
+  const list = rows.slice().sort((a, b) => order[a.pos] - order[b.pos] || b.ovr - a.ovr);
+  const nat = (n) => n === '日本' ? '' : `<span class="sub" style="font-size:.66rem">${esc(n)}</span>`;
+  return `<div class="sub" style="margin-bottom:4px">${esc(c.name)}（${SL.LEAGUES[c.lg].name}）・${list.length}人</div>${traits}
+    <div class="tbwrap"><table class="tb"><tr><th>#</th><th style="text-align:left">選手</th><th></th><th>歳</th><th>総合</th><th style="text-align:left">スタイル</th></tr>
+    ${list.map((x) => `<tr class="${x.me ? 'me' : ''}"><td>${x.no || ''}</td><td class="l">${x.type === 'user' ? '👤 ' : ''}${esc(x.name)} ${nat(x.nat)}</td><td><span class="tag t-${x.pos}">${x.pos}</span></td><td>${x.age}</td><td><b>${x.ovr}</b></td><td class="l" style="font-weight:600;font-size:.7rem">${esc(x.style || '')}</td></tr>`).join('')}</table></div>
+    <p class="sub" style="margin:8px 0 0;font-size:.72rem">👤 は本物のプレイヤー。1クラブ22人で、本物のプレイヤーが入ると同じポジションのNPCが控え組に回ります${reserves ? `（いま${reserves}人が控え組）` : ''}</p>`;
 }
 // ----- カップ戦 -----
 function cupTabHTML() {
@@ -1173,9 +1192,9 @@ function matchHTML(w) {
   }).join('');
   const gr = Object.entries(w.growth).map(([k, v]) => `<span class="${v < 0 ? 'dn' : ''}">${SL.STATS[k]} ${v > 0 ? '+' : ''}${v}</span>`).join('');
   return `<div class="kick">第${w.week}節・${m.home ? 'ホーム' : 'アウェイ'}</div>
-    <div class="score"><div class="tm"><div class="cr" style="background:${H.color};color:${textOn(H.color)}">${esc(H.city.slice(0, 2))}</div>${esc(H.name)}</div>
+    <div class="score"><div class="tm"><div class="cr" style="background:${H.color};color:${textOn(H.color)}">${esc(H.mark || H.city.slice(0, 2))}</div>${esc(H.name)}</div>
       <div class="sc">${m.gh} - ${m.ga}</div>
-      <div class="tm"><div class="cr" style="background:${A.color};color:${textOn(A.color)}">${esc(A.city.slice(0, 2))}</div>${esc(A.name)}</div></div>
+      <div class="tm"><div class="cr" style="background:${A.color};color:${textOn(A.color)}">${esc(A.mark || A.city.slice(0, 2))}</div>${esc(A.name)}</div></div>
     <div class="res"><span class="r${res[0]}">${res[1]}</span></div>
     ${m.rival ? `<div class="banner">🔥 ライバル ${esc(m.rival.name)} との対決${m.rival.played ? (m.mins > 0 ? `：${res[0] === 'W' ? '勝った！' : res[0] === 'L' ? '負けた…' : '引き分け'}` : '（あなたは出番なし）') : '（ライバルは欠場）'}</div>` : ''}
     ${m.kid ? `<div class="banner kid">👨‍👧 親子でピッチに立った！${m.combo ? ' 親子弾が決まった！！' : m.kid.goals ? ` ${esc(m.kid.name)}がゴール！` : ''}</div>` : ''}

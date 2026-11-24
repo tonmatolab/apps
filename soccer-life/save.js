@@ -12,9 +12,12 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SaveData = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (SL) {
   const KEY = 'save';
-  const VERSION = 1; // セーブデータの形が変わったら上げて、下の MIGRATIONS に移行を足す
-  // MIGRATIONS[n] は「バージョン n のデータを n+1 にする」関数
-  const MIGRATIONS = {};
+  const VERSION = 2; // セーブデータの形が変わったら上げて、下の MIGRATIONS に移行を足す
+  // MIGRATIONS[n] は「バージョン n のデータを n+1 にする」関数。最後に s.v を n+1 にする
+  const MIGRATIONS = {
+    // v1→v2：クラブの新しい名前・略称・特徴（IDと所属リーグ・強さはそのまま、経歴のクラブ名は当時のまま）、NPC選手の名簿
+    1: (s) => { SL.upgradeWorld(s); s.v = 2; return s; },
+  };
 
   const backupKey = (v) => `save-backup-v${v}`;
 

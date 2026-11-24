@@ -42,8 +42,13 @@ export function addNews(w, t) {
 // ----- データの版管理 -----
 // データの形を変えるときは VERSION を上げて、MIGRATIONS[古い版] に「1つ新しい版へ直す」関数を足す。
 // 移行は起動のたびに読み込んだデータに対して行い、次に保存するときに新しい形で書かれる。
-export const WORLD_VERSION = 1;
-const WORLD_MIGRATIONS = {};
+export const WORLD_VERSION = 2;
+const WORLD_MIGRATIONS = {
+  // v1→v2：クラブ名・略称・特徴を ID ごとに付け直す（今の所属リーグと強さはそのまま。経歴のクラブ名は当時のまま）
+  1: (w) => { SL._.applyClubData(w.clubs); },
+};
+// NPC選手を作るときのシード（オンラインの世界は1つなので固定）。名簿は rosters 表にクラブごとに保存する
+export const NPC_SEED = 1;
 export const MEMBER_VERSION = 1;
 const MEMBER_MIGRATIONS = {};
 // プレイヤー1人分を今の形にそろえる（以前は起動処理の中に直接書いていたもの）
@@ -342,7 +347,11 @@ export function endSeason(w, members) {
   const r1 = standings(w, 1).slice(-2).map((x) => x.c), p2 = standings(w, 2).slice(0, 2).map((x) => x.c);
   r1.forEach((x) => { x.lg = 2; }); p2.forEach((x) => { x.lg = 1; });
   for (const m of active) if (p2.some((x) => x.id === m.pl.club) && m.season.apps >= 5) { m.trophies.push(`${w.year} 1部昇格`); m.seasonAwards.push('1部昇格'); }
-  for (const x of w.clubs) x.str = clamp(Math.round(x.str + (CLUB_SEED[x.id][3] - x.str) * .3 + gauss() * 1.5 + (p2.includes(x) ? 3 : 0) - (r1.includes(x) ? 2 : 0)), 44, 90);
+  for (const x of w.clubs) {
+    const old = x.str;
+    x.str = clamp(Math.round(x.str + (CLUB_SEED[x.id].str - x.str) * .3 + gauss() * 1.5 + (p2.includes(x) ? 3 : 0) - (r1.includes(x) ? 2 : 0)), 44, 90);
+    if (x.atk != null) { x.atk += x.str - old; x.dfn += x.str - old; }
+  }
   w.history.push({ year: w.year, champions, moves: [...r1.map((x) => `${x.name} が2部へ降格`), ...p2.map((x) => `${x.name} が1部へ昇格`)] });
   if (w.history.length > 30) w.history.shift();
 

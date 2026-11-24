@@ -36,17 +36,29 @@ function sane(s, label) {
   check(Array.isArray(s.log) && Array.isArray(s.papers) && s.records, `${label}: 記録・新聞・ログがある`);
 }
 
+// v1→v2：クラブは ID ごとに新しい名前・特徴になり、所属リーグと強さ・経歴のクラブ名はそのまま。NPCが22人ずつできる
+function migratedWorld(old, s, label) {
+  check(s.clubs.length === 30 && s.clubs.every((c, i) => c.id === i && c.lg === old.clubs[i].lg && c.str === old.clubs[i].str), `${label}: クラブのIDと所属リーグ・強さはそのまま`);
+  check(s.clubs.every((c) => c.short && c.mark && c.atk != null && c.recruit >= 1 && c.name !== old.clubs[c.id].name), `${label}: クラブ名・略称・特徴が新しくなる`);
+  check(JSON.stringify(s.history.map((h) => h.club)) === JSON.stringify(old.history.map((h) => h.club)), `${label}: 経歴のクラブ名は当時のまま`);
+  check(s.p.club === old.p.club && s.p.name === old.p.name && JSON.stringify(s.p.stats) === JSON.stringify(old.p.stats), `${label}: 選手本人のデータは変わらない`);
+  check(Array.isArray(s.npcs) && s.npcs.length === 660 && s.clubs.every((c) => s.npcs.filter((n) => n.club === c.id).length === 22), `${label}: NPCが各クラブ22人`);
+  const again = SL.upgradeWorld(JSON.parse(JSON.stringify(old)));
+  check(JSON.stringify(again.npcs) === JSON.stringify(s.npcs), `${label}: 同じセーブから移行すると同じNPCになる`);
+}
+
 for (const f of files) {
   const label = f.replace('.json', '');
   const raw = fs.readFileSync(path.join(DIR, f), 'utf8');
   const store = fakeStore({ save: raw });
   const r = SaveData.read(store);
-  check(r.status === 'ok', `${label}: 読み込める（${r.status}${r.error ? ' ' + r.error : ''}）`);
+  check(r.status === 'migrated' && r.from === 1 && r.state && r.state.v === 2, `${label}: v1 から v2 に移行して読み込める（${r.status}${r.error ? ' ' + r.error : ''}）`);
   if (!r.state) continue;
   check(store.get('save') === raw, `${label}: 読み込みで元のデータを書き換えない`);
   check(store.get(SaveData.backupKey(1)) === raw, `${label}: 元のデータのバックアップが取れている`);
   let s = r.state;
   sane(s, label + '（読込直後）');
+  migratedWorld(JSON.parse(raw), s, label);
   try { s = continuePlay(s); sane(s, label + '（2シーズン後）'); } catch (e) { check(false, `${label}: 続きから遊べる（${e.stack.split('\n').slice(0, 3).join(' / ')}）`); continue; }
   // 書いて読み直しても同じ
   SaveData.write(store, s);

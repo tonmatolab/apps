@@ -88,6 +88,30 @@ try {
   const restored = (await call('/state', { code: A })).j;
   check(restored.world.week === snapshot.world.week && restored.me.money === snapshot.me.money && JSON.stringify(restored.me.history) === JSON.stringify(snapshot.me.history), '読み込むと書き出した時点の状態に戻る');
   for (const u of users) check((await call('/state', { code: u.code })).status === 200, `${u.name}は戻したあともログインできる`);
+  // クラブ・名簿（Phase 1）
+  {
+    const st0 = (await call('/state', { code: A })).j;
+    check(st0.clubs.length === 30 && st0.clubs.every((c) => c.short && c.mark && c.atk != null), 'クラブに略称・エンブレム文字・特徴がある');
+    check(st0.squad && st0.squad.rows.length === 22 && st0.squad.rows.some((r) => r.me && r.type === 'user'), `自分のクラブの名簿が22人で、自分が入っている（${st0.squad && st0.squad.rows.length}）`);
+    check(st0.squad.rows.filter((r) => r.type === 'npc').every((r) => r.name && r.ovr > 0 && r.style && !('stats' in r)), '名簿のNPCに名前・総合力・スタイルがある（細かい能力は出さない）');
+    check(ex.j.rosters && ex.j.rosters.length === 30, '書き出しに名簿（30クラブ）が入っている');
+    const npcIds = ex.j.rosters.flatMap((r) => JSON.parse(r.data).map((p) => p.id));
+    check(npcIds.length === 660 && new Set(npcIds).size === 660, 'NPCは660人でIDが重複しない');
+    // 名簿のない、古い形（v1）の世界を読み込むと、クラブ名が付け直され、名簿が作られる
+    const w1 = JSON.parse(ex.j.world);
+    w1.v = 1; for (const c of w1.clubs) { c.name = `旧クラブ${c.id}`; c.city = `旧${c.id}`; for (const k of ['short', 'mark', 'atk', 'dfn', 'depth', 'youth', 'money', 'pop', 'recruit', 'nat']) delete c[k]; }
+    const lgBefore = w1.clubs.map((c) => c.lg).join();
+    const im1 = await call('/dev/import', { body: { ...ex.j, world: JSON.stringify(w1), rosters: undefined } });
+    check(im1.status === 200 && im1.j.npcs === 660, `v1の世界を読み込むと名簿ができる（${im1.status} ${im1.j && im1.j.npcs}）`);
+    const ex1 = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j, w2 = JSON.parse(ex1.world);
+    check(w2.v === 2 && w2.clubs.every((c) => c.short && !c.name.startsWith('旧')), '世界が v2 になり、クラブ名が新しくなる');
+    check(w2.clubs.map((c) => c.lg).join() === lgBefore, '移行しても今の所属リーグはそのまま');
+    await call('/dev/import', { body: { ...ex.j, world: JSON.stringify(w1), rosters: undefined } });
+    const ex1b = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j;
+    check(ex1.rosters.length === 30 && JSON.stringify(ex1.rosters) === JSON.stringify(ex1b.rosters), '同じデータから作り直すと同じ名簿になる（決まったシード）');
+    const stA = (await call('/state', { code: A })).j;
+    check(stA.me.money === snapshot.me.money && JSON.stringify(stA.me.history) === JSON.stringify(snapshot.me.history), '移行してもプレイヤーのお金・経歴はそのまま');
+  }
   // 引退 → 次の世代
   for (let i = 0; i < 9; i++) await call('/dev/tick', { body: { n: 40 } });
   for (let k = 0; k < 40; k++) { st = (await call('/state', { code: users[1].code })).j; if (st.me.status === 'retired' || (st.me.status === 'off' && st.me.offer.canRetire)) break; await call('/dev/tick', { body: { n: 1 } }); }

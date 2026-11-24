@@ -266,7 +266,7 @@
   }
 
   // 画面に見せる1人分（能力の細かい値は出さない）
-  function npcView(p) { return { id: p.id, type: 'npc', name: p.name, nat: p.nat, pos: p.pos, age: p.age, ovr: ovr(p), style: STYLES[p.style] ? STYLES[p.style].name : '', no: p.no, skills: skillsOf(p) }; }
+  function npcView(p) { return { id: p.id, type: 'npc', name: p.name, nat: p.nat, pos: p.pos, age: p.age, ovr: ovr(p), style: STYLES[p.style] ? STYLES[p.style].name : '', no: p.no, skills: skillsOf(p), reborn: p.reborn || 0 }; }
 
   // 保存済みの世界を新しい形にする（一人用のセーブ v1→v2、オンラインの世界 v1→v2 で共通）。何度呼んでも同じ結果
   // クラブは ID ごとに名前・色・特徴を付け直す（所属リーグと今の強さはそのまま）。NPCがいなければ、その世界に決まったシードで作る

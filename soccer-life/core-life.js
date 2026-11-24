@@ -52,7 +52,7 @@
   // 引退した人を、記録に残す形に（小さく）
   function legendRow(p, clubs, year) {
     const c = p.car || {};
-    return { id: p.id, name: p.name, nat: p.nat, pos: p.pos, years: `${p.from || year}-${year}`, age: p.age, clubs: (p.cl || [p.club]).map((id) => (clubs[id] ? clubs[id].short || clubs[id].name : '?')),
+    return { id: p.id, name: p.name, gen: p.reborn || 1, nat: p.nat, pos: p.pos, years: `${p.from || year}-${year}`, age: p.age, clubs: (p.cl || [p.club]).map((id) => (clubs[id] ? clubs[id].short || clubs[id].name : '?')),
       apps: c.apps || 0, goals: c.goals || 0, assists: c.assists || 0, cs: c.cs || 0, best: p.best || ovr(p), awards: (p.aw || []).slice(-8), score: legendScore(p) };
   }
   const notable = (p) => (p.aw && p.aw.length >= 5) || (p.best || 0) >= 86 || (p.car && (p.car.goals >= 150 || p.car.apps >= 450));
@@ -81,9 +81,10 @@
 
   // ----- NPCの1年 -----
   // npcs：名簿（その場で書き換える）、clubs：クラブ、stats：今季の成績（id → NPC_STAT_KEYS の配列）、year：終わったシーズンの年
-  // legends：レジェンドの一覧（その場で足す）。返り値：{ retired, moves, rookies, legends（今回新しく入った人） }
-  function npcOffseason(npcs, clubs, stats, year, legends = [], humans = []) {
-    const out = { retired: [], moves: [], rookies: 0, legends: [] };
+  // legends：レジェンドの一覧（その場で足す）。返り値：{ retired, moves, rookies, legends（今回新しく入った人）, reborn }
+  // opt.rebirth：転生の待ち行列（オンラインだけ渡す）。有名選手が引退すると10〜20年後に同じ名前の17歳として戻ってくる
+  function npcOffseason(npcs, clubs, stats, year, legends = [], humans = [], opt = {}) {
+    const out = { retired: [], moves: [], rookies: 0, legends: [], reborn: [] };
     const used = new Set(npcs.map((p) => p.name).concat(legends.map((l) => l.name)));
     let nextId = Math.max(0, ...npcs.map((p) => Number(String(p.id).slice(1)) || 0), ...legends.map((l) => Number(String(l.id || 'n0').slice(1)) || 0)) + 1;
     // 1) 今季の成績を通算に足し、年をとって成長・衰え
@@ -104,9 +105,33 @@
       const row = legendRow(p, clubs, year);
       out.retired.push({ name: p.name, age: p.age, club: c ? c.name : '', pos: p.pos, best: row.best, legend: notable(p) });
       if (notable(p)) { legends.push(row); out.legends.push(row); }
+      if (opt.rebirth && p.fam) opt.rebirth.push({ name: p.name, nat: p.nat, pos: p.pos, gen: (p.reborn || 1) + 1, at: year + ri(10, 20) });
       npcs[i] = rookie(npcs, c, p.pos, year, nextId++, used);
       npcs[i].no = p.no; // 背番号は引き継ぐ
       out.rookies++;
+    }
+    // 2b) 転生：時期が来た有名選手が、同じ名前の17歳として育成の得意なクラブに入る。
+    //     そのクラブの同じポジションで一番弱い選手（有名選手以外）が入れ替わりに引退する（22人の枠を守る）
+    if (opt.rebirth) {
+      const due = opt.rebirth.filter((r) => r.at <= year + 1 && !npcs.some((p) => p.name === r.name));
+      for (const r of due) {
+        const fam = (SL._.FAMOUS || []).find((f) => f[0] === r.name), lv = fam ? fam[3] : 3;
+        const cands = clubs.filter((c) => (c.youth || 3) >= 4);
+        const c = pick(cands.length ? cands : clubs);
+        const out1 = npcs.filter((p) => p.club === c.id && p.pos === r.pos && !p.fam).sort((x, y) => ovr(x) - ovr(y))[0];
+        if (!out1) continue;
+        out.retired.push({ name: out1.name, age: out1.age, club: c.name, pos: out1.pos, best: out1.best || ovr(out1), legend: false });
+        const rr = SL._.worldRng(SL._.hashStr(`reborn:${r.name}:${year}`));
+        const target = clamp(Math.round(c.str - 10 + lv * 2 + rr.gauss() * 2), 45, 80);
+        const p = SL._.makeNpc('n' + String(nextId++).padStart(4, '0'), r.name, r.nat, r.pos, target, 17, rr, { fam: 1, reborn: r.gen });
+        // 才能は前世の格どおり（また一流になれる）
+        const top = (r.nat === '日本' ? { 1: 64, 2: 69, 3: 74, 4: 79 } : { 3: 81, 4: 85, 5: 90 })[lv] || 80;
+        p.pot = clamp(top + rr.ri(-2, 3), target + 5, 95);
+        p.club = c.id; p.no = out1.no; p.from = year + 1;
+        npcs[npcs.indexOf(out1)] = p;
+        opt.rebirth.splice(opt.rebirth.indexOf(r), 1);
+        out.reborn.push({ name: r.name, gen: r.gen, club: c.name, pos: r.pos });
+      }
     }
     legends.sort((x, y) => y.score - x.score); if (legends.length > 100) legends.length = 100;
     // 3) 移籍：今のクラブより明らかに強い選手は、より強いクラブへ（同じポジションの一番弱い選手と入れ替え）
@@ -140,6 +165,7 @@
     const leg = rep.retired.filter((r) => r.legend).slice(0, 3);
     if (leg.length) notes.push(`👋 引退：${leg.map((r) => `${r.name}（${r.age}歳）`).join('、')}${rep.retired.length > leg.length ? ` ほか${rep.retired.length - leg.length}人` : ''}`);
     else if (rep.retired.length) notes.push(`👋 ${rep.retired.length}人のNPCが引退し、${rep.rookies}人の新人が入団した`);
+    for (const r of rep.reborn || []) notes.push(`✨ 転生！ ${r.name}が17歳で${r.club}に入団（${r.gen}度目の人生）`);
     return notes;
   }
 

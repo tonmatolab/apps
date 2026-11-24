@@ -52,6 +52,28 @@ check(s.npcLegends.every((l, i) => i === 0 || s.npcLegends[i - 1].score >= l.sco
 const youngStars = n.filter((p) => p.age <= 23 && SL.ovr(p) >= 75).length;
 check(youngStars > 3, `若手から強い選手が育つ（23歳以下で総合75以上 ${youngStars}人）`);
 console.log(`    レジェンド上位：${s.npcLegends.slice(0, 3).map((l) => `${l.name}（${l.pos}・${l.years}・${l.goals}G・最高${l.best}）`).join(' / ')}`);
+check(n.every((p) => !p.reborn), '一人用では転生しない');
+// 転生（オンラインだけ）：60シーズン、NPCの1年だけを回す
+{
+  SL.setRng(seeded(77));
+  const clubs = SL._.newWorld(), npcs = SL.newNpcWorld(clubs, 1), legends = [], rebirth = [];
+  let reborn = [], dupOk = true, rosterOk = true;
+  for (let y = 0; y < 60; y++) {
+    const rep = SL.npcOffseason(npcs, clubs, {}, 2027 + y, legends, [], { rebirth });
+    reborn = reborn.concat(rep.reborn);
+    if (new Set(npcs.map((p) => p.name)).size !== npcs.length) dupOk = false;
+    for (const c of clubs) { const l = npcs.filter((p) => p.club === c.id), q = {}; l.forEach((p) => { q[p.pos] = (q[p.pos] || 0) + 1; }); if (l.length !== 22 || q.GK !== 3 || q.DF !== 7 || q.MF !== 7 || q.FW !== 5) rosterOk = false; }
+  }
+  const now = npcs.filter((p) => p.reborn);
+  check(reborn.length > 20, `有名選手が転生して戻ってくる（60年で${reborn.length}人）`);
+  check(dupOk, '同じ名前の選手が同時に2人いることはない');
+  check(rosterOk, '転生しても全クラブ22人・ポジションの枠どおり');
+  check(now.every((p) => p.fam && p.reborn >= 2 && SL._.FAMOUS.some((f) => f[0] === p.name)), '転生した選手は有名選手の名前で、何度目の人生かが分かる');
+  check(reborn.every((r) => r.gen >= 2), '転生は2度目の人生から');
+  const grown = now.filter((p) => p.age >= 24 && SL.ovr(p) >= 75).length;
+  check(grown > 0, `転生した選手がまた一流に育つ（24歳以上で総合75以上 ${grown}人）`);
+  console.log(`    転生の例：${reborn.slice(0, 3).map((r) => `${r.name}（${r.gen}度目・${r.club}）`).join(' / ')}`);
+}
 // 成長の型
 {
   const counts = {};

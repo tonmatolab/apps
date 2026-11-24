@@ -356,7 +356,8 @@ export function endSeason(w, members, npcs = [], npcSeason = null) {
   }
   // NPCの1年（成長・衰え・移籍・引退・新人）。名簿はこのあと league.js が保存する
   const R2 = w.records || (w.records = newWorldRecords());
-  const rep = SL.npcOffseason(npcs, w.clubs, stats, w.year, R2.npcLegends || (R2.npcLegends = []));
+  // オンラインだけ：有名選手は引退から10〜20年後に転生する（待ち行列は世界の記録に残す）
+  const rep = SL.npcOffseason(npcs, w.clubs, stats, w.year, R2.npcLegends || (R2.npcLegends = []), [], { rebirth: R2.rebirth || (R2.rebirth = []) });
   for (const t of SL.offseasonNotes(rep)) addNews(w, t);
   w.year++; w.season++;
   w.phase = 'off'; w.offLeft = OFF_TICKS;

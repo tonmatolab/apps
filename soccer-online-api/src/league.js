@@ -43,6 +43,22 @@ export class League extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, hash TEXT UNIQUE, created INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, account TEXT, active INTEGER, data TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS world (k TEXT PRIMARY KEY, v TEXT)');
+    const fresh = this.loadState();
+    this.ensureSchedule(fresh);
+    await this.armAlarm();
+  }
+
+  // 次の試合・次のルーレットの時刻がなければ決めて、必ず保存する
+  // （保存しないと、起き直すたびに時刻が先送りされて進まない／アラームを設定できない）
+  ensureSchedule(forceSave = false) {
+    let changed = forceSave;
+    if (!this.w.rl) { this.w.rl = G.newTable(Date.now(), this.rlMs()); changed = true; }
+    if (!(this.w.nextAt > 0)) { this.w.nextAt = Date.now() + this.tickMs(); changed = true; }
+    if (changed) this.saveWorld();
+  }
+
+  // 保存されている状態をメモリに読み込む（起動時と、処理が失敗して取り消したとき）。新しく作ったときは true
+  loadState() {
     const row = this.sql.exec("SELECT v FROM world WHERE k = 'w'").toArray()[0];
     this.w = G.migrateWorld(row ? JSON.parse(row.v) : G.newWorldState());
     this.accounts = new Map(); // hash -> account id
@@ -50,15 +66,17 @@ export class League extends DurableObject {
     this.members = new Map(); // player id -> member
     this.byAccount = new Map(); // account -> player id（現役中または引退直後の1人）
     for (const r of this.sql.exec('SELECT id, account, data FROM players WHERE active = 1')) {
-      const m = JSON.parse(r.data); this.members.set(r.id, m); this.byAccount.set(r.account, r.id);
-      if (m.pl.potLo == null) Object.assign(m.pl, G.SL._.potRange(m.pl.pot));
-      if (m.status !== 'draft' && m.status !== 'retired' && m.debutYear == null) m.debutYear = (m.history[0] && m.history[0].year) || this.w.year;
+      const m = G.migrateMember(JSON.parse(r.data), this.w);
+      this.members.set(r.id, m); this.byAccount.set(r.account, r.id);
     }
-    // 台を初めて作ったらすぐ保存する（保存しないと、起き直すたびに次の時刻が先送りされて回らない）
-    if (!this.w.rl) { this.w.rl = G.newTable(Date.now(), this.rlMs()); this.saveWorld(); }
-    if (!row) this.saveWorld();
-    if (!this.w.nextAt) this.w.nextAt = Date.now() + this.tickMs();
-    await this.armAlarm();
+    return !row;
+  }
+
+  // 複数の書き込みを「全部成功」か「全部なし」にする。失敗したらメモリも保存済みの状態に戻す。
+  // アラームが失敗するとCloudflareが同じ処理をやり直すので、途中まで進んだ状態が残ると節が二重に進む。それを防ぐ。
+  atomic(fn) {
+    try { return this.ctx.storage.transactionSync(fn); }
+    catch (e) { this.loadState(); throw e; }
   }
 
   tickMs() { return Math.max(1, Number(this.env.TICK_MINUTES || 60)) * 60000; }
@@ -70,8 +88,11 @@ export class League extends DurableObject {
 
   async alarm() {
     const now = Date.now();
-    if (now >= this.w.rl.nextAt - 500) this.rlSpin();
-    if (now >= this.w.nextAt - 500) { this.tick(); this.w.nextAt = now + this.tickMs(); this.saveWorld(); }
+    // 「次の時刻」も同じまとまりで保存するので、成功したあとにアラームがやり直されても二重には進まない
+    this.atomic(() => {
+      if (now >= this.w.rl.nextAt - 500) this.rlSpin();
+      if (now >= this.w.nextAt - 500) { this.tick(); this.w.nextAt = now + this.tickMs(); this.saveWorld(); }
+    });
     await this.armAlarm();
   }
 
@@ -130,6 +151,7 @@ export class League extends DurableObject {
       G.playMatchday(w, all);
       if (w.week >= G.SEASON_WEEKS) G.endSeason(w, all);
       for (const m of all) if (m.status === 'active' || m.status === 'off') this.saveMember(m);
+      if (this.failNext) { this.failNext = false; throw new Error('テスト用の失敗（途中まで保存したところで止める）'); }
     } else {
       w.offLeft--;
       if (w.offLeft <= 0) { G.finishOffseason(w, all); for (const m of all) this.saveMember(m); }
@@ -155,8 +177,41 @@ export class League extends DurableObject {
       if (req.method === 'POST' && path === '/signup') return this.signup(req, body);
       if (req.method === 'POST' && path === '/dev/tick') {
         if (this.env.DEV !== '1') return err('not_found', 404);
-        const n = Math.min(40, Number(body.n) || 1); for (let i = 0; i < n; i++) this.tick();
+        const n = Math.min(40, Number(body.n) || 1);
+        this.atomic(() => { for (let i = 0; i < n; i++) this.tick(); });
         return json({ ok: true, world: this.worldView() });
+      }
+      // 開発用：節の途中でわざと失敗させ、保存が取り消されることを確かめる
+      if (req.method === 'POST' && path === '/dev/fail-tick') {
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        this.failNext = true;
+        try { this.atomic(() => this.tick()); } catch (e) { return json({ failed: true, message: String(e.message), world: this.worldView() }, 500); }
+        return json({ failed: false });
+      }
+      // 開発用：書き出したデータをそのまま読み込む（本番データのコピーで移行を試すため）
+      if (req.method === 'POST' && path === '/dev/import') {
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        if (!body || !Array.isArray(body.accounts) || !Array.isArray(body.players) || !body.world) return err('bad_dump');
+        this.atomic(() => {
+          this.sql.exec('DELETE FROM accounts'); this.sql.exec('DELETE FROM players'); this.sql.exec('DELETE FROM world');
+          for (const a of body.accounts) this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', a.id, a.hash, a.created);
+          for (const p of body.players) this.sql.exec('INSERT INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', p.id, p.account, p.active, p.data);
+          this.sql.exec("INSERT INTO world (k, v) VALUES ('w', ?)", body.world);
+        });
+        this.loadState(); this.ensureSchedule(); await this.armAlarm();
+        return json({ ok: true, players: this.members.size, world: this.worldView() });
+      }
+      // 管理用：全データの書き出し（バックアップ）。ADMIN_KEY（Cloudflareの秘密の設定）を知っている人だけ
+      if (req.method === 'GET' && path === '/admin/export') {
+        const key = this.env.ADMIN_KEY || '';
+        if (key.length < 16 || req.headers.get('X-Admin-Key') !== key) return err('not_found', 404);
+        const dump = {
+          app: 'soccer-online', exportedAt: new Date().toISOString(), worldVersion: G.WORLD_VERSION, memberVersion: G.MEMBER_VERSION,
+          accounts: this.sql.exec('SELECT id, hash, created FROM accounts').toArray(),
+          players: this.sql.exec('SELECT id, account, active, data FROM players').toArray(),
+          world: (this.sql.exec("SELECT v FROM world WHERE k = 'w'").toArray()[0] || {}).v || null,
+        };
+        return json(dump);
       }
       if (req.method === 'POST' && path === '/dev/spin') {
         if (this.env.DEV !== '1') return err('not_found', 404);
@@ -229,8 +284,8 @@ export class League extends DurableObject {
         const name = cleanName(body.name); if (!name) return err('bad_name');
         if (!G.POS[body.pos]) return err('bad_pos');
         const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w, [...this.members.values()]);
-        this.saveMember(m, 0); this.members.delete(m.id);
-        this.members.set(nm.id, nm); this.byAccount.set(nm.account, nm.id); this.saveMember(nm);
+        this.atomic(() => { this.saveMember(m, 0); this.saveMember(nm); });
+        this.members.delete(m.id); this.members.set(nm.id, nm); this.byAccount.set(nm.account, nm.id);
         return json(this.stateView(nm));
       }
       return err('not_found', 404);

@@ -466,6 +466,12 @@
       <button class="btn primary" id="olEntryBtn">オンラインで遊ぶ ▶</button>
     </div>
     <button class="btn" id="colBtn" style="margin-top:14px">📚 称号図鑑・実績</button>
+    <p class="sub hidden" id="saveNote" style="margin:10px 0 0;text-align:center;font-weight:800;color:var(--red)"></p>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost" id="exportBtn">💾 セーブを書き出す</button>
+      <button class="btn ghost" id="importBtn">📂 書き出したセーブを戻す</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" class="hidden">
     <div class="card">
       <div class="feats">
         <div><b>🏃 練習で成長</b>伸ばす能力は自分で選ぶ</div>
@@ -734,6 +740,9 @@
 </main>
 
 <script src="core.js"></script>
+<script src="core-collection.js"></script>
+<script src="core-games.js"></script>
+<script src="save.js"></script>
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
@@ -745,11 +754,14 @@ const store = {
   get(k) { try { return localStorage.getItem('soccer-' + k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem('soccer-' + k, v); } catch {} },
   del(k) { try { localStorage.removeItem('soccer-' + k); } catch {} },
+  keys() { try { return Object.keys(localStorage).filter((k) => k.startsWith('soccer-')).map((k) => k.slice(7)); } catch { return []; } },
 };
 let S = null; // ゲームの状態（core.js のルールで動く。そのまま保存する）
 let busy = false;
-const save = () => { if (S) store.set('save', JSON.stringify(S)); };
-function loadSave() { try { const j = JSON.parse(store.get('save')); return j && j.v === 1 ? SL.migrate(j) : null; } catch { return null; } }
+// セーブは save.js 経由（バージョン管理・移行前のバックアップ・読めないデータの保護）
+const save = () => { if (S) SaveData.write(store, S); };
+let saveStatus = 'none';
+function loadSave() { const r = SaveData.read(store); saveStatus = r.status; return r.state; }
 
 // ===== 共通 counter-api =====
 const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
@@ -908,6 +920,9 @@ function treeHead(gen) {
 function renderTitle() {
   $('heroArt').innerHTML = heroSVG();
   const sv = loadSave();
+  $('saveNote').classList.toggle('hidden', saveStatus !== 'broken' && saveStatus !== 'newer');
+  $('saveNote').textContent = saveStatus === 'newer' ? '⚠️ 新しい版のセーブデータがあります。ページを再読み込みしてください（データは残っています）'
+    : saveStatus === 'broken' ? '⚠️ セーブデータを読み込めませんでした（データは消さずに残しています。「セーブを書き出す」で保存できます）' : '';
   $('contBtn').classList.toggle('hidden', !sv || sv.phase === 'retired');
   if (sv && sv.phase !== 'retired') $('contBtn').innerHTML = `▶ つづきから <span style="font-size:.78rem;opacity:.85">（${esc(sv.p.name)}・${sv.p.age}歳）</span>`;
   const lin = sv ? sv.lineage.concat(sv.phase === 'retired' && sv.summary ? [lineEntry(sv.summary)] : []) : [];
@@ -1685,8 +1700,31 @@ function resume() {
 }
 
 $('contBtn').onclick = resume;
+// セーブの書き出し（ファイルに保存）と、書き出したファイルからの復元
+$('exportBtn').onclick = () => {
+  const keys = store.keys().filter((k) => k === 'save' || k === 'collection' || k.startsWith('save-'));
+  const blob = new Blob([JSON.stringify(SaveData.exportAll(store, keys), null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `soccer-life-save-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async () => {
+  const file = $('importFile').files[0]; $('importFile').value = '';
+  if (!file) return;
+  let j; try { j = JSON.parse(await file.text()); } catch { return toast('ファイルを読めませんでした'); }
+  if (!j || j.app !== 'soccer-life' || !j.data) return toast('サッカー人生のセーブファイルではありません');
+  if (!confirm('書き出したセーブで今のデータを置き換えます（今のデータは別の場所に退避します）。よろしいですか？')) return;
+  const cur = store.get('save'); if (cur != null) store.set(`save-replaced-${Date.now()}`, cur);
+  for (const [k, v] of Object.entries(j.data)) if (k === 'save' || k === 'collection' || k.startsWith('save-')) store.set(k, v);
+  toast('セーブを戻しました'); renderTitle();
+};
 $('newBtn').onclick = () => {
   const sv = loadSave();
+  if (saveStatus === 'broken' || saveStatus === 'newer') {
+    if (!confirm('前のセーブデータを読み込めませんでした。データは消さずに別の場所へ退避してから、はじめからにします。よろしいですか？')) return;
+    SaveData.protectBeforeOverwrite(store);
+  }
   if (sv && sv.phase !== 'retired' && !confirm(`${sv.p.name}（${sv.p.age}歳）のデータは消えます。はじめからにしますか？`)) return;
   renderCreate();
 };

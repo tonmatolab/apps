@@ -12,6 +12,9 @@
 //   POST /api/decide {choice}        → オフの契約：'stay' / 'retire' / オファーの番号
 //   POST /api/nextgen {name, pos}    → 引退後、次の世代を始める
 //   POST /api/dev/tick {n}           → 開発用：n節すすめる（DEV=1 のときだけ）
+//   POST /api/dev/fail-tick          → 開発用：節の途中で失敗させ、保存が取り消されるか確かめる（DEV=1）
+//   POST /api/dev/import {dump}      → 開発用：書き出したデータを読み込む（DEV=1。本番データのコピーで移行を試す）
+//   GET  /api/admin/export           → 管理用：全データの書き出し（X-Admin-Key ヘッダーに ADMIN_KEY）
 export { League } from './league.js';
 
 const ALLOWED_ORIGINS = [

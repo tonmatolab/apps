@@ -1,0 +1,70 @@
+{
+ "note": "node tests/soccer/rules.test.js --update で作り直す。ルールを意図して変えたときだけ",
+ "stats": {
+  "careers": 111,
+  "score": [
+   558,
+   3952,
+   5601
+  ],
+  "goals": [
+   0,
+   8,
+   198
+  ],
+  "apps": [
+   68,
+   304,
+   344
+  ],
+  "caps": [
+   0,
+   69,
+   94
+  ],
+  "titles": [
+   8,
+   37,
+   51
+  ],
+  "letters": {
+   "S": 23,
+   "SS": 5,
+   "C": 6,
+   "A": 33,
+   "B": 25,
+   "D": 19
+  },
+  "challenges": {
+   "loyal": [
+    11,
+    16
+   ],
+   "domestic": [
+    6,
+    12
+   ],
+   "weak": [
+    10,
+    12
+   ],
+   "lowpot": [
+    6,
+    12
+   ],
+   "norest": [
+    4,
+    12
+   ],
+   "keeper": [
+    8,
+    12
+   ]
+  },
+  "distinctTitles": 106,
+  "achievements": 36,
+  "rouletteReturn": 0.971,
+  "pkGoalRate": 0.738
+ },
+ "fingerprint": "2789691d"
+}

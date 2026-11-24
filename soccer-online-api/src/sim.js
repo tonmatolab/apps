@@ -1,7 +1,7 @@
 // ===== オンラインリーグのルール =====
 // 1人用の soccer-life/core.js のルール（成長・衰え・評価・契約・引退）をそのまま使い、
 // 「同じリーグに本物のプレイヤーが何人もいる」ところだけをここで扱う。
-import SL from '../../soccer-life/core.js';
+import SL from '../../soccer-life/sl.js'; // core.js と分割したファイル（称号・ミニゲーム）をまとめて読み込む
 
 const { train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp, roundRobin, rookieOffers, newPlayer, goalHow, assistHow, CLUB_SEED,
   trackRecords, healWeek, condDown, newCup, cupPair, cupFinish, newRecords } = SL._;
@@ -39,7 +39,24 @@ export function addNews(w, t) {
   w.news.unshift({ t, at: Date.now(), y: w.year });
   if (w.news.length > 30) w.news.length = 30;
 }
+// ----- データの版管理 -----
+// データの形を変えるときは VERSION を上げて、MIGRATIONS[古い版] に「1つ新しい版へ直す」関数を足す。
+// 移行は起動のたびに読み込んだデータに対して行い、次に保存するときに新しい形で書かれる。
+export const WORLD_VERSION = 1;
+const WORLD_MIGRATIONS = {};
+export const MEMBER_VERSION = 1;
+const MEMBER_MIGRATIONS = {};
+// プレイヤー1人分を今の形にそろえる（以前は起動処理の中に直接書いていたもの）
+export function migrateMember(m, w) {
+  if (!m.v) m.v = 1;
+  while (m.v < MEMBER_VERSION) { MEMBER_MIGRATIONS[m.v](m, w); m.v++; }
+  if (m.pl.potLo == null) Object.assign(m.pl, SL._.potRange(m.pl.pot));
+  if (m.status !== 'draft' && m.status !== 'retired' && m.debutYear == null) m.debutYear = (m.history[0] && m.history[0].year) || w.year;
+  return m;
+}
 export function migrateWorld(w) {
+  if (!w.v) w.v = 1;
+  while (w.v < WORLD_VERSION) { WORLD_MIGRATIONS[w.v](w); w.v++; }
   w.records = w.records || newWorldRecords();
   w.news = w.news || [];
   if (!w.cup) w.cup = newCup(w.clubs);

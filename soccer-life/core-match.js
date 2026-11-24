@@ -39,9 +39,13 @@
     const st = p.stats, sig = st.spd + st.sht * 3 + st.pas * 5 + st.drb * 7 + st.def * 11 + st.phy * 13 + st.gk * 17 + p.pos.charCodeAt(0);
     let o = CACHE && CACHE.get(p);
     if (o && o.sig === sig) return o;
-    const pos = p.pos;
-    o = { sig, ovr: ovr(p), wShot0: W.shot[pos], wAst: W.assist[pos] * ex((st.pas + st.drb) / 2 - 60, 30),
-      wTk: W.tackle[pos] * ex(st.def - 60, 30), wInt: W.inter[pos] * ex((st.def + st.pas) / 2 - 60, 30), wClr: W.clear[pos] * ex(st.def - 60, 30) };
+    const pos = p.pos, sk = SL.skillsOf ? SL.skillsOf(p) : [], has = (k) => sk.includes(k);
+    // 特殊能力の効き目（core-world.js の SKILLS）
+    const shotMul = (has('longshot') ? 1.3 : 1) * (has('dribble') ? 1.15 : 1) * (has('aerial') && pos === 'FW' ? 1.1 : 1);
+    const astMul = (has('through') ? 1.35 : 1) * (has('dribble') ? 1.1 : 1);
+    o = { sig, ovr: ovr(p), skills: sk, fin: has('finisher') ? 1.15 : 1, pkSkill: has('pk'), leader: has('leader'), bigsave: has('bigsave'),
+      wShot0: W.shot[pos] * shotMul, wAst: W.assist[pos] * ex((st.pas + st.drb) / 2 - 60, 30) * astMul,
+      wTk: W.tackle[pos] * ex(st.def - 60, 30), wInt: W.inter[pos] * ex((st.def + st.pas) / 2 - 60, 30), wClr: W.clear[pos] * ex(st.def - 60, 30) * (has('aerial') && pos === 'DF' ? 1.3 : 1) };
     if (CACHE) CACHE.set(p, o);
     return o;
   }
@@ -98,7 +102,7 @@
         npcTop.sort((p, q) => q - p); const top = npcTop.slice(0, 11);
         if (top.length) ref = top.reduce((p, q) => p + q, 0) / top.length;
       }
-      const eff = sd.club.str + clamp(lineSum / Math.max(1, starters.length) - ref, -10, 10) * .8;
+      const eff = sd.club.str + clamp(lineSum / Math.max(1, starters.length) - ref, -10, 10) * .8 + (starters.some((x) => x.inf.leader) ? .8 : 0);
       const atk = eff + ((sd.club.atk != null ? sd.club.atk : sd.club.str) - sd.club.str);
       const dfn = eff + ((sd.club.dfn != null ? sd.club.dfn : sd.club.str) - sd.club.str);
       return { club: sd.club, slots, cur: starters.slice(), eff, atk, dfn, mult: 1, subsLeft: SUBS };
@@ -132,9 +136,10 @@
       const gkv = gk ? (gk.slot === 'GK' && gk.p.pos === 'GK' ? gk.p.stats.gk : Math.min(gk.p.stats.gk, 40)) + cond(gk) * 1.5 : 30;
       if (chance(PK_RATE)) {
         let taker = null;
-        for (const x of on) if (x.slot !== 'GK' && (!taker || x.sk + (x.human ? 2 : 0) > taker.sk + (taker.human ? 2 : 0))) taker = x;
+        const tk = (x) => x.sk + (x.human ? 2 : 0) + (x.inf.pkSkill ? 15 : 0);
+        for (const x of on) if (x.slot !== 'GK' && (!taker || tk(x) > tk(taker))) taker = x;
         taker = taker || on[0];
-        const p = clamp(.76 + (taker.p.stats.sht - gkv) / 150, .6, .9);
+        const p = clamp(.76 + (taker.p.stats.sht - gkv) / 150 + (taker.inf.pkSkill ? .06 : 0), .6, .93);
         taker.line.sh++;
         const e = { min, side: si, t: 'pk', a: taker, gk, p };
         if (opt.deferPk && taker.me) e.pending = true;
@@ -153,14 +158,14 @@
         return;
       }
       shooter.line.sot++;
-      if (chance(clamp(q / pOT, .05, .9))) {
+      if (chance(clamp(q / pOT * shooter.inf.fin * (gk && gk.inf.bigsave ? .9 : 1), .05, .9))) {
         const e = { min, side: si, t: 'goal', a: shooter, how: SL._.goalHow(shooter.p) };
         if (chance(.72)) { const as = pickW(on, (x) => (x === shooter ? 0 : x.wAst)); if (as) { e.b = as; as.line.a++; } }
         shooter.line.g++;
         events.push(e);
       } else if (gk) {
         gk.line.sv++;
-        if (sk >= gkv - 4 && chance(.35)) events.push({ min, side: 1 - si, t: 'save', a: gk, b: shooter });
+        if (sk >= gkv - 4 && chance(gk.inf.bigsave ? .5 : .35)) events.push({ min, side: 1 - si, t: 'save', a: gk, b: shooter });
       }
     }
     function tackle(si, min) {

@@ -248,8 +248,25 @@
     }
     return { npcs: list.filter((p) => keep.has(p)), reserves };
   }
+  // ----- 特殊能力（能力の値から決まる。NPCも本物のプレイヤーも同じ決まり。最大3つ） -----
+  // 試合での効き目は core-match.js（決定力：シュートが決まりやすい、など）
+  const SKILLS = {
+    finisher: { name: '決定力', icon: '🎯', desc: 'シュートが決まりやすい', ok: (p) => p.pos !== 'GK' && p.stats.sht >= 82, m: (p) => p.stats.sht - 82 },
+    longshot: { name: 'ロングシュート', icon: '🚀', desc: '遠くからでも狙う（シュートが増える）', ok: (p) => p.pos === 'MF' && p.stats.sht >= 76, m: (p) => p.stats.sht - 76 },
+    through: { name: 'スルーパス', icon: '🧵', desc: 'アシストが増える', ok: (p) => p.pos !== 'GK' && p.stats.pas >= 80, m: (p) => p.stats.pas - 80 },
+    dribble: { name: 'ドリブル突破', icon: '🌀', desc: 'シュートとアシストが少し増える', ok: (p) => (p.pos === 'FW' || p.pos === 'MF') && p.stats.drb >= 82, m: (p) => p.stats.drb - 82 },
+    aerial: { name: '空中戦', icon: '🦅', desc: 'FWはヘディングで点を取り、DFはクリアが増える', ok: (p) => (p.pos === 'FW' || p.pos === 'DF') && p.stats.phy >= 80, m: (p) => p.stats.phy - 80 },
+    leader: { name: 'リーダーシップ', icon: '📣', desc: '出ているとチーム全体が少し強くなる', ok: (p) => p.age >= 29 && ovr(p) >= 72, m: (p) => ovr(p) - 72 + (p.age - 29) },
+    pk: { name: 'PKキッカー', icon: '⚽', desc: 'PKを任され、決めやすい', ok: (p) => p.pos !== 'GK' && p.stats.sht >= 80 && p.stats.phy >= 60, m: (p) => p.stats.sht - 80 },
+    bigsave: { name: 'ビッグセーブ', icon: '🧤', desc: '好セーブが増える', ok: (p) => p.pos === 'GK' && p.stats.gk >= 80, m: (p) => p.stats.gk - 80 },
+  };
+  function skillsOf(p) {
+    if (!p || !p.stats) return [];
+    return Object.entries(SKILLS).filter(([, d]) => d.ok(p)).sort((a, b) => b[1].m(p) - a[1].m(p)).slice(0, 3).map(([k]) => k);
+  }
+
   // 画面に見せる1人分（能力の細かい値は出さない）
-  function npcView(p) { return { id: p.id, type: 'npc', name: p.name, nat: p.nat, pos: p.pos, age: p.age, ovr: ovr(p), style: STYLES[p.style] ? STYLES[p.style].name : '', no: p.no }; }
+  function npcView(p) { return { id: p.id, type: 'npc', name: p.name, nat: p.nat, pos: p.pos, age: p.age, ovr: ovr(p), style: STYLES[p.style] ? STYLES[p.style].name : '', no: p.no, skills: skillsOf(p) }; }
 
   // 保存済みの世界を新しい形にする（一人用のセーブ v1→v2、オンラインの世界 v1→v2 で共通）。何度呼んでも同じ結果
   // クラブは ID ごとに名前・色・特徴を付け直す（所属リーグと今の強さはそのまま）。NPCがいなければ、その世界に決まったシードで作る
@@ -259,6 +276,6 @@
     return s;
   }
 
-  Object.assign(SL, { SQUAD_SIZE, upgradeWorld, SQUAD_QUOTA, STYLES, NAME_POOLS, FAMOUS_COUNT: FAMOUS.length, styleOf, newNpcWorld, clubSquad, npcView });
-  SL._.worldRng = makeRng; SL._.hashStr = hashStr; SL._.FAMOUS = FAMOUS;
+  Object.assign(SL, { SKILLS, skillsOf, SQUAD_SIZE, upgradeWorld, SQUAD_QUOTA, STYLES, NAME_POOLS, FAMOUS_COUNT: FAMOUS.length, styleOf, newNpcWorld, clubSquad, npcView });
+  SL._.worldRng = makeRng; SL._.hashStr = hashStr; SL._.FAMOUS = FAMOUS; SL._.npcName = fullName; SL._.makeNpc = makeNpc; SL._.awkwardName = awkward; SL._.ABROAD = { EU: ABROAD_EU, JP: ABROAD_JP };
 })(typeof SL !== 'undefined' ? SL : require('./core.js'));

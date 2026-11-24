@@ -34,6 +34,20 @@ const SL = (() => {
     normal: { name: '普通型', peak: 28 },
     late: { name: '晩成型', peak: 31 },
   };
+  // 成長の型：どの能力が伸びやすいか・衰えやすいか（時期の GROW とは別の軸）
+  const PHYS = ['spd', 'phy'], TECH = ['sht', 'pas', 'drb'];
+  const GTYPE = {
+    genius: { name: '天才型', desc: '何でも伸びやすく、限界も少し高い', w: 1, mul: () => 1.2, cap: 3, dec: () => 1 },
+    physical: { name: 'フィジカル型', desc: 'スピード・フィジカルが伸びやすく、衰えにくい', w: 3, mul: (k) => (PHYS.includes(k) ? 1.3 : .9), cap: 0, dec: (k) => (PHYS.includes(k) ? .8 : 1) },
+    technique: { name: 'テクニック型', desc: 'シュート・パス・ドリブルが伸びやすい', w: 3, mul: (k) => (TECH.includes(k) ? 1.3 : PHYS.includes(k) ? .9 : 1), cap: 0, dec: () => 1 },
+    steady: { name: '安定型', desc: '伸びは普通。衰えがゆっくり', w: 3, mul: () => 1, cap: 0, dec: () => .6 },
+  };
+  function pickGtype(r = rnd) { const all = Object.entries(GTYPE), tot = all.reduce((a, [, g]) => a + g.w, 0); let x = r() * tot; for (const [k, g] of all) { x -= g.w; if (x <= 0) return k; } return 'steady'; }
+  // 保存済みの選手に型がなければ、名前から決める（何度読み込んでも同じ）
+  function gtypeOf(p) {
+    if (!p.gtype) { let h = 0; for (const ch of String(p.name) + p.pos) h = (h * 31 + ch.codePointAt(0)) >>> 0; const r = () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296); p.gtype = pickGtype(r); }
+    return GTYPE[p.gtype];
+  }
 
   // ----- 練習メニュー -----
   const TRAINING = {
@@ -127,10 +141,11 @@ const SL = (() => {
       else stats[k] = ri(26, 42);
     }
     const gr = pick(['early', 'normal', 'normal', 'normal', 'late']);
+    const gtype = pickGtype();
     const pot = clamp(ri(66, 86) + bonus, 60, 99);
     return {
       name, pos, age, stats, exp: {},
-      pot, ...potRange(pot), grow: gr, growKnown: false,
+      pot, ...potRange(pot), grow: gr, gtype, growKnown: false,
       cond: 0, fatigue: 0, injury: 0, fame: 5 + bonus, money: START_MONEY, // プロ契約の支度金
       club: null, salary: 0, contract: 0, number: 30,
       married: false, dating: false, kids: 0, kidsBorn: [],
@@ -213,7 +228,7 @@ const SL = (() => {
     if (opt.challenge === 'keeper') pos = 'GK';
     const s = {
       v: 1, year: opt.year || START_YEAR, week: 0, gen: opt.gen || 1,
-      lineage: opt.lineage || [], clubs: opt.clubs || newWorld(), leagueHistory: opt.leagueHistory || [],
+      lineage: opt.lineage || [], clubs: opt.clubs || newWorld(), leagueHistory: opt.leagueHistory || [], npcLegends: opt.npcLegends || [],
       p: newPlayer(name, pos, opt.bonus || 0, opt.age || 18),
       phase: 'draft', history: [], news: [], totals: emptyTotals(),
       trophies: [], awards: [], caps: 0, natGoals: 0, wc: [],
@@ -561,8 +576,9 @@ const SL = (() => {
   }
 
   function train(p, k, amt) {
-    const main = POS[p.pos].w[k] >= .12;
-    const cap = Math.min(99, p.pot + (main ? 6 : -10));
+    const main = POS[p.pos].w[k] >= .12, gt = gtypeOf(p);
+    const cap = Math.min(99, p.pot + (main ? 6 : -10) + gt.cap);
+    amt *= gt.mul(k);
     const over = p.age - GROW[p.grow].peak;
     const ageF = over <= 0 ? (p.age <= 21 ? 1.15 : 1) : Math.max(.15, .55 - over * .1);
     const head = clamp((cap - p.stats[k]) / (cap - 30), 0, 1.2);
@@ -572,6 +588,7 @@ const SL = (() => {
     while (p.exp[k] >= 1 && p.stats[k] < 99) { p.exp[k] -= 1; p.stats[k]++; }
   }
   function decay(p, k, amt) {
+    amt *= gtypeOf(p).dec(k);
     p.exp[k] = (p.exp[k] || 0) - amt * (.6 + rnd() * .8);
     while (p.exp[k] <= -1 && p.stats[k] > 1) { p.exp[k] += 1; p.stats[k]--; }
   }
@@ -741,7 +758,7 @@ const SL = (() => {
     { id: 'scouteye', w: 2, if: (s) => s.p.potLo != null && s.p.potLo < s.p.potHi, text: 'ベテランのスカウトが練習を見に来て、じっとあなたを見ていた',
       fx: (s) => (narrowPot(s.p, 2) ? `「君の才能は${s.p.pot}だね」完全に見抜かれた！` : `才能の見立てが${s.p.potLo}〜${s.p.potHi}に絞れた`) },
     { id: 'grow', w: 6, if: (s) => !s.p.growKnown && s.p.age >= 21, text: 'トレーナー「君の体の成長カーブが分かってきたよ」',
-      fx: (s) => { s.p.growKnown = true; const g = GROW[s.p.grow]; return `あなたは「${g.name}」！ピークは${g.peak}歳ごろ`; } },
+      fx: (s) => { s.p.growKnown = true; const g = GROW[s.p.grow], t = gtypeOf(s.p); return `あなたは「${g.name}・${t.name}」！ピークは${g.peak}歳ごろ。${t.desc}`; } },
   ];
   function trainAll(p, amt) { for (const k of mainStats(p.pos)) train(p, k, amt); }
 
@@ -938,10 +955,18 @@ const SL = (() => {
 
   // ===== オフシーズン：年齢・契約・移籍 =====
   function ageUp(s) {
-    const p = s.p; p.age++; s.year++;
+    const p = s.p;
+    // NPCの1年（成長・衰え・移籍・引退・新人。core-life.js）。オンラインはサーバーがまとめて行うので、ここでは名簿がある一人用だけ
+    const notes = [];
+    if (Array.isArray(s.npcs) && s.npcs.length && SL.npcOffseason) {
+      const rep = SL.npcOffseason(s.npcs, s.clubs, s.npcSeason || {}, s.year, s.npcLegends || (s.npcLegends = []));
+      notes.push(...SL.offseasonNotes(rep));
+      s.lastNpcOff = { year: s.year, moves: rep.moves.slice(0, 12), retired: rep.retired.slice(0, 20), rookies: rep.rookies, nRetired: rep.retired.length, nMoves: rep.moves.length };
+    }
+    p.best = Math.max(p.best || 0, ovr(p)); // キャリア最高の総合力
+    p.age++; s.year++;
     p.cond = 0; p.fatigue = 0; p.injury = 0;
     // オフのキャンプ：若いうちはひと伸び
-    const notes = [];
     if (p.age <= GROW[p.grow].peak) { const k = pick(mainStats(p.pos)); const d = ri(1, 3); p.stats[k] = Math.min(99, p.stats[k] + d); notes.push(`オフのキャンプで${STATS[k]}+${d}`); }
     if (p.camp) { const k = pick(mainStats(p.pos)); p.stats[k] = Math.min(99, p.stats[k] + 2); p.camp = false; notes.push(`✈️ 海外キャンプで${STATS[k]}+2`); }
     const was = p.potLo === p.potHi;
@@ -965,8 +990,16 @@ const SL = (() => {
     return notes;
   }
 
+  // 移籍金（万円）：実力・若さ・今のリーグ・契約の残りで決まる。契約が切れていれば0（自由移籍）
+  function transferFee(p, from, contractLeft) {
+    if (!from || contractLeft <= 0) return 0;
+    const o = ovr(p), age = p.age;
+    const base = Math.max(0, o - 55) ** 2 * 4 * (age <= 23 ? 1.5 : age <= 27 ? 1.2 : age <= 30 ? 1 : .5) * (from.lg === 0 ? 1.6 : from.lg === 1 ? 1 : .6) * (.6 + .2 * Math.min(contractLeft, 4));
+    return Math.round(base / 100) * 100;
+  }
   // 契約更新・移籍のオファー。contract が null なら戦力外
-  function offers(s) {
+  // opt.request：自分から移籍を希望した（声をかけてくるクラブが増え、少し上のクラブも検討してくれる）
+  function offers(s, opt = {}) {
     const p = s.p, o = ovr(p), c = clubOf(s), last = s.history.at(-1);
     const res = { contract: null, transfers: [], released: false, expiring: p.contract <= 0 };
     if (p.contract <= 0) {
@@ -980,14 +1013,14 @@ const SL = (() => {
     const others = s.clubs.filter((x) => x.id !== c.id);
     const fits = others.filter((x) => {
       if (x.lg === 0) return o >= x.str - 12 && p.fame >= 25 && p.age <= 31 && (last.rating >= 6.7 || o >= x.str - 6);
-      return o >= x.str - 8 && o <= x.str + 18;
+      return o >= x.str - (opt.request ? 10 : 8) && o <= x.str + 18;
     }).sort(() => rnd() - .5);
-    const nOff = res.released ? ri(0, 2) : chance(.35 + (last.rating >= 7 ? .35 : 0)) ? ri(1, 3) : 0;
+    const nOff = opt.request ? ri(2, 4) : res.released ? ri(0, 2) : chance(.35 + (last.rating >= 7 ? .35 : 0)) ? ri(1, 3) : 0;
     // 欧州からの声がかかるなら優先
     fits.sort((a, b) => (b.lg === 0) - (a.lg === 0) || 0);
     for (const x of fits.slice(0, nOff)) {
       const sal = Math.round(wageFor(x, o, p.fame) * (.95 + rnd() * .3) / 10) * 10;
-      res.transfers.push({ club: x.id, salary: sal, years: p.age >= 32 ? 1 : ri(2, 4) });
+      res.transfers.push({ club: x.id, salary: sal, years: p.age >= 32 ? 1 : ri(2, 4), fee: transferFee(p, c, p.contract) });
     }
     // 縛りプレイ：移籍の制限
     if (s.challenge === 'loyal' || (s.challenge === 'weak' && !s.challengeDone)) res.transfers = [];
@@ -1000,6 +1033,16 @@ const SL = (() => {
     return res;
   }
 
+  // オフに自分から移籍を希望する（1回だけ）。契約更新の話はそのまま、移籍のオファーを出し直してもらう
+  function requestTransfer(s) {
+    if (!s.off || s.off.requested || s.challenge === 'loyal' || (s.challenge === 'weak' && !s.challengeDone)) return false;
+    const old = s.off.off, fresh = offers(s, { request: true });
+    s.off.off = { ...old, transfers: fresh.transfers };
+    s.off.requested = true;
+    s.p.fame = clamp(s.p.fame - 1, 0, 100);
+    addLog(s, 'request', `${s.year}年オフ、${clubOf(s).name}に移籍を希望した。`);
+    return true;
+  }
   function accept(s, offer) {
     const prev = s.p.club;
     joinClub(s, offer);
@@ -1089,7 +1132,7 @@ const SL = (() => {
       name: s.p.name, pos: s.p.pos, gen: s.gen, years: s.history.length, retireAge: s.p.age, startYear: s.history[0]?.year, endYear: s.history.at(-1)?.year,
       apps: T.apps, goals: T.goals, assists: T.assists, cs: T.cs, avg: T.apps ? Math.round(T.rating / T.apps * 100) / 100 : 0,
       caps: s.caps, natGoals: s.natGoals, wc: s.wc.slice(), trophies: s.trophies.slice(), awards: s.awards.slice(),
-      clubs: [...new Set(s.history.map((h) => h.club))], earned, money: s.p.money, title: lt.t, titleDesc: lt.d, score, letter: rankLetter(score), kids: s.p.kids,
+      clubs: [...new Set(s.history.map((h) => h.club))], bestOvr: Math.max(s.p.best || 0, ovr(s.p), ...s.history.map((h) => h.ovr || 0)), bestSalary: Math.max(0, ...s.history.map((h) => h.salary || 0)), earned, money: s.p.money, title: lt.t, titleDesc: lt.d, score, letter: rankLetter(score), kids: s.p.kids,
       mode: s.mode, lastMatch: s.lastMatch || null, family: { ...s.family }, child: s.childPro ? { name: s.childPro.name, age: s.childPro.age, club: s.clubs[s.childPro.club].name, pos: s.childPro.pos } : null,
       kidNames: s.p.kidsBorn.map((k) => k.name), parent: s.parent,
       rival: s.rival ? { name: s.rival.name, apps: s.rival.totals.apps, goals: s.rival.totals.goals, awards: s.rival.awards.length, h2h: { ...s.rival.h2h }, retired: s.rival.retired } : null,
@@ -1117,11 +1160,13 @@ const SL = (() => {
     const bonus = inheritBonus(sum);
     const lineage = s.lineage.concat([{ gen: s.gen, name: sum.name, pos: sum.pos, title: sum.title, score: sum.score, letter: sum.letter, goals: sum.goals, assists: sum.assists, cs: sum.cs, apps: sum.apps, caps: sum.caps,
       years: `${sum.startYear}-${sum.endYear}`, clubs: sum.clubs, combo: sum.family.combo, jointApps: sum.family.jointApps, wc: sum.wc.some((w) => w.reached === '優勝'), child: name }]);
-    const opt = { gen: s.gen + 1, lineage, bonus, clubs: s.clubs, npcs: s.npcs, leagueHistory: s.leagueHistory, mode: s.mode, parent: { name: sum.name, title: sum.title, combo: sum.family.combo, jointApps: sum.family.jointApps } };
+    const opt = { gen: s.gen + 1, lineage, bonus, clubs: s.clubs, npcs: s.npcs, leagueHistory: s.leagueHistory, npcLegends: s.npcLegends, mode: s.mode, parent: { name: sum.name, title: sum.title, combo: sum.family.combo, jointApps: sum.family.jointApps } };
     const kid = s.p.kidsBorn[0];
     if (s.childPro) Object.assign(opt, { year: s.year, age: Math.min(s.childPro.age, 30), homeClub: s.childPro.club });
     else if (kid) opt.year = Math.max(s.year, kid.year + 18);
     else opt.year = s.year + ri(6, 12);
+    // 次の世代が始まるまでの年月も、NPCの世界は進む（年をとる・引退・新人・移籍）
+    if (Array.isArray(s.npcs) && SL.npcOffseason) for (let y = s.year; y < (extra.year || opt.year); y++) SL.npcOffseason(s.npcs, s.clubs, {}, y, s.npcLegends || (s.npcLegends = []));
     const ns = newGame(name, pos, Object.assign(opt, extra));
     ns.inherit = bonus;
     return ns;
@@ -1193,9 +1238,9 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, STATS, POS, GROW, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, prepareWeek, eventById, resolveEvent,
-    endSeason, nationalYear, ageUp, offers, accept, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
+    endSeason, nationalYear, ageUp, offers, accept, requestTransfer, transferFee, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,
     CHALLENGES, SHOP, shopList, buy, narrowPot, CUP_WEEKS,
     migrate, inheritBonus, lastMatchInfo, playLastMatch, familyTitle, POLICY, autoDraft, autoYear, autoLastMatch, lastName,

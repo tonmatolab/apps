@@ -55,7 +55,7 @@
     const c = club(o.club), L = SL.LEAGUES[c.lg], pc = startChanceTxt(ST.me.ovr, c, ST.me.age);
     const full = !o.stay && c.humans >= c.cap;
     return `<button class="offer" data-i="${i}"${full ? ' disabled style="opacity:.55"' : ''}>${crest(c)}<div class="bd"><div class="nm">${badge}${esc(c.name)}<span class="hum">👤${c.humans}/${c.cap}</span>${full ? ' <span class="full">満員</span>' : ''}</div>
-      <div class="mt"><b>${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>${o.capped ? '（上限）' : ''}・${o.years}年契約${o.trial ? '（テスト入団）' : ''}</div></div><div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
+      <div class="mt"><b>${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>${o.capped ? '（上限）' : ''}・${o.years}年契約${o.trial ? '（テスト入団）' : ''}${o.fee ? `<br>移籍金 <b>${man(o.fee)}</b>` : ''}</div></div><div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
   }
   function countdown() {
     if (!ST) return '';
@@ -404,6 +404,28 @@
     store.set('code', code); setState(j); route();
   };
   $('refreshBtn').onclick = load;
+  // 画面下のナビ：ホーム / 前の試合 / チーム / ランキング / キャリア
+  {
+    const home = document.getElementById('ol-scrHome');
+    const nav = document.createElement('div'); nav.className = 'actions olnav';
+    nav.innerHTML = '<div class="navrow" id="ol-nav"><button data-go="top"><b>🏠</b>ホーム</button><button data-go="last"><b>📺</b>前の試合</button><button data-go="mates"><b>👥</b>チーム</button><button data-go="rank"><b>🏅</b>ランキング</button><button data-go="career"><b>📜</b>キャリア</button></div>';
+    home.appendChild(nav);
+    nav.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || !ST) return;
+      const go = b.dataset.go;
+      if (go === 'top') return window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (go === 'last') return (document.getElementById('ol-lastCard').classList.contains('hidden') ? $('pCard') : document.getElementById('ol-lastCard')).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      tab = go; renderTab();
+      $('tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    // 自分のカードをタップするとプロフィール
+    $('pCard').addEventListener('click', () => {
+      if (!ST || !ST.me || ST.me.club == null) return;
+      const me = ST.me;
+      openProfile({ name: me.name, pos: me.pos, age: me.age, ovr: me.ovr, best: me.best, number: me.number, club: club(me.club), stats: me.stats, grow: me.grow, gtype: me.gtype, growKnown: !!me.grow,
+        salary: me.salary, contract: me.contract, totals: me.totals, season: me.season, awards: me.awards, trophies: me.trophies, history: me.history });
+    });
+  }
   // カジノ（オンライン：当たり外れはサーバーが決める）
   // 全員共通の台。3分ごとにサーバーが1回だけ回す
   const tableErr = (j) => (j && j.error ? { error: /^[a-z_]+$/.test(j.error) ? errMsg(j.error) : j.error } : j);

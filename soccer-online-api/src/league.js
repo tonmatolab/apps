@@ -403,7 +403,7 @@ export class League extends DurableObject {
       news: (w.news || []).slice(0, 12),
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
-        grow: p.growKnown ? p.grow : null, cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
+        grow: p.growKnown ? p.grow : null, gtype: p.growKnown ? p.gtype : null, best: Math.max(p.best || 0, G.ovr(p)), cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
         caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, lineage: m.lineage, log: m.log.slice(-12),

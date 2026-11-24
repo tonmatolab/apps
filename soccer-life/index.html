@@ -410,6 +410,18 @@
   .hl.log li.half { justify-content: center; font-size: .7rem; color: var(--sub); font-weight: 800; background: none; border: 0; padding: 4px 0 0; }
   .hl.log li.opp { color: var(--sub); }
   .statline { margin: 6px 0 0; font-size: .74rem; }
+  .navrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 8px; }
+  .navrow button { border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 5px 0 4px; font: inherit; font-size: .64rem; font-weight: 800; color: var(--sub); cursor: pointer; line-height: 1.2; }
+  .navrow button b { display: block; font-size: 1rem; }
+  .olnav { margin-top: 8px; }
+  .pc { cursor: pointer; }
+  .prof h3 { margin: 0 0 2px; }
+  .prof .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+  .prof .chips span { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-size: .74rem; font-weight: 700; }
+  .prof .sk { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; border-top: 1px dashed var(--line); font-size: .8rem; }
+  .prof .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+  .prof .grid div { background: var(--chip); border-radius: 10px; padding: 6px; text-align: center; font-size: .66rem; color: var(--sub); font-weight: 700; }
+  .prof .grid b { display: block; font-size: 1.05rem; color: var(--ink); font-family: var(--num); }
   .tabs.rk { margin: 0 0 6px; flex-wrap: wrap; }
   .tabs.rk button { font-size: .72rem; padding: 4px 8px; flex: 1 0 auto; white-space: nowrap; }
   .rklist, .awh { list-style: none; margin: 0; padding: 0; font-size: .82rem; }
@@ -592,6 +604,7 @@
         <button class="btn primary" id="weekBtn" style="flex:1.6">練習して試合へ ▶</button>
         <button class="btn" id="autoBtn">シーズン終了まで ⏩</button>
       </div>
+      <div class="navrow" id="gNav"><button data-go="top"><b>🏠</b>ホーム</button><button data-go="stats"><b>📊</b>能力</button><button data-go="team"><b>👥</b>チーム</button><button data-go="rank"><b>🏅</b>ランキング</button><button data-go="career"><b>📜</b>キャリア</button></div>
     </div>
     <div class="card">
       <div class="tabs" id="tabs">
@@ -719,6 +732,7 @@
 
   <!-- ===== オンライン：ホーム ===== -->
   <section id="ol-scrHome" class="ol hidden">
+    <!-- 画面下のナビは online.js が最後に足す -->
     <div class="topbar"><span id="ol-topYear"></span><span class="cd" id="ol-topCd"></span><button class="btn small" id="ol-refreshBtn">🔄</button></div>
     <div class="card hidden" id="ol-motwCard" style="padding:10px 14px"></div>
     <div class="card hidden" id="ol-newsCard"><h2>📰 リーグ速報</h2><ul class="newslist" id="ol-newsList"></ul></div>
@@ -759,6 +773,7 @@
 <script src="core-world.js"></script>
 <script src="core-match.js"></script>
 <script src="core-awards.js"></script>
+<script src="core-life.js"></script>
 <script src="core-collection.js"></script>
 <script src="core-games.js"></script>
 <script src="save.js"></script>
@@ -861,7 +876,7 @@ const playChance = (p, c) => { const x = SL.startChance(p, c); return x > .75 ? 
 function offerCard(o, extra = '') {
   const c = S.clubs[o.club], L = SL.LEAGUES[c.lg], pc = playChance(S.p, c);
   return `<button class="offer" data-i="${o._i}">${crest(c)}<div class="bd"><div class="nm">${extra}${esc(c.name)}</div>
-    <div class="mt"><b class="lg-${c.lg}">${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>・${o.years}年契約${o.trial ? '（テスト入団）' : ''}</div></div>
+    <div class="mt"><b class="lg-${c.lg}">${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>・${o.years}年契約${o.trial ? '（テスト入団）' : ''}${o.fee != null && !o.stay ? `<br>移籍金 <b>${o.fee ? man(o.fee) : 'なし（自由移籍）'}</b>` : ''}</div></div>
     <div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
 }
 
@@ -1138,6 +1153,38 @@ function renderTab() {
       ${S.news.length ? `<p class="sub" style="margin:10px 0 0">${S.news.map(esc).join('　')}</p>` : ''}${scrapHTML()}`;
   }
 }
+// 本物のプレイヤーの背番号を優先し、重なったNPCには空いている番号を表示する
+function fixNumbers(rows) {
+  const taken = new Set(rows.filter((r) => r.type === 'user' && r.no).map((r) => r.no)), out = [];
+  const used = new Set(rows.map((r) => r.no));
+  for (const r of rows) {
+    if (r.type !== 'npc' || !taken.has(r.no)) { out.push(r); continue; }
+    let n = 13; while (used.has(n)) n++;
+    used.add(n); out.push({ ...r, no: n });
+  }
+  return out;
+}
+// ----- 選手プロフィール（一人用・オンライン共通） -----
+// d：{ name, pos, age, ovr, best, number, club, stats, grow, gtype, growKnown, salary, contract, totals, season, awards, trophies, history }
+function profileHTML(d) {
+  const style = SL.STYLES[SL.styleOf({ pos: d.pos, stats: d.stats, age: d.age })];
+  const skills = SL.skillsOf({ pos: d.pos, stats: d.stats, age: d.age });
+  const G = d.growKnown && d.grow ? SL.GROW[d.grow] : null, T = d.growKnown && d.gtype ? SL.GTYPE[d.gtype] : null;
+  const T0 = d.totals || {}, se = d.season || {};
+  const apps = (T0.apps || 0) + (se.apps || 0), goals = (T0.goals || 0) + (se.goals || 0), assists = (T0.assists || 0) + (se.assists || 0);
+  const hist = (d.history || []).slice(-6).reverse();
+  return `<div class="prof"><div class="kick">選手プロフィール</div><h3>${esc(d.name)} <span class="tag t-${d.pos}">${d.pos}</span></h3>
+    <div class="sub">${d.age}歳・背番号${d.number || '-'}${d.club ? `・${esc(d.club.name)}` : ''}</div>
+    <div class="chips"><span>${style ? style.name : '-'}</span><span>${G ? `${G.name}（ピーク${G.peak}歳ごろ）` : '成長の時期：まだ分からない'}</span><span>${T ? T.name : '成長の型：まだ分からない'}</span></div>
+    ${T ? `<p class="sub" style="margin:0 0 4px">${esc(T.desc)}</p>` : ''}
+    <div class="grid"><div>総合力<b>${d.ovr}</b></div><div>キャリア最高<b>${Math.max(d.best || 0, d.ovr)}</b></div><div>年俸<b style="font-size:.82rem">${man(d.salary || 0)}</b></div>
+      <div>通算出場<b>${apps}</b></div><div>通算ゴール<b>${goals}</b></div><div>通算アシスト<b>${assists}</b></div></div>
+    <h2 style="margin:10px 0 2px">✨ 特殊能力</h2>
+    ${skills.length ? skills.map((k) => { const x = SL.SKILLS[k]; return `<div class="sk"><span>${x.icon}</span><div><b>${x.name}</b><div class="sub">${esc(x.desc)}</div></div></div>`; }).join('') : '<p class="sub">まだありません。能力を伸ばすと身につきます（例：シュート82で「決定力」）</p>'}
+    <h2 style="margin:10px 0 2px">🏅 タイトル</h2><p class="sub" style="margin:0">${(d.trophies || []).length}個のチームタイトル・${(d.awards || []).length}個の個人賞${(d.awards || []).length ? '：' + d.awards.slice(-4).map(esc).join('、') : ''}</p>
+    ${hist.length ? `<h2 style="margin:10px 0 2px">📜 最近の経歴</h2><ul class="awh">${hist.map((h) => `<li><span style="flex:1"><b>${h.year}</b> ${esc(h.club)}（${h.lg}）</span><span class="sub">${h.apps}試${h.goals}G${h.assists}A・総合${h.ovr || '-'}・${man(h.salary || 0)}</span></li>`).join('')}</ul>` : ''}</div>`;
+}
+function openProfile(d) { sheet(profileHTML(d), [{ label: '閉じる', cls: 'primary' }]); }
 // ----- チーム（名簿）。オンライン（online.js）からも使う -----
 // rows：{ type: 'npc'|'user', me, name, pos, age, ovr, style, nat, no }
 function squadHTML(c, rows, reserves = 0) {
@@ -1146,6 +1193,7 @@ function squadHTML(c, rows, reserves = 0) {
     ${['str', 'atk', 'dfn'].map((k) => `<span>${T[k]} <b class="num">${c[k]}</b></span>`).join('')}
     ${['depth', 'youth', 'money', 'pop', 'recruit'].map((k) => `<span style="white-space:nowrap">${T[k]} ${star(c[k])}</span>`).join('')}</div>`;
   const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
+  rows = fixNumbers(rows);
   const list = rows.slice().sort((a, b) => order[a.pos] - order[b.pos] || b.ovr - a.ovr);
   const nat = (n) => n === '日本' ? '' : `<span class="sub" style="font-size:.66rem">${esc(n)}</span>`;
   return `<div class="sub" style="margin-bottom:4px">${esc(c.name)}（${SL.LEAGUES[c.lg].name}）・${list.length}人</div>${traits}
@@ -1482,6 +1530,7 @@ async function contractStep() {
   const cards = opts.map((o) => offerCard(o, o.stay ? '<span class="badge stay">残留</span>' : S.clubs[o.club].lg === 0 ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('');
   const btns = [];
   if (!forced && !off.expiring && !off.released) btns.push({ label: `${esc(c.city)}に残る（契約あと${p.contract}年）`, cls: 'primary', act: 'keep' });
+  if (!forced && !O.requested && S.challenge !== 'loyal' && !(S.challenge === 'weak' && !S.challengeDone)) btns.push({ label: '📣 移籍を希望する（オファーが増える・人気-1）', cls: '', act: 'request' });
   if (forced || SL.canRetire(S)) btns.push({ label: forced ? '引退セレモニーへ' : '👋 引退する', cls: forced ? 'primary' : 'ghost', act: 'retire' });
   if (!forced && !btns.length && !opts.length) btns.push({ label: '引退セレモニーへ', cls: 'primary', act: 'retire' });
   const ans = await sheet(`${head}<h3>契約とオファー</h3><p class="note">${msg}</p>${notes}
@@ -1493,6 +1542,7 @@ async function contractStep() {
     await showNewPapers();
   } else {
     const act = btns[ans].act;
+    if (act === 'request') { SL.requestTransfer(S); save(); toast('移籍を希望した。オファーが届いた'); return contractStep(); }
     if (act === 'retire') {
       if (!forced) {
         const ok = await sheet(`<div class="ev"><div class="ic">👋</div><p>本当に引退しますか？</p><p class="sub">最後に引退試合があります</p></div>`, [{ label: '引退する', cls: 'primary' }, { label: 'やっぱり続ける', cls: 'ghost' }]);
@@ -1895,6 +1945,21 @@ $('nameIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') toDraft(
 $('weekBtn').onclick = nextWeek;
 $('autoBtn').onclick = autoSeason;
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; renderTab(); } });
+// 画面下のナビ：ホーム / 能力 / チーム / ランキング / キャリア
+$('gNav').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const go = b.dataset.go;
+  if (go === 'top') return window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (go === 'stats') return $('statHead').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  tab = go; renderTab();
+  $('tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('pCard').addEventListener('click', () => {
+  if (!S) return;
+  const p = S.p;
+  openProfile({ name: p.name, pos: p.pos, age: p.age, ovr: SL.ovr(p), best: p.best, number: p.number, club: SL.clubOf(S), stats: p.stats, grow: p.grow, gtype: SL.gtypeOf(p) && p.gtype, growKnown: p.growKnown,
+    salary: p.salary, contract: p.contract, totals: S.totals, season: S.season, awards: S.awards, trophies: S.trophies, history: S.history });
+});
 $('menuBtn').onclick = renderTitle;
 $('shareBtn').onclick = share;
 $('imgBtn').onclick = saveImage;

@@ -56,6 +56,7 @@ export function migrateMember(m, w) {
   if (!m.v) m.v = 1;
   while (m.v < MEMBER_VERSION) { MEMBER_MIGRATIONS[m.v](m, w); m.v++; }
   if (m.pl.potLo == null) Object.assign(m.pl, SL._.potRange(m.pl.pot));
+  SL.gtypeOf(m.pl); // 成長の型がなければ名前から決める（Phase 4）
   if (m.status !== 'draft' && m.status !== 'retired' && m.debutYear == null) m.debutYear = (m.history[0] && m.history[0].year) || w.year;
   return m;
 }
@@ -345,7 +346,7 @@ export function endSeason(w, members, npcs = [], npcSeason = null) {
   // 年をとって、オファーが届く
   for (const m of active) {
     const s = adapter(m, w);
-    const notes = SL.ageUp(s);
+    const notes = SL.ageUp(s); // （NPCの1年は上でまとめて済ませた。adapter には名簿がないので ageUp では動かない）
     const res = SL.offers(s);
     res.transfers = res.transfers.filter((t) => !clubFull(members, t.club, m.pl.pos, m)).map((t) => capSalary(w, t));
     if (res.contract) capSalary(w, res.contract);
@@ -353,6 +354,10 @@ export function endSeason(w, members, npcs = [], npcSeason = null) {
     m.status = 'off';
     trimLog(m);
   }
+  // NPCの1年（成長・衰え・移籍・引退・新人）。名簿はこのあと league.js が保存する
+  const R2 = w.records || (w.records = newWorldRecords());
+  const rep = SL.npcOffseason(npcs, w.clubs, stats, w.year, R2.npcLegends || (R2.npcLegends = []));
+  for (const t of SL.offseasonNotes(rep)) addNews(w, t);
   w.year++; w.season++;
   w.phase = 'off'; w.offLeft = OFF_TICKS;
 }

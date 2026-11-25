@@ -5,6 +5,8 @@
   const me = document.currentScript;
   const BASE = new URL('../', me.src); // アプリ集のトップ（/apps/）
   const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+  // 公式Xアカウント（ご意見・不具合・お問い合わせの窓口）。各アプリのいちばん下に出す
+  const X_LINE = '<p class="tn-x">お問い合わせ・ご意見・不具合の報告は<br>X（旧Twitter）<a href="https://x.com/tonmatolab" target="_blank" rel="noopener">@tonmatolab</a> へどうぞ</p>';
 
   // ----- ホーム画面に追加（manifest・アイコン・service worker） -----
   const head = document.head;
@@ -33,9 +35,19 @@
   .tonmato-next .tn-t { font-weight: 800; font-size: .95rem; line-height: 1.35; }
   .tonmato-next .tn-d { font-size: .75rem; color: #66708a; line-height: 1.4; margin-top: 2px; }
   .tonmato-next .tn-p { font-size: .7rem; font-weight: 800; color: #e8432f; margin-top: 2px; }
-  .tonmato-next .tn-all { display: block; text-align: center; margin-top: 10px; font-size: .85rem; font-weight: 800; color: inherit; opacity: .8; }`;
+  .tonmato-next .tn-all { display: block; text-align: center; margin-top: 10px; font-size: .85rem; font-weight: 800; color: inherit; opacity: .8; }
+  .tonmato-next .tn-x { margin: 14px 0 0; text-align: center; font-size: .75rem; line-height: 1.6; color: inherit; opacity: .75; }
+  .tonmato-next .tn-x a { display: inline; background: none; box-shadow: none; border: 0; padding: 0; border-radius: 0; color: inherit; font-weight: 800; text-decoration: underline; }`;
   const st = document.createElement('style'); st.textContent = css; head.appendChild(st);
 
+  // 全アプリの遊んだ人数（1回で全部取って、10分間はこのタブで使い回す。トップページと共通の入れ物）
+  function playCounts(apps) {
+    try { const c = JSON.parse(sessionStorage.getItem('tn-counts') || 'null'); if (c && Date.now() - c.t < 600000) return Promise.resolve(c.j); } catch {}
+    return fetch(`${API}/get?keys=${apps.map((a) => a.key).join(',')}`).then((r) => r.json()).then((j) => {
+      try { sessionStorage.setItem('tn-counts', JSON.stringify({ t: Date.now(), j })); } catch {}
+      return j;
+    });
+  }
   function render() {
     const apps = window.TONMATO_APPS || [];
     document.querySelectorAll('.tonmato-next').forEach((box) => {
@@ -43,7 +55,7 @@
       const others = apps.filter((a) => a.id !== cur);
       // 毎回少し順番を変えて、いろんなアプリを見てもらう
       const pick = others.map((a) => ({ a, r: Math.random() })).sort((x, y) => x.r - y.r).slice(0, 3).map((x) => x.a);
-      box.innerHTML = `<h3>🎮 次はこれで遊ぼう</h3><div class="tn-list"></div><a class="tn-all" href="${BASE.href}">ほかのゲーム・診断をぜんぶ見る →</a>`;
+      box.innerHTML = `<h3>🎮 次はこれで遊ぼう</h3><div class="tn-list"></div><a class="tn-all" href="${BASE.href}">ほかのゲーム・診断をぜんぶ見る →</a>${X_LINE}`;
       const list = box.querySelector('.tn-list');
       pick.forEach((a) => {
         const el = document.createElement('a');
@@ -54,8 +66,7 @@
         el.querySelector('.tn-d').textContent = a.desc;
         list.appendChild(el);
       });
-      const keys = pick.map((a) => a.key).join(',');
-      fetch(`${API}/get?keys=${keys}`).then((r) => r.json()).then((j) => {
+      playCounts(apps).then((j) => {
         box.querySelectorAll('.tn-p').forEach((p) => { const n = j[p.dataset.key] || 0; if (n > 0) p.textContent = `👤 ${n.toLocaleString()}人が遊びました`; });
       }).catch(() => {});
     });

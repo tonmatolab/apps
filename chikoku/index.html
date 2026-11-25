@@ -1654,7 +1654,19 @@ function shareText() {
 }
 
 // ===== API =====
+// 同じランキング・人数を、短い間に何度も取りに行かない（無料枠を守る）。記録や名前を送ったら捨てる。
+// 記録を送った返事には上位10件が入っているので、それをそのゲームのランキングとして覚える
+const API_MEMO = {};
 async function api(path, method = 'GET', data) {
+  const memo = method === 'GET' && /^\/(board|get)\?/.test(path);
+  if (memo && API_MEMO[path] && Date.now() - API_MEMO[path].t < 60000) return API_MEMO[path].j;
+  if (method !== 'GET') for (const k in API_MEMO) delete API_MEMO[k];
+  const j = await apiFetch(path, method, data);
+  if (memo && j && !j.error) API_MEMO[path] = { t: Date.now(), j };
+  if (path === '/score' && j && j.top && data) for (const p of [`/board?game=${data.game}`, `/board?game=${data.game}&limit=10`]) API_MEMO[p] = { t: Date.now(), j: { total: j.total, top: j.top } };
+  return j;
+}
+async function apiFetch(path, method = 'GET', data) {
   try {
     const opt = { method, signal: AbortSignal.timeout(8000) };
     if (data) { opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(data); }

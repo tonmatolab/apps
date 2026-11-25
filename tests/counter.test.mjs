@@ -39,6 +39,7 @@ try {
   check(sc.map((x) => x.total).join() === '26,27,28,29', `記録を出すたびに件数が増える（${sc.map((x) => x.total).join()}）`);
   check(sc[0].rank === 1 && sc[0].top10 && sc[1].rank === 27 && !sc[1].top10 && sc[2].rank === 2, `順位（${sc.map((x) => x.rank).join()}）`);
   check((await call('/board?game=onigiri')).j.total === realCount('onigiri'), '持っている件数と、実際の記録の数が同じ');
+  { const r = (await call('/score', { game: 'onigiri', ms: 121 })).j, bd = (await call('/board?game=onigiri')).j; check(Array.isArray(r.top) && r.top.length === 10 && JSON.stringify(r.top) === JSON.stringify(bd.top) && r.total === bd.total, '記録を送った返事に、/board と同じ上位10件が入る'); }
   // 件数のないゲームで、いきなり記録を出しても正しい
   const f = (await call('/score', { game: 'nobiru', ms: 500 })).j;
   check(f.total === 1 && f.rank === 1, `初めてのゲームの最初の記録（${f.total}件・${f.rank}位）`);
@@ -51,7 +52,7 @@ try {
   check((await call('/name', { game: 'onigiri', id: sc[1].id, token: sc[1].token, name: '二十七位' })).j.ok === true, '11位より下（いまは29位）でも名前を登録できる');
   // 表示数：省略で10、limit で100まで
   const b10 = (await call('/board?game=onigiri')).j, b100 = (await call('/board?game=onigiri&limit=100')).j, b999 = (await call('/board?game=onigiri&limit=999')).j;
-  check(b10.top.length === 10 && b100.top.length === 29 && b999.top.length === 29 && b100.top[28].name === '二十七位', `表示数（省略 ${b10.top.length}・100 ${b100.top.length}・上限を超えても100まで）`);
+  check(b10.top.length === 10 && b100.top.length === 30 && b999.top.length === 30 && b100.top[29].name === '二十七位', `表示数（省略 ${b10.top.length}・100 ${b100.top.length}・上限を超えても100まで）`);
   check((await call('/hit/score:onigiri', {})).s === 404 && JSON.stringify((await call('/get?keys=score:onigiri')).j) === '{}', '件数のキーは /hit・/get から触れない');
   // ふつうのカウンター
   // サッカー人生（名前が必須）：名前なしでは送れない。名無しの記録はランキングに出ず、件数にも数えない

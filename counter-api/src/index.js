@@ -1,7 +1,7 @@
 // 全アプリ共通のカウンター＆ランキングAPI（Cloudflare Workers + D1）
 //   GET  /get?keys=a,b             → {"a": 3, "b": 1}
 //   POST /hit/<key>                → {"value": 4}   （+1して新しい値を返す）
-//   POST /score   {game, ms}       → {id, token, rank, total, top10, canName}   （小さいほど上位。canName：名前を登録できる＝トップ100）
+//   POST /score   {game, ms}       → {id, token, rank, total, top10, canName, top}   （top：送ったあとの上位10件＝ /board と同じ形）   （小さいほど上位。canName：名前を登録できる＝トップ100）
 //   POST /name    {game, id, token, name} → {ok, rank}   （トップ100に入った記録だけ名前を登録できる）
 //   GET  /board?game=iai&limit=10  → {total, top: [{rank, name, ms}]}   （limit は1〜100。省略で10）
 //   POST /bushou/tenka {name}      → 名将ガチャの天下統一（サーバーで勝敗を決める）
@@ -116,6 +116,11 @@ async function histAdd(env, game, ms) {
   if (!(await histReady(env, game))) return;
   await env.DB.prepare(`INSERT INTO hist (game, b, n) VALUES (?, ${BUCKET}, 1) ON CONFLICT(game, b) DO UPDATE SET n = n + 1`).bind(game, ms).run();
 }
+// ランキングの上位 n 件
+async function boardTop(env, game, n) {
+  const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ?${namedSql(game)} ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, n).all();
+  return rows.results.map((r, i) => ({ rank: i + 1, name: r.name || gameRule(game).anon || DEFAULT_NAME, ms: r.ms }));
+}
 async function rankOf(env, game, ms, id) {
   // 同タイムは先に出した人が上。desc のゲームは大きいほど上位
   const desc = gameRule(game).desc, cmp = desc ? '>' : '<';
@@ -129,7 +134,13 @@ async function rankOf(env, game, ms, id) {
 }
 
 export default {
+  // 失敗しても CORS つきの JSON で返す（D1 の無料枠を使い切ったときなど。ブラウザには「通信できない」ではなくエラーとして届く）
   async fetch(req, env) {
+    try { return await handle(req, env); } catch (e) { console.log('error', String(e && e.message || e).slice(0, 200)); return json(req, { error: 'busy' }, 503); }
+  },
+};
+async function handle(req, env) {
+  {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors(req) });
 
@@ -166,7 +177,8 @@ export default {
       await histAdd(env, b.game, ms);
       const rank = await rankOf(env, b.game, ms, row.id);
       const total = await bumpTotal(env, b.game);
-      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: !name && rank <= MAX_N, name });
+      // top：送ったあとのランキング上位10件（画面がすぐに /board を取り直さなくて済むように）
+      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: !name && rank <= MAX_N, name, top: await boardTop(env, b.game, TOP_N) });
     }
 
     if (req.method === 'POST' && url.pathname === '/name') {
@@ -188,9 +200,7 @@ export default {
       const game = url.searchParams.get('game');
       if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
       const n = Math.max(1, Math.min(MAX_N, Math.floor(Number(url.searchParams.get('limit'))) || TOP_N));
-      const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ?${namedSql(game)} ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, n).all();
-      const total = await totalOf(env, game);
-      return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || gameRule(game).anon || DEFAULT_NAME, ms: r.ms })) });
+      return json(req, { total: await totalOf(env, game), top: await boardTop(env, game, n) });
     }
 
     // ===== 名将ガチャ：天下統一 =====
@@ -241,5 +251,5 @@ export default {
     }
 
     return json(req, { error: 'not found' }, 404);
-  },
-};
+  }
+}

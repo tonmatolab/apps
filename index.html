@@ -135,6 +135,8 @@
 
   footer { margin-top: 44px; text-align: center; font-size: .74rem; font-weight: 700; color: var(--sub); }
   footer b { font-family: var(--latin); font-weight: 700; letter-spacing: .06em; color: var(--ink); }
+  footer .xline { margin: 10px 0 0; font-weight: 500; line-height: 1.6; }
+  footer .xline a { color: var(--ink); font-weight: 800; }
 
   /* スクロールでぷにっと出る */
   .rv { opacity: 0; transform: translateY(18px) scale(.97); transition: opacity .6s ease, transform .7s cubic-bezier(.3,1.5,.5,1); }
@@ -187,7 +189,7 @@
   <nav class="chips" id="chips" aria-label="ジャンル"></nav>
   <div id="shelves"></div>
 
-  <footer class="fall"><b>TONMATO LAB</b> 🍅 新しいゲームを続々公開中</footer>
+  <footer class="fall"><b>TONMATO LAB</b> 🍅 新しいゲームを続々公開中<p class="xline">お問い合わせ・ご意見・不具合の報告は<br>X（旧Twitter）<a href="https://x.com/tonmatolab" target="_blank" rel="noopener">@tonmatolab</a> へどうぞ</p></footer>
 </main>
 <div class="toast" id="toast"></div>
 <script src="shared/apps.js"></script>
@@ -249,6 +251,7 @@ render(null);
   const v = LOCAL ? await call('/get?keys=portal-view').then((j) => j && { value: j['portal-view'] }) : await call('/hit/portal-view', 'POST');
   if (v) countUp($('views'), v.value);
   const j = await call('/get?keys=' + APPS.map((a) => a.key).join(','));
+  if (j) try { sessionStorage.setItem('tn-counts', JSON.stringify({ t: Date.now(), j })); } catch {} // 各アプリの「次はこれで遊ぼう」が使い回す（shared/next.js）
   if (j) render(j);
 })();
 

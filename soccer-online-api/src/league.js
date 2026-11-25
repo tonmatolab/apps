@@ -174,7 +174,7 @@ export class League extends DurableObject {
       if (this.failNext) { this.failNext = false; throw new Error('テスト用の失敗（途中まで保存したところで止める）'); }
     } else {
       w.offLeft--;
-      if (w.offLeft <= 0) { G.finishOffseason(w, all); for (const m of all) this.saveMember(m); }
+      if (w.offLeft <= 0) { G.finishOffseason(w, all, Date.now(), this.npcs); for (const m of all) this.saveMember(m); }
     }
     this.saveWorld();
   }
@@ -338,6 +338,11 @@ export class League extends DurableObject {
         m.pl.move = v ? [...v].slice(0, 10).join('') : null;
         this.saveMember(m); return json(this.stateView(m));
       }
+      if (req.method === 'POST' && path === '/policy') {
+        if (body.policy != null) { if (!G.POLICY[body.policy]) return err('bad_choice'); m.policy = body.policy; }
+        if (body.sw != null) { if (!G.MOVE_SWITCH[body.sw]) return err('bad_choice'); m.sw = body.sw; }
+        this.saveMember(m); return json(this.stateView(m));
+      }
       if (req.method === 'POST' && path === '/decide') {
         const e = G.decide(m, this.w, body.choice, [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
@@ -466,6 +471,8 @@ export class League extends DurableObject {
       news: (w.news || []).slice(0, 12),
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),
+        policy: G.POLICY[m.policy] ? m.policy : 'auto', sw: G.MOVE_SWITCH[m.sw] ? m.sw : 'bench',
+        autoPlan: m.status === 'off' && m.offer ? (() => { const pl = G.planAuto(m, this.w, [...this.members.values()], this.npcs); return { kind: pl.kind, club: pl.offer ? pl.offer.club : null }; })() : null,
         appeal: p.appeal || null, move: p.move || null, outlook: G.SL.growthOutlook(p), returning: !!m.returning,
         depth: p.club != null ? G.SL.depthOf(this.npcs, p.club, { pos: p.pos, ovr: G.ovr(p) }, [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: G.ovr(x.pl) }))) : null,
         grow: p.growKnown ? p.grow : null, gtype: p.growKnown ? p.gtype : null, best: Math.max(p.best || 0, G.ovr(p)), cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,

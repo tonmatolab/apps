@@ -129,6 +129,35 @@
   }
 
   // ===== 入団 =====
+  const POLICY = {
+    auto: { name: 'おまかせ', icon: '🤖', desc: '出番・強さ・年俸のバランスで選ぶ' },
+    minutes: { name: '出番重視', icon: '⚽', desc: '先発で出られるクラブを選ぶ' },
+    money: { name: '年俸重視', icon: '💰', desc: 'いちばん年俸の高いクラブを選ぶ' },
+    top: { name: '上を目指す', icon: '🏆', desc: '強いクラブ・上のリーグを選ぶ' },
+    stay: { name: '残留優先', icon: '🏠', desc: 'できるだけ今のクラブに残る' },
+  };
+  const MOVE_SWITCH = { bench: '控えのときだけ', always: 'する', never: 'しない' };
+  const policyText = (me) => `${POLICY[me.policy].icon} ${POLICY[me.policy].name}${me.policy === 'stay' ? '' : `・契約中も移る：${MOVE_SWITCH[me.sw]}`}`;
+  function openPolicy() {
+    const html = () => `<h3 style="margin:0 0 4px">🔁 移籍方針</h3>
+      <p class="sub" style="margin:0 0 8px">オフ（6時間）に契約を選ばなかったとき、この方針で自動で決まります。いつでも変えられます</p>
+      <div class="stack">${Object.entries(POLICY).map(([k, p]) => `<button class="btn pol${ST.me.policy === k ? ' primary' : ''}" data-p="${k}" style="text-align:left">${p.icon} ${p.name}<br><span class="sub" style="font-weight:600">${p.desc}</span></button>`).join('')}</div>
+      <h3 style="margin:12px 0 4px">契約が残っていても移る？</h3>
+      <div class="tabs rk">${Object.entries(MOVE_SWITCH).map(([k, v]) => `<button class="sw${ST.me.sw === k ? ' on' : ''}" data-s="${k}">${v}</button>`).join('')}</div>
+      <p class="sub" style="margin:6px 0 0">「控えのときだけ」：今のクラブで先発に入れていないときだけ、方針に合うクラブへ移ります</p>`;
+    sheet(`<div id="ol-polBox">${html()}</div>`, [{ label: '閉じる', cls: 'primary' }]);
+    const bind = () => {
+      const box = document.getElementById('ol-polBox'); if (!box) return;
+      const save = async (body) => {
+        const j = await api('/policy', body);
+        if (j.error) return toast(errMsg(j.error));
+        setState(j); box.innerHTML = html(); bind(); route();
+      };
+      box.querySelectorAll('.pol').forEach((b) => b.onclick = () => save({ policy: b.dataset.p }));
+      box.querySelectorAll('.sw').forEach((b) => b.onclick = () => save({ sw: b.dataset.s }));
+    };
+    setTimeout(bind, 0);
+  }
   function renderDraft() {
     // 休眠から戻ってきた人には、ひとこと（能力・経歴・お金はそのまま）
     $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 24時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + (ST.me.draft && ST.me.draft.length ? ST.me.draft.map((o, i) => offerCard(o, i)).join('') : '<p class="empty">いまは入れるクラブがすべて満員です。席が空いたら、ここにクラブが出ます（しばらくしてから開き直してください）</p>');
@@ -154,6 +183,9 @@
         <div class="ov"><b style="color:${me.ovr >= 80 ? 'var(--gold)' : 'var(--ink)'}">${me.ovr}</b><span>総合力</span></div></div>
       <div class="meters"><div>調子<b>${['↓', '↘', '→', '↗', '↑'][me.cond + 2]}</b></div><div>疲労<b>${me.fatigue}</b></div><div>人気<b>${me.fame}</b></div><div>${me.injury ? 'ケガ' : '貯金'}<b style="font-size:.78rem">${me.injury ? `🚑 ${me.injury}週` : man(me.money)}</b></div></div>`;
     // 立ち位置と成長の見通し（選手カードの下）
+    if (me.club != null && me.policy) {
+      $('pCard').insertAdjacentHTML('beforeend', `<div class="standing"><span>🔁 移籍方針：${policyText(me)}</span><button class="btn small" id="ol-polBtn" style="margin-left:auto;padding:2px 10px">変える</button></div>`);
+    }
     if (me.depth || me.outlook) $('pCard').insertAdjacentHTML('beforeend', `<div class="standing">${me.depth ? `<span class="${me.depth.starter ? 'st' : ''}">👥 ${esc(me.depth.text)}</span>` : ''}${me.outlook ? `<span>${me.outlook.icon} ${me.outlook.label}（来年 ${me.outlook.nextIcon}${me.outlook.nextLabel}）</span>` : ''}</div>`);
     renderStatus();
     // リーグ速報
@@ -239,7 +271,8 @@
           ${!o.forced && !o.requested ? '<button class="btn" id="ol-requestBtn">📣 移籍を希望する（オファーが増える・人気-1）</button>' : ''}
           ${o.forced || o.canRetire ? `<button class="btn ${o.forced ? 'primary' : 'ghost'}" data-c="retire">👋 引退する</button>` : ''}
         </div>
-        <p class="sub" style="margin:8px 0 0">選ばなかった場合は、オフ終了時に自動で決まります（残留できれば残留、なければ年俸が高いオファー）</p></div>`;
+        <p class="sub" style="margin:8px 0 0">選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}へ移籍` : `${esc(c.name)}に残留`}</b>` : ''}</p>
+        <button class="btn small" id="ol-polBtn2" style="margin-top:6px">🔁 移籍方針を変える</button></div>`;
       const pick = async (choice) => {
         if (choice === 'retire' && !confirm('本当に引退しますか？')) return;
         const j = await api('/decide', { choice });
@@ -401,6 +434,8 @@
     const cz = ST.casino;
     if (cz && cz.myBets.length && cz.nextAt + 3000 - (Date.now() + skew) < 0 && Date.now() - fetchedAt > 15000 && document.visibilityState === 'visible' && !document.querySelector('.sheet.casino')) load();
   }, 1000);
+  // 移籍方針の「変える」（ホーム・オフの画面）
+  document.addEventListener('click', (e) => { if (e.target.closest('#ol-polBtn, #ol-polBtn2')) openPolicy(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ST && Date.now() - fetchedAt > 60000) load(); });
 
   $('startBtn').onclick = () => renderCreate(false);

@@ -11,7 +11,7 @@ const { POS, GROW, LEAGUES, SEASON_WEEKS, mainStats, ovr, startChance } = SL;
 export const DORMANT_MS = 14 * 24 * 3600000;
 // 登録したままクラブを選ばない人は、これだけたつと休眠にして定員の枠を空ける（毎節たしかめる）
 export const DRAFT_IDLE_MS = 24 * 3600000;
-export const OFF_TICKS = 2; // オフシーズンの長さ（節の何回分か。30分ごとなら1時間）。この間に契約を選ぶ
+export const OFF_TICKS = 12; // オフシーズンの長さ（節の何回分か。30分ごとなら6時間）。この間に契約を選ぶ。選ばなかった人は移籍方針で自動で決まる
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
 export const CLUB_CAP = 10, GK_CAP = 3, FW_CAP = 4; // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
 export const POS_CAP = { GK: GK_CAP, FW: FW_CAP };
@@ -446,17 +446,73 @@ export function sweepIdleDrafts(w, members, now = Date.now()) {
   if (out.length) addNews(w, `💤 クラブを選ばないまま24時間たった${out.length}人が休眠に入り、定員の枠が空いた`);
   return out;
 }
-function autoDecide(m, w, members) {
-  const o = m.offer, res = o.res;
-  if (o.forced) return retire(m, w);
-  if (!res.expiring && !res.released) { m.status = 'decided'; m.offer = null; return; }
-  const list = offerList(m).filter((x) => x.stay || !clubFull(members, x.club, m.pl.pos, m)).sort((a, b) => (b.stay ? 1 : 0) - (a.stay ? 1 : 0) || b.salary - a.salary);
-  if (!list.length) return retire(m, w);
-  SL.accept(adapter(m, w), list[0]);
-  m.status = 'decided'; m.offer = null;
+// ----- 移籍方針：オフに選ばなかったときの決め方（いつでも変えられる） -----
+export const POLICY = {
+  auto: { name: 'おまかせ', icon: '🤖', desc: '出番・強さ・年俸のバランスで選ぶ' },
+  minutes: { name: '出番重視', icon: '⚽', desc: '先発で出られるクラブを選ぶ' },
+  money: { name: '年俸重視', icon: '💰', desc: 'いちばん年俸の高いクラブを選ぶ' },
+  top: { name: '上を目指す', icon: '🏆', desc: '強いクラブ・上のリーグを選ぶ' },
+  stay: { name: '残留優先', icon: '🏠', desc: 'できるだけ今のクラブに残る' },
+};
+// 契約が残っていても、方針に合うオファーがあれば移るか
+export const MOVE_SWITCH = { bench: '控えのときだけ', always: 'する', never: 'しない' };
+const LG_RANK = { 0: 3, 1: 2, 2: 1 };
+// そのクラブでの立ち位置（先発に入れるか・何番手か）。npcs がなければ総合力とクラブの強さから
+function seatAt(m, w, clubId, members, npcs) {
+  const o = ovr(m.pl);
+  if (!npcs) { const x = SL.startChanceOvr(o, w.clubs[clubId], m.pl.age); return { starter: x > .45, rank: x > .45 ? 1 : 9 }; }
+  const hum = members.filter((x) => x !== m && x.pl.club === clubId && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: ovr(x.pl) }));
+  return SL.depthOf(npcs, clubId, { pos: m.pl.pos, ovr: o }, hum);
 }
-export function finishOffseason(w, members, now = Date.now()) {
-  for (const m of members) if (m.status === 'off') autoDecide(m, w, members);
+// 方針ごとの点数（大きいほど良い）と、契約中に移るのに必要な差
+function policyValue(pol, cand, seat, club, cur) {
+  if (pol === 'money') return cand.salary;
+  if (pol === 'minutes') return (seat.starter ? 1000 : 0) - seat.rank * 10 + cand.salary / 1e4;
+  if (pol === 'top') return LG_RANK[club.lg] * 1000 + club.str + cand.salary / 1e4;
+  return (seat.starter ? 40 : 0) + LG_RANK[club.lg] * 15 + club.str * .5 + 10 * Math.log2(Math.max(1, cand.salary) / Math.max(1, cur.salary));
+}
+const MARGIN = { money: (cur) => cur * .1, minutes: () => 1000, top: () => 3, auto: () => 10 };
+// オフに選ばなかったときに、どうなるか（自動の決定と、画面の「このままだと」の両方で使う）
+//   { kind: 'retire' } / { kind: 'stay', offer? } / { kind: 'move', offer }
+export function planAuto(m, w, members, npcs = null) {
+  const o = m.offer, res = o.res, pol = POLICY[m.policy] ? m.policy : 'auto', sw = MOVE_SWITCH[m.sw] ? m.sw : 'bench';
+  if (o.forced) return { kind: 'retire' };
+  const list = offerList(m).filter((x) => x.stay || !clubFull(members, x.club, m.pl.pos, m));
+  const free = res.expiring || res.released;
+  if (!free) {
+    const here = seatAt(m, w, m.pl.club, members, npcs);
+    if (pol === 'stay' || sw === 'never' || (sw === 'bench' && here.starter)) return { kind: 'stay' };
+    const cur = { club: m.pl.club, salary: m.pl.salary };
+    const curV = policyValue(pol, cur, here, w.clubs[m.pl.club], cur);
+    let best = null, bestV = curV + MARGIN[pol](curV);
+    for (const t of list) {
+      if (t.stay) continue;
+      const v = policyValue(pol, t, seatAt(m, w, t.club, members, npcs), w.clubs[t.club], cur);
+      if (v >= bestV) { best = t; bestV = v; }
+    }
+    return best ? { kind: 'move', offer: best } : { kind: 'stay' };
+  }
+  if (!list.length) return { kind: 'retire' };
+  if (pol === 'stay') { const x = list.slice().sort((a, b) => (b.stay ? 1 : 0) - (a.stay ? 1 : 0) || b.salary - a.salary)[0]; return { kind: x.stay ? 'stay' : 'move', offer: x }; }
+  const cur = { club: m.pl.club, salary: m.pl.salary };
+  let best = null, bestV = -Infinity;
+  for (const t of list) { const v = policyValue(pol, t, seatAt(m, w, t.club, members, npcs), w.clubs[t.club], cur); if (v > bestV) { best = t; bestV = v; } }
+  return { kind: best.stay ? 'stay' : 'move', offer: best };
+}
+function autoDecide(m, w, members, npcs) {
+  const plan = planAuto(m, w, members, npcs);
+  if (plan.kind === 'retire') return retire(m, w);
+  if (plan.offer) {
+    SL.accept(adapter(m, w), plan.offer);
+    if (plan.kind === 'move') {
+      const P = POLICY[m.policy] || POLICY.auto;
+      addNews(w, `🔁 ${m.pl.name}が${w.clubs[plan.offer.club].name}へ移籍（移籍方針：${P.icon}${P.name}）`);
+    }
+  }
+  m.status = 'decided'; m.offer = null; trimLog(m);
+}
+export function finishOffseason(w, members, now = Date.now(), npcs = null) {
+  for (const m of members) if (m.status === 'off') autoDecide(m, w, members, npcs);
   // 長く来ていないプレイヤーは休眠：クラブの枠を空ける。本人の時間も止まる（年をとらない・試合に出ない）
   for (const m of members) if (m.status === 'decided' && now - (m.seenAt || now) > DORMANT_MS) {
     m.status = 'dormant'; m.prevClub = m.pl.club; m.pl.club = null; m.dormantSince = w.year;

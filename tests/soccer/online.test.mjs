@@ -110,7 +110,15 @@ try {
     check(r2.status === 400 && r2.j.error === 'already', '移籍の希望は1回だけ');
     check(Array.isArray(st.records.npcLegends), 'NPCレジェンドの一覧が画面に届く');
   }
-  await call('/dev/tick', { body: { n: 2 } });
+  // 移籍方針：いつでも変えられる。オフの画面には「選ばなかったらどうなるか」が出る
+  {
+    const p0 = (await call('/state', { code: A })).j.me;
+    check(p0.policy === 'auto' && p0.sw === 'bench' && p0.autoPlan && ['stay', 'move', 'retire'].includes(p0.autoPlan.kind), `最初の方針は「おまかせ・控えのときだけ」で、オフには自動の結果が見える（${p0.autoPlan && p0.autoPlan.kind}）`);
+    const p1 = await call('/policy', { code: A, body: { policy: 'money', sw: 'always' } });
+    check(p1.status === 200 && p1.j.me.policy === 'money' && p1.j.me.sw === 'always', '移籍方針を変えられる');
+    check((await call('/policy', { code: A, body: { policy: 'xxx' } })).j.error === 'bad_choice' && (await call('/policy', { code: A, body: { sw: 'yes' } })).j.error === 'bad_choice', 'ない方針は選べない');
+  }
+  await call('/dev/tick', { body: { n: 12 } }); // オフは6時間（30分ごとなら12節分）
   st = (await call('/state', { code: A })).j;
   check(st.world.phase === 'season' && st.me.status === 'active', 'オフが終わって新シーズン');
   // ランキング・公開情報
@@ -175,7 +183,7 @@ try {
     // 休眠：長く来ていない人は、オフの終わりに枠を空ける → 戻ってきたらクラブを選び直す
     const debut = st2.me.debutYear;
     await call('/dev/seen', { body: { ms: 15 * 24 * 3600000 } });
-    for (let k = 0; k < 25; k++) { const w = (await call('/public')).j.world; if (w.phase === 'season' && w.week === 0 && k > 0) break; await call('/dev/tick', { body: { n: 1 } }); }
+    for (let k = 0; k < 45; k++) { const w = (await call('/public')).j.world; if (w.phase === 'season' && w.week === 0 && k > 0) break; await call('/dev/tick', { body: { n: 1 } }); }
     const exD = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j;
     const dm = exD.players.map((p) => JSON.parse(p.data)).find((m) => m.pl.name === '得意 確認');
     check(dm && dm.status === 'dormant' && dm.pl.club == null && dm.prevClub != null, `長く来ていない人は休眠になり、クラブの枠を空ける（${dm && dm.status}）`);

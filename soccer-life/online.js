@@ -27,7 +27,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ10人・GKは3人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（300人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ10人・GKは3人・FWは4人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（300人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
 
@@ -56,7 +56,7 @@
     show('scrStart');
     const j = await api('/public');
     if (j.error) { $('startWorld').innerHTML = `<div style="grid-column:1/-1">${errMsg(j.error)}</div>`; $('startScorers').innerHTML = '<li class="empty">-</li>'; return; }
-    const w = j.world; skew = w.now - Date.now();
+    const w = j.world; skew = w.now - Date.now(); POSI = j.positions || null;
     $('tickTxt').textContent = w.tickMin >= 60 ? `${w.tickMin / 60}時間` : `${w.tickMin}分`;
     $('startWorld').innerHTML = `<div>シーズン<b>${w.year}年</b></div><div>${w.phase === 'season' ? '節' : 'オフ'}<b>${w.phase === 'season' ? `${w.week}/${w.weeks}` : `残り${w.offLeft}`}</b></div><div>プレイヤー<b>${w.players}人</b></div>`;
     $('startNewsCard').classList.toggle('hidden', !(j.news && j.news.length));
@@ -65,7 +65,26 @@
   }
 
   // ===== 作成 =====
-  let selPos = 'FW', selAppeal = null;
+  let selPos = 'FW', selAppeal = null, POSI = null;
+  // ポジションのボタンに混み具合を出す。満員のポジションは選べない（選んでいたら空いているポジションに移す）
+  const POS_LABEL = { 満員: '🚫 満員', 激戦: '🔥 激戦', ふつう: '🙂 ふつう', 狙い目: '🎯 狙い目' };
+  function paintPositions(pickAp) {
+    if (!POSI) return;
+    const btns = [...$('poses').querySelectorAll('.pos')];
+    for (const b of btns) {
+      const P = POSI[b.dataset.p]; if (!P) continue;
+      b.disabled = !P.open; b.classList.toggle('full', !P.open);
+      b.querySelector('.crowd')?.remove();
+      b.insertAdjacentHTML('beforeend', `<em class="crowd c-${P.label}">${POS_LABEL[P.label]}${P.open ? `・空き${P.open}` : ''}${P.bonus ? `・才能+${P.bonus}` : ''}</em>`);
+    }
+    if (POSI[selPos] && !POSI[selPos].open) {
+      const ok = btns.find((b) => !b.disabled);
+      if (ok) { selPos = ok.dataset.p; btns.forEach((x) => x.classList.toggle('on', x === ok)); pickAp(); }
+    }
+    const allFull = btns.every((b) => b.disabled);
+    $('signupMsg').textContent = allFull ? 'いまはどのポジションも満員です。空きが出るまでお待ちください' : '';
+    $('signupBtn').disabled = allFull;
+  }
   function renderCreate(next = false) {
     $('createTitle').textContent = next ? '子どもの名前は？' : 'あなたの名前は？';
     $('signupBtn').textContent = next ? '次の世代を始める ▶' : 'プロになる ▶';
@@ -75,7 +94,9 @@
     const pickAp = () => appealPicker($('appeals'), selPos, selAppeal, (k) => { selAppeal = k; });
     $('poses').querySelectorAll('.pos').forEach((b) => b.onclick = () => { selPos = b.dataset.p; $('poses').querySelectorAll('.pos').forEach((x) => x.classList.toggle('on', x === b)); pickAp(); });
     pickAp();
-    $('signupMsg').textContent = '';
+    $('signupMsg').textContent = ''; $('signupBtn').disabled = false;
+    paintPositions(pickAp);
+    api('/public').then((j) => { if (j && j.positions) { POSI = j.positions; paintPositions(pickAp); } }); // 最新の空きに更新
     show('scrCreate');
   }
   async function signup() {
@@ -110,7 +131,7 @@
   // ===== 入団 =====
   function renderDraft() {
     // 休眠から戻ってきた人には、ひとこと（能力・経歴・お金はそのまま）
-    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 24時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + ST.me.draft.map((o, i) => offerCard(o, i)).join('');
+    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 24時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + (ST.me.draft && ST.me.draft.length ? ST.me.draft.map((o, i) => offerCard(o, i)).join('') : '<p class="empty">いまは入れるクラブがすべて満員です。席が空いたら、ここにクラブが出ます（しばらくしてから開き直してください）</p>');
     $('draftList').querySelectorAll('.offer').forEach((b) => b.onclick = async () => {
       const j = await api('/join', { i: +b.dataset.i });
       if (j.error) return toast(errMsg(j.error));

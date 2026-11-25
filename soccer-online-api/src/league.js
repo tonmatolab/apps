@@ -291,6 +291,10 @@ export class League extends DurableObject {
       if (!m) return err('unauthorized', 401);
       if (req.method === 'GET' && path === '/state') {
         if (G.wake(m, this.w, [...this.members.values()])) { this.saveMember(m); this.saveWorld(); }
+        if (m.status === 'draft') {
+          const all = [...this.members.values()];
+          if (!(m.draft || []).some((o) => !G.clubFull(all, o.club, m.pl.pos, m))) { m.draft = G.draftOffers(m, this.w, all); this.saveMember(m); }
+        }
         const bonus = this.loginBonus(m);
         return json({ ...this.stateView(m), bonus });
       }
@@ -342,7 +346,9 @@ export class League extends DurableObject {
         if (m.status !== 'retired') return err('not_now');
         const name = cleanName(body.name); if (!name) return err('bad_name');
         if (!G.POS[body.pos]) return err('bad_pos');
-        const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w, [...this.members.values()], G.SL.appealChoices(body.pos).includes(body.appeal) ? body.appeal : null);
+        const PI = G.positionInfo(this.w, [...this.members.values()]);
+        if (!PI[body.pos].open) return err('pos_full', 409);
+        const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w, [...this.members.values()], G.SL.appealChoices(body.pos).includes(body.appeal) ? body.appeal : null, PI[body.pos].bonus);
         this.atomic(() => { this.saveMember(m, 0); this.saveMember(nm); });
         this.members.delete(m.id); this.members.set(nm.id, nm); this.byAccount.set(nm.account, nm.id);
         return json(this.stateView(nm));
@@ -358,6 +364,8 @@ export class League extends DurableObject {
     const name = cleanName(body.name); if (!name) return err('bad_name');
     if (!G.POS[body.pos]) return err('bad_pos');
     if (this.activeCount() >= MAX_PLAYERS) return err('full', 503);
+    const PI = G.positionInfo(this.w, [...this.members.values()]);
+    if (!PI[body.pos].open) return err('pos_full', 409);
     const ip = req.headers.get('CF-Connecting-IP') || 'local';
     const now = Date.now(), hits = (this.signups.get(ip) || []).filter((t) => now - t < 3600000);
     if (hits.length >= SIGNUP_PER_HOUR) return err('too_many', 429);
@@ -365,7 +373,7 @@ export class League extends DurableObject {
     const code = newCode(), hash = await sha(code), acc = crypto.randomUUID();
     this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', acc, hash, now);
     this.accounts.set(hash, acc);
-    const m = G.newMember(crypto.randomUUID(), acc, name, body.pos, { appeal: G.SL.appealChoices(body.pos).includes(body.appeal) ? body.appeal : null });
+    const m = G.newMember(crypto.randomUUID(), acc, name, body.pos, { bonus: PI[body.pos].bonus, appeal: G.SL.appealChoices(body.pos).includes(body.appeal) ? body.appeal : null });
     m.draft = G.draftOffers(m, this.w, [...this.members.values()]);
     this.members.set(m.id, m); this.byAccount.set(acc, m.id); this.saveMember(m);
     return json({ code, state: this.stateView(m) });
@@ -414,7 +422,7 @@ export class League extends DurableObject {
   }
 
   publicView() {
-    return { world: this.worldView(), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, news: (this.w.news || []).slice(0, 8), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
+    return { world: this.worldView(), positions: G.positionInfo(this.w, [...this.members.values()]), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, news: (this.w.news || []).slice(0, 8), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
   }
   // 今季の個人成績の表（NPC＋本物のプレイヤー）。メモリから作るだけで、書き込みはしない
   seasonEntries() {
@@ -453,7 +461,7 @@ export class League extends DurableObject {
       motw: w.motw || null, records: { ...w.records, clubs: undefined, npcLegends: (w.records.npcLegends || []).slice(0, 20) }, clubRecord: cr, cohort, debutYear: m.debutYear,
       cup: w.cup ? { results: w.cup.results, alive: w.cup.alive, winner: w.cup.winner } : null,
       shop: m.status === 'draft' || m.status === 'retired' ? [] : G.SL.shopList(G.adapter(m, w)),
-      caps: { club: G.CLUB_CAP, gk: G.GK_CAP, salary: G.SALARY_CAP },
+      caps: { club: G.CLUB_CAP, gk: G.GK_CAP, fw: G.FW_CAP, salary: G.SALARY_CAP },
       casino: this.tableView(m),
       news: (w.news || []).slice(0, 12),
       me: {

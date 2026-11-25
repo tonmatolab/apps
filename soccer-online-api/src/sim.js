@@ -13,7 +13,10 @@ export const DORMANT_MS = 14 * 24 * 3600000;
 export const DRAFT_IDLE_MS = 24 * 3600000;
 export const OFF_TICKS = 2; // オフシーズンの長さ（節の何回分か。30分ごとなら1時間）。この間に契約を選ぶ
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
-export const CLUB_CAP = 10, GK_CAP = 3; // 1クラブの本物のプレイヤーの上限（GKは別に上限）。名簿は22人のままで、そのぶんNPCが控え組に回る
+export const CLUB_CAP = 10, GK_CAP = 3, FW_CAP = 4; // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
+export const POS_CAP = { GK: GK_CAP, FW: FW_CAP };
+const XI = { GK: 1, DF: 4, MF: 4, FW: 2 }; // 先発の枠（4-4-2）
+export const POP_BONUS = 6; // 「狙い目」のポジションで始めたときの才能のボーナス
 // 年俸の上限（万円）。リーグごと
 export const SALARY_CAP = { 0: 30000, 1: 8000, 2: 2000 };
 // ルーレットの台：全員共通で一定時間ごとに1回まわる（間隔は wrangler.toml の RL_MINUTES）
@@ -85,7 +88,24 @@ export function humansAt(members, clubId, pos = null, except = null) {
   return n;
 }
 export function clubFull(members, clubId, pos, except = null) {
-  return humansAt(members, clubId, null, except) >= CLUB_CAP || (pos === 'GK' && humansAt(members, clubId, 'GK', except) >= GK_CAP);
+  return humansAt(members, clubId, null, except) >= CLUB_CAP || (POS_CAP[pos] != null && humansAt(members, clubId, pos, except) >= POS_CAP[pos]);
+}
+// ポジションごとの空きと混み具合（新人が入れる国内のクラブで数える）
+//   open：あと何人入れるか / crowd：本物のプレイヤーの数 ÷ 先発の枠の数 / label：激戦・ふつう・狙い目 / bonus：狙い目なら才能のボーナス
+export function positionInfo(w, members) {
+  const dom = w.clubs.filter((c) => c.lg > 0), out = {};
+  for (const pos of ['GK', 'DF', 'MF', 'FW']) {
+    let open = 0, humans = 0;
+    for (const c of dom) {
+      const all = humansAt(members, c.id), mine = humansAt(members, c.id, pos);
+      humans += mine;
+      open += Math.max(0, Math.min(CLUB_CAP - all, POS_CAP[pos] != null ? POS_CAP[pos] - mine : Infinity));
+    }
+    const crowd = humans / (dom.length * XI[pos]);
+    const label = open === 0 ? '満員' : crowd >= 1 ? '激戦' : crowd <= .5 ? '狙い目' : 'ふつう';
+    out[pos] = { open, crowd: Math.round(crowd * 100) / 100, label, bonus: label === '狙い目' ? POP_BONUS : 0 };
+  }
+  return out;
 }
 function capSalary(w, o) { const cap = SALARY_CAP[w.clubs[o.club].lg]; if (o.salary > cap) { o.salary = cap; o.capped = true; } return o; }
 export function standings(w, lg) {
@@ -127,7 +147,7 @@ function trimLog(m) { if (m.log.length > 60) m.log.splice(0, m.log.length - 60);
 export function draftOffers(m, w, members = []) {
   const list = rookieOffers({ p: m.pl, clubs: w.clubs });
   const used = new Set();
-  return list.map((o) => {
+  const out = list.map((o) => {
     if (!clubFull(members, o.club, m.pl.pos) && !used.has(o.club)) { used.add(o.club); return capSalary(w, o); }
     const base = w.clubs[o.club];
     const alt = w.clubs.filter((c) => c.lg === base.lg && !used.has(c.id) && !clubFull(members, c.id, m.pl.pos)).sort((a, b) => Math.abs(a.str - base.str) - Math.abs(b.str - base.str))[0];
@@ -135,6 +155,13 @@ export function draftOffers(m, w, members = []) {
     used.add(alt.id);
     return capSalary(w, { ...o, club: alt.id });
   }).filter(Boolean);
+  if (!out.length) { // オファーのリーグがどれも満員：空きのある国内のクラブから2つまで
+    const o = SL.ovr(m.pl);
+    for (const c of w.clubs.filter((x) => x.lg > 0 && !clubFull(members, x.id, m.pl.pos)).sort((a, b) => a.str - b.str).slice(0, 2)) { // 弱いクラブから
+      out.push(capSalary(w, { club: c.id, salary: SL._.wageFor(c, o, m.pl.fame), years: 3, rookie: true }));
+    }
+  }
+  return out;
 }
 export function join(m, w, i, members = []) {
   const o = m.draft[i]; if (!o) return 'bad_choice';
@@ -460,10 +487,10 @@ export function retire(m, w) {
   for (const [cid, x] of per) if (x.apps >= 10) pushTop(clubRec(w, cid).legends, { name: sm.name, apps: x.apps, goals: x.goals, v: x.apps });
   return m.summary;
 }
-export function nextGeneration(old, id, name, pos, w, members = [], appeal = null) {
+export function nextGeneration(old, id, name, pos, w, members = [], appeal = null, extraBonus = 0) {
   const sm = old.summary;
   const lineage = old.lineage.concat([{ gen: old.gen, name: sm.name, pos: sm.pos, title: sm.title, letter: sm.letter, score: sm.score, apps: sm.apps, goals: sm.goals, cs: sm.cs, years: `${sm.startYear}-${sm.endYear}` }]);
-  const m = newMember(id, old.account, name, pos, { gen: old.gen + 1, lineage, bonus: SL.inheritBonus(sm), parent: { name: sm.name, title: sm.title }, appeal });
+  const m = newMember(id, old.account, name, pos, { gen: old.gen + 1, lineage, bonus: SL.inheritBonus(sm) + extraBonus, parent: { name: sm.name, title: sm.title }, appeal });
   m.draft = draftOffers(m, w, members);
   return m;
 }

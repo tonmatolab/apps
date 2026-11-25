@@ -43,6 +43,13 @@ try {
   check((await call('/board?game=onigiri')).j.total === 1, '初めてのゲームの件数');
   // 名前の登録（トップ10）・件数のキーは外から読み書きできない
   check((await call('/name', { game: 'soccerq2', id: sc[0].id, token: sc[0].token, name: 'テスト' })).j.ok === true, 'トップ10は名前を登録できる');
+  // トップ100までは名前を登録できる（27位でも）。使えない言葉は書きかえても止める
+  check(sc[1].canName === true && sc[1].top10 === false, '11位より下でも、100位までなら名前を登録できる印が付く');
+  check((await call('/name', { game: 'soccerq2', id: sc[1].id, token: sc[1].token, name: 'ｼﾈ' })).j.error === 'bad_name', '使えない言葉は半角でも止める');
+  check((await call('/name', { game: 'soccerq2', id: sc[1].id, token: sc[1].token, name: '二十七位' })).j.ok === true, '11位より下（いまは29位）でも名前を登録できる');
+  // 表示数：省略で10、limit で100まで
+  const b10 = (await call('/board?game=soccerq2')).j, b100 = (await call('/board?game=soccerq2&limit=100')).j, b999 = (await call('/board?game=soccerq2&limit=999')).j;
+  check(b10.top.length === 10 && b100.top.length === 29 && b999.top.length === 29 && b100.top[28].name === '二十七位', `表示数（省略 ${b10.top.length}・100 ${b100.top.length}・上限を超えても100まで）`);
   check((await call('/hit/score:soccerq2', {})).s === 404 && JSON.stringify((await call('/get?keys=score:soccerq2')).j) === '{}', '件数のキーは /hit・/get から触れない');
   // ふつうのカウンター
   check((await call('/hit/test-key', {})).j.value === 1 && (await call('/get?keys=test-key')).j['test-key'] === 1, 'カウンターは今までどおり');

@@ -200,6 +200,26 @@ try {
     check(after === before - 1, `休眠の人は参加人数に数えない（${before}人 → ${after}人）`);
     const back3 = (await call('/state', { code: su3.j.code })).j;
     check(back3.me.status === 'draft' && !back3.me.returning && back3.me.draft.length > 0, 'あとで来ても、そのままクラブを選べる（「おかえりなさい」は出さない）');
+    // 使えない言葉：空白・カタカナ・半角で書きかえても止める
+    for (const bad of ['シ ネ', 'ｼﾈ', '綾部 死んでくれます', 'ＦＵＣＫ']) {
+      const r = await call('/signup', { body: { name: bad, pos: 'FW' }, headers: { 'CF-Connecting-IP': '10.8.8.8' } });
+      check(r.j && r.j.error === 'bad_name', `使えない言葉の名前は登録できない（${bad}：${r.j && r.j.error}）`);
+    }
+    // 管理用の名前の変更（キーがないと見えない）
+    const AK = { 'X-Admin-Key': ADMIN };
+    check((await call('/admin/rename', { body: { id: 'x' } })).status === 404 && (await call('/admin/ng')).status === 404, '管理用の操作はキーがないと使えない');
+    const ex0 = (await call('/admin/export', { headers: AK })).j.players.map((p) => JSON.parse(p.data));
+    const tgt = ex0.find((m) => m.pl.name === '得意 確認');
+    const rn = await call('/admin/rename', { body: { id: tgt.id, to: '改名 確認' }, headers: AK });
+    check(rn.status === 200 && rn.j.from === '得意 確認' && rn.j.to === '改名 確認', `管理用に名前を変えられる（${rn.status} ${JSON.stringify(rn.j)}）`);
+    const me2 = (await call('/state', { code: C2 })).j.me;
+    check(me2.name === '改名 確認' && me2.move === '雷鳴シュートとても長', `本人の画面にも新しい名前が出る（${me2.name}）`);
+    const exR = (await call('/admin/export', { headers: AK })).j;
+    check(!exR.world.includes('得意 確認') && !exR.players.some((p) => p.data.includes('得意 確認')), '速報・記録・データに古い名前が残らない');
+    const auto = await call('/admin/rename', { body: { id: tgt.id }, headers: AK });
+    check(/^選手\d{4}$/.test(auto.j.to), `名前を指定しなければ「選手＋数字」（${auto.j.to}）`);
+    const ngl = await call('/admin/ng', { headers: AK });
+    check(ngl.status === 200 && Array.isArray(ngl.j.players), '使えない言葉を含む名前の一覧を出せる');
   }
   { const bad = log.split(/\r?\n/).filter((l) => /Uncaught|TypeError|ReferenceError/.test(l)); check(!bad.length, 'サーバーのログにエラーがない' + (bad.length ? '：' + bad.slice(0, 4).join(' / ').slice(0, 600) : '')); }
 } catch (e) {

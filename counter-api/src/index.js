@@ -1,14 +1,15 @@
 // 全アプリ共通のカウンター＆ランキングAPI（Cloudflare Workers + D1）
 //   GET  /get?keys=a,b             → {"a": 3, "b": 1}
 //   POST /hit/<key>                → {"value": 4}   （+1して新しい値を返す）
-//   POST /score   {game, ms}       → {id, token, rank, total, top10}   （小さいほど上位）
-//   POST /name    {game, id, token, name} → {ok, rank}   （トップ10に入った記録だけ名前を登録できる）
-//   GET  /board?game=iai           → {total, top: [{rank, name, ms}]}
+//   POST /score   {game, ms}       → {id, token, rank, total, top10, canName}   （小さいほど上位。canName：名前を登録できる＝トップ100）
+//   POST /name    {game, id, token, name} → {ok, rank}   （トップ100に入った記録だけ名前を登録できる）
+//   GET  /board?game=iai&limit=10  → {total, top: [{rank, name, ms}]}   （limit は1〜100。省略で10）
 //   POST /bushou/tenka {name}      → 名将ガチャの天下統一（サーバーで勝敗を決める）
 //   GET  /bushou/top               → 名将ガチャの全国番付
 // key / game は英小文字・数字・ハイフンのみ
 
 import { makeBushou, seeded, simulateBattle } from './bushou-core.js';
+import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（オンラインリーグと共通）
 
 const KEY_RE = /^[a-z0-9-]{1,64}$/;
 const ALLOWED_ORIGINS = [
@@ -30,7 +31,8 @@ const GAMES = {
   soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手' },
   onigiri: { min: 1, max: 100000, desc: true, anon: '名無しの職人' }, // おにぎり握り職人の査定額（円）。大きいほど上位
 };
-const TOP_N = 10;
+const TOP_N = 10;      // ランキングの表示数（省略したとき）
+const MAX_N = 100;     // ランキングの表示数の上限。名前を登録できるのもこの順位まで
 // 日替わりランキング：'chikoku-d20261118' のように、元のゲーム名＋日付で受け付ける
 function gameRule(game) {
   if (typeof game !== 'string') return null;
@@ -38,7 +40,6 @@ function gameRule(game) {
   const m = game.match(/^([a-z]+)-d(\d{8})$/);
   return m && GAMES[m[1]] ? GAMES[m[1]] : null;
 }
-const NG_WORDS = ['死ね', 'しね', '殺す', 'ころす', 'fuck', 'shit', 'ちんこ', 'まんこ', 'ちんぽ', 'sex'];
 const DEFAULT_NAME = '名無しの侍';
 // 名将ガチャ：登録者が少ないうちの対戦相手
 const NPC_NAMES = ['足軽の権兵衛', '村の与作', '山賊の熊五郎', '浪人の半蔵', '若殿', '城下の茶屋娘', '旅の僧', '鍛冶屋の源', '漁師の太平', '商人の宗兵衛',
@@ -70,8 +71,7 @@ function cleanName(raw) {
   let s = String(raw || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').replace(/\s+/g, ' ').trim();
   s = [...s].slice(0, 12).join('');
   if (!s) return null;
-  const low = s.toLowerCase();
-  if (NG_WORDS.some((w) => low.includes(w))) return null;
+  if (isNg(s)) return null;
   return s;
 }
 
@@ -135,7 +135,7 @@ export default {
         .bind(b.game, ms, token, Date.now()).first();
       const rank = await rankOf(env, b.game, ms, row.id);
       const total = await bumpTotal(env, b.game);
-      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N });
+      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: rank <= MAX_N });
     }
 
     if (req.method === 'POST' && url.pathname === '/name') {
@@ -147,7 +147,7 @@ export default {
       if (!s || s.token !== b.token) return json(req, { error: 'forbidden' }, 403);
       if (s.name) return json(req, { error: 'already' }, 409);
       const rank = await rankOf(env, b.game, s.ms, s.id);
-      if (rank > TOP_N) return json(req, { error: 'not_top', rank }, 409);
+      if (rank > MAX_N) return json(req, { error: 'not_top', rank }, 409);
       await env.DB.prepare('UPDATE scores SET name = ? WHERE id = ?').bind(name, s.id).run();
       return json(req, { ok: true, rank, name });
     }
@@ -155,7 +155,8 @@ export default {
     if (req.method === 'GET' && url.pathname === '/board') {
       const game = url.searchParams.get('game');
       if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
-      const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, TOP_N).all();
+      const n = Math.max(1, Math.min(MAX_N, Math.floor(Number(url.searchParams.get('limit'))) || TOP_N));
+      const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, n).all();
       const total = await totalOf(env, game);
       return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || gameRule(game).anon || DEFAULT_NAME, ms: r.ms })) });
     }

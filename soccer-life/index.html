@@ -67,6 +67,10 @@
   .board { list-style: none; margin: 0; padding: 0; }
   .board li { display: grid; grid-template-columns: 2em 1fr auto; gap: 8px; align-items: center; padding: 7px 4px; border-bottom: 1px dashed var(--line); font-size: .88rem; }
   .board li:last-child { border: none; }
+  .board li.more, ol.rklist li.more { display: block; text-align: center; border: none; padding-top: 10px; }
+  ol.rklist li.rkx { display: none; }
+  ol.rklist.open li.rkx { display: flex; }
+  ol.rklist.open li.rkme { display: none; }
   .board .no { font-family: var(--num); font-weight: 800; text-align: center; color: var(--sub); }
   .board li:nth-child(1) .no { color: #d49b00; } .board li:nth-child(2) .no { color: #8e9aa8; } .board li:nth-child(3) .no { color: #b8733a; }
   .board .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -640,7 +644,7 @@
       <h2>🏆 全国ランキング</h2>
       <div class="rankmsg" id="rankMsg">集計中…</div>
       <div id="nameBox" class="hidden" style="margin-top:10px">
-        <p class="sub" style="margin:0 0 6px;text-align:center">トップ10入り！ランキングに名前を載せよう</p>
+        <p class="sub" style="margin:0 0 6px;text-align:center">トップ100入り！ランキングに名前を載せよう</p>
         <div class="row"><input class="t" id="rankName" maxlength="12" style="flex:2"><button class="btn gold" id="rankNameBtn">登録</button></div>
         <p class="sub" id="rankNameMsg" style="text-align:center;margin:6px 0 0"></p>
       </div>
@@ -933,11 +937,14 @@ function renderCol() {
 // ===== タイトル =====
 // 全国ランキング：試合の仕組みが新しくなった（2026年11月）ので新しいランキング。旧ルールの記録は old で見られる
 const boardGame = (mode, old = false) => (mode === 'quick' ? 'soccerq' : 'soccer') + (old ? '' : '2');
-async function loadBoard(el, mine, mode = 'normal', old = false) {
-  const j = await api('/board?game=' + boardGame(mode, old));
+async function loadBoard(el, mine, mode = 'normal', old = false, limit = mine > 10 && mine <= 100 ? 100 : 10) {
+  const j = await api(`/board?game=${boardGame(mode, old)}&limit=${limit}`);
   if (!j || j.error) { el.innerHTML = '<li class="empty">ランキングを読み込めませんでした</li>'; return; }
   if (!j.top.length) { el.innerHTML = '<li class="empty">まだ誰も引退していません。一番乗りを狙え！</li>'; return; }
-  el.innerHTML = j.top.map((r) => `<li${mine && r.rank === mine ? ' style="background:var(--chip)"' : ''}><span class="no">${r.rank}</span><span class="nm">${esc(r.name)}</span><span class="sc">${r.ms.toLocaleString()}</span></li>`).join('');
+  const more = limit < 100 && j.total > limit;
+  el.innerHTML = j.top.map((r) => `<li${mine && r.rank === mine ? ' style="background:var(--chip)"' : ''}><span class="no">${r.rank}</span><span class="nm">${esc(r.name)}</span><span class="sc">${r.ms.toLocaleString()}</span></li>`).join('')
+    + (more ? '<li class="more"><button class="btn small">もっと見る（100位まで）</button></li>' : '');
+  if (more) el.querySelector('.more button').onclick = (e) => { e.target.disabled = true; e.target.textContent = '読み込み中…'; loadBoard(el, mine, mode, old, 100); };
 }
 
 // タイトルのランキング：いまのルール / 旧ルール（試合の仕組みが変わる前の記録。比べられないので分けた）
@@ -1251,9 +1258,11 @@ function rankingHTML(view, data, opt = {}) {
     <div class="tabs rk" data-row="cat">${cats.map(([k, c]) => chip('cat', k, c.icon + c.name)).join('')}</div>
     <div class="tabs rk" data-row="who">${chip('who', 'all', '全員')}${chip('who', 'npc', 'NPC')}${chip('who', 'user', opt.userLabel || '本物のプレイヤー')}</div>
     <p class="sub" style="margin:4px 0">${C.note ? esc(C.note) + '。' : ''}${view.cat === 'rating' ? `出場${SL.MIN_RATE_APPS}試合以上。` : ''}${data.total}人</p>
-    ${data.top.length ? `<ol class="list rklist">${data.top.map(row).join('')}${data.mine && !data.top.some((r) => r.me) ? `<li class="gap">…</li>${row(data.mine)}` : ''}</ol>` : '<p class="empty">まだいません</p>'}`;
+    ${data.top.length ? `<ol class="list rklist">${data.top.map((r, i) => i < 20 ? row(r) : row(r).replace('<li class="', '<li class="rkx ')).join('')}${data.top.length > 20 ? `${data.top.slice(20).some((r) => r.me) ? `<li class="gap rkme">…</li>${row(data.top.find((r) => r.me)).replace('<li class="', '<li class="rkme ')}` : ''}<li class="more"><button class="btn small">もっと見る（${data.top.length}位まで）</button></li>` : ''}${data.mine && !data.top.some((r) => r.me) ? `<li class="gap">…</li>${row(data.mine)}` : ''}</ol>` : '<p class="empty">まだいません</p>'}`;
 }
 function bindRanking(el, view, rerender) {
+  const mb = el.querySelector('.rklist .more button');
+  if (mb) mb.onclick = () => { el.querySelector('.rklist').classList.add('open'); mb.parentNode.remove(); };
   el.querySelectorAll('.tabs.rk button').forEach((b) => b.addEventListener('click', () => {
     for (const k of ['lg', 'cat', 'who']) if (b.dataset[k] != null) view[k] = b.dataset[k];
     rerender();
@@ -1281,7 +1290,7 @@ function renderRankTab(el) {
   if (!rankView) rankView = { lg: String(c.lg), cat: S.p.pos === 'GK' ? 'saves' : S.p.pos === 'DF' ? 'defense' : S.p.pos === 'MF' ? 'assists' : 'goals', who: 'all' };
   const entries = SL.npcEntries(S.npcs || [], S.npcSeason || {}, S.clubs);
   if (S.season) entries.push(SL.userEntry(S.p, S.season, S.clubs, { key: 'me', me: true }));
-  const data = SL.ranking(entries, rankView.cat, { lg: +rankView.lg, who: rankView.who, n: 10 });
+  const data = SL.ranking(entries, rankView.cat, { lg: +rankView.lg, who: rankView.who, n: 100 });
   el.innerHTML = `<h2>📊 今季の個人ランキング</h2>${rankingHTML(rankView, data, { userLabel: 'あなた' })}
     <h2 style="margin-top:14px">🏅 歴代の受賞者（${SL.LEAGUES[+rankView.lg].name}）</h2>${awardHistoryHTML(S.leagueHistory, rankView.lg, S.p.name)}
     <h2 style="margin-top:14px">🌟 NPCレジェンド</h2>${legendsHTML(S.npcLegends)}`;
@@ -1696,7 +1705,7 @@ function renderRank() {
   const sm = S.summary, r = sm.rankInfo;
   if (!r) { $('rankMsg').textContent = 'ランキングに接続できませんでした'; loadBoard($('boardEnd'), null, sm.mode); return; }
   $('rankMsg').innerHTML = `${sm.mode === 'quick' ? '60秒モード ' : ''}全国 <b class="num" style="font-size:1.4rem;color:var(--green)">${r.rank}</b> 位 <span class="sub">/ ${r.total.toLocaleString()}人中</span>`;
-  if (r.top10 && !sm.named) { $('nameBox').classList.remove('hidden'); $('rankName').value = sm.name; }
+  if ((r.canName ?? r.top10) && !sm.named) { $('nameBox').classList.remove('hidden'); $('rankName').value = sm.name; }
   loadBoard($('boardEnd'), r.rank, sm.mode);
 }
 async function submitName() {
@@ -1706,7 +1715,7 @@ async function submitName() {
   $('rankNameBtn').disabled = false;
   if (j && j.ok) { sm.named = true; save(); $('nameBox').classList.add('hidden'); loadBoard($('boardEnd'), j.rank, sm.mode); toast('登録しました！'); return; }
   const why = j && j.error;
-  $('rankNameMsg').textContent = why === 'bad_name' ? 'その名前は使えません' : why === 'not_top' ? 'トップ10から外れてしまいました…' : why === 'already' ? '登録済みです' : '登録できませんでした';
+  $('rankNameMsg').textContent = why === 'bad_name' ? 'その名前は使えません' : why === 'not_top' ? 'トップ100から外れてしまいました…' : why === 'already' ? '登録済みです' : '登録できませんでした';
 }
 
 function share() {

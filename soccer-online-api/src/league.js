@@ -4,19 +4,18 @@
 // 読み込みは起動時に全部メモリへ載せ、以後のリクエストはメモリから返す。
 import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
+import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（全国ランキングと共通）
 
 const MAX_PLAYERS = G.CLUB_CAP * 30; // 登録の上限（1クラブ10人 × 30クラブ ＝ 300人。これ以上は入れるクラブがない）。増やすときは2つ目のリーグを作る
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限
-const NG_WORDS = ['死ね', 'しね', '殺す', 'ころす', 'fuck', 'shit', 'ちんこ', 'まんこ', 'ちんぽ', 'sex'];
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function cleanName(raw) {
   let s = String(raw || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').replace(/\s+/g, ' ').trim();
   s = [...s].slice(0, 12).join('');
   if (!s) return null;
-  const low = s.toLowerCase();
-  return NG_WORDS.some((w) => low.includes(w)) ? null : s;
+  return isNg(s) ? null : s;
 }
 function newCode() {
   const b = crypto.getRandomValues(new Uint8Array(16));
@@ -105,6 +104,7 @@ export class League extends DurableObject {
     for (const p of this.npcs) if (by.has(p.club)) by.get(p.club).push(p);
     for (const [club, list] of by) this.sql.exec('INSERT OR REPLACE INTO rosters (club, data) VALUES (?, ?)', club, JSON.stringify(list));
   }
+  isAdmin(req) { const key = this.env.ADMIN_KEY || ''; return key.length >= 16 && req.headers.get('X-Admin-Key') === key; }
   saveMember(m, active = 1) { this.sql.exec('INSERT OR REPLACE INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', m.id, m.account, active, JSON.stringify(m)); }
 
   async alarm() {
@@ -201,7 +201,7 @@ export class League extends DurableObject {
         const q = url.searchParams, lg = q.get('lg') === 'all' ? null : Math.max(0, Math.min(2, Number(q.get('lg')) || 0));
         const cat = G.SL.RANK_CATS[q.get('cat')] ? q.get('cat') : 'goals', who = ['all', 'npc', 'user'].includes(q.get('who')) ? q.get('who') : 'all';
         const me = await this.me(req);
-        const r = G.SL.ranking(this.seasonEntries(), cat, { lg, who, n: 20, meKey: me ? 'u:' + me.id : null });
+        const r = G.SL.ranking(this.seasonEntries(), cat, { lg, who, n: 100, meKey: me ? 'u:' + me.id : null });
         const pub = (x) => (x ? { ...x, key: x.type === 'npc' ? x.key : undefined } : null); // 本物のプレイヤーの内部IDは出さない
         return json({ lg, cat, who, top: r.top.map(pub), mine: pub(r.mine), total: r.total });
       }
@@ -239,6 +239,34 @@ export class League extends DurableObject {
         });
         this.loadState(); this.ensureSchedule(); await this.armAlarm();
         return json({ ok: true, players: this.members.size, npcs: this.npcs.length, world: this.worldView() });
+      }
+      // 管理用：使えない言葉を含む名前の一覧（言葉を増やしたあと、前からいる人を探す）
+      if (req.method === 'GET' && path === '/admin/ng') {
+        if (!this.isAdmin(req)) return err('not_found', 404);
+        return json({ players: [...this.members.values()].filter((m) => isNg(m.pl.name) || (m.pl.move && isNg(m.pl.move))).map((m) => ({ id: m.id, name: m.pl.name, move: m.pl.move || null, status: m.status })) });
+      }
+      // 管理用：名前を変える。{ id, to }（to を省くと「選手＋数字」）。速報・記録・家系図に残った古い名前も置きかえる。必殺技が使えない言葉なら消す
+      if (req.method === 'POST' && path === '/admin/rename') {
+        if (!this.isAdmin(req)) return err('not_found', 404);
+        const m = this.members.get(String(body.id || ''));
+        if (!m) return err('no_player', 404);
+        const from = m.pl.name, to = body.to ? cleanName(body.to) : '選手' + (1000 + Math.floor(Math.random() * 9000));
+        if (!to) return err('bad_name');
+        // 名前そのもの（文字列がまるごと古い名前）だけを置きかえる。短い名前がほかの名前やクラブ名の一部を書きかえないように
+        const swap = (o) => {
+          if (typeof o === 'string') return o === from ? to : o;
+          if (Array.isArray(o)) { for (let i = 0; i < o.length; i++) o[i] = swap(o[i]); return o; }
+          if (o && typeof o === 'object') { for (const k of Object.keys(o)) o[k] = swap(o[k]); return o; }
+          return o;
+        };
+        this.atomic(() => {
+          swap(this.w);
+          for (const n of this.w.news || []) if (n && typeof n.t === 'string') n.t = n.t.split(from).join(to); // 速報の文の中は部分一致で
+          this.saveWorld();
+          for (const x of this.members.values()) { const before = JSON.stringify(x); swap(x); if (x === m || JSON.stringify(x) !== before) this.saveMember(x); }
+          if (m.pl.move && isNg(m.pl.move)) { m.pl.move = null; this.saveMember(m); }
+        });
+        return json({ ok: true, from, to });
       }
       // 管理用：全データの書き出し（バックアップ）。ADMIN_KEY（Cloudflareの秘密の設定）を知っている人だけ
       if (req.method === 'GET' && path === '/admin/export') {

@@ -14,6 +14,7 @@ const sql = (cmd) => execSync(`npx wrangler@4 d1 execute tonmatolab-counter --lo
 
 // 表を作り、本番と同じく「件数をまだ持っていない記録」を先に入れておく
 execSync(`npx wrangler@4 d1 execute tonmatolab-counter --local ${CFG.join(' ')} --file counter-api/schema.sql`, { cwd: ROOT, stdio: 'ignore' });
+sql('DROP TABLE hist'); // 本番と同じく、表はサーバーが最初に作る
 sql("INSERT INTO scores (game, ms, token, created) VALUES " + Array.from({ length: 25 }, (_, i) => `('onigiri', ${100 + i * 10}, 't${i}', 0)`).join(','));
 
 const proc = spawn('npx', ['wrangler@4', 'dev', ...CFG, '--port', String(PORT)], { cwd: ROOT, shell: true });
@@ -25,7 +26,8 @@ async function stop() {
 for (let i = 0; i < 120 && !/Ready on/.test(log); i++) await wait(1000);
 if (!/Ready on/.test(log)) { console.log('サーバーが起動しませんでした\n' + log.slice(-1500)); await stop(); process.exit(1); }
 
-const call = async (p, body) => { const r = await fetch(B + p, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' }, body: body ? JSON.stringify(body) : undefined }); return { s: r.status, j: await r.json().catch(() => null) }; };
+const call1 = async (p, body) => { const r = await fetch(B + p, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' }, body: body ? JSON.stringify(body) : undefined }); return { s: r.status, j: await r.json().catch(() => null) }; };
+const call = async (p, body) => { try { return await call1(p, body); } catch (e) { await wait(300); return call1(p, body); } }; // 手元のサーバーはたまに接続が切れるので1回だけやり直す
 const realCount = (g) => JSON.parse(sql(`SELECT COUNT(*) AS n FROM scores WHERE game = '${g}'`))[0].results[0].n;
 try {
   // 件数をまだ持っていないゲーム：最初に数えて入れる
@@ -60,6 +62,28 @@ try {
   const bd = (await call('/board?game=soccer2')).j;
   check(bd.total === 2 && bd.top.map((r) => r.name).join() === '新人,先輩', `名無しの記録はランキングに出ない（${bd.top.map((r) => r.name).join()}）`);
   check((await call('/score', { game: 'soccer2', ms: 100, name: '下位' })).j.rank === 3, '名無しの記録は順位にも数えない');
+  // 順位は帯（hist）を使って数える：全部数えたときの順位と同じになる（大きいほど上位・小さいほど上位・同点・帯の境目）
+  {
+    const brute = (rows, ms, id, desc) => rows.filter((r) => (desc ? r.ms > ms : r.ms < ms) || (r.ms === ms && r.id < id)).length + 1;
+    let ok = true, bad = '';
+    for (const [game, desc, gen] of [['soccerq', true, (i) => [1, 2, 100, 101, 102, 5000, 5049, 5050, 5051, 99999][i % 10] + (i % 3 === 0 || i % 10 === 9 ? 0 : Math.floor(Math.random() * 9000))], ['iai', false, (i) => 100 + Math.floor(Math.random() * 900)]]) {
+      const rows = [];
+      for (let i = 0; i < 120; i++) {
+        const ms = i % 7 === 0 && rows.length ? rows[rows.length - 1].ms : gen(i); // 同点も入れる
+        const r = (await call('/score', { game, ms })).j; rows.push({ id: r.id, ms });
+        const want = brute(rows, ms, r.id, desc);
+        if (r.rank !== want) { ok = false; bad = `${game} ${ms}: ${r.rank}位（正しくは${want}位）`; break; }
+      }
+    }
+    check(ok, '帯を使った順位が、全部数えた順位と同じ' + (bad ? '：' + bad : ''));
+    // 前からある記録（onigiri）にも帯が作られていて、順位が正しい
+    const o = (await call('/score', { game: 'onigiri', ms: 300 })).j;
+    const want = JSON.parse(sql("SELECT COUNT(*) AS n FROM scores WHERE game = 'onigiri' AND (ms > 300 OR (ms = 300 AND id < " + o.id + "))"))[0].results[0].n + 1;
+    check(o.rank === want, `前からある記録も帯で数える（${o.rank}位・正しくは${want}位）`);
+    const hs = JSON.parse(sql("SELECT game, SUM(n) AS n FROM hist GROUP BY game"))[0].results;
+    const real = JSON.parse(sql("SELECT game, COUNT(*) AS n FROM scores WHERE name IS NOT NULL OR game NOT IN ('soccer2','soccerq2') GROUP BY game"))[0].results;
+    check(hs.every((h) => real.find((r) => r.game === h.game).n === h.n), '帯の記録数の合計が、実際の記録数と同じ（' + hs.map((h) => h.game + ' ' + h.n).join('・') + '）');
+  }
   check((await call('/hit/test-key', {})).j.value === 1 && (await call('/get?keys=test-key')).j['test-key'] === 1, 'カウンターは今までどおり');
   const bad = log.split(/\r?\n/).filter((l) => /Uncaught|TypeError|ReferenceError|D1_ERROR/.test(l)); check(!bad.length, 'サーバーのログにエラーがない' + (bad.length ? '：' + bad.slice(0, 3).join(' / ') : ''));
 } catch (e) { failures++; console.log('  ✗ 例外: ' + (e.stack || e)); } finally { await stop(); }

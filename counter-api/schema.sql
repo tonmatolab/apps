@@ -26,3 +26,13 @@ CREATE TABLE IF NOT EXISTS bushou (
 );
 CREATE INDEX IF NOT EXISTS idx_bushou_streak ON bushou (hidden, best_streak DESC);
 CREATE INDEX IF NOT EXISTS idx_bushou_power ON bushou (hidden, power DESC);
+
+-- 順位を数えるための「点数の帯ごとの記録数」（帯 b = floor(ln(点数)*100)：1%きざみ）。
+-- 順位＝自分より上の帯の記録数の合計＋同じ帯で自分より上の記録数。全部の記録を数えずに済む（D1の読み取り行数を減らす）
+-- ゲームごとに counters の 'hist:ゲーム名' があれば作ってある。なければ最初の1回だけ scores から作る
+CREATE TABLE IF NOT EXISTS hist (
+  game TEXT NOT NULL,
+  b INTEGER NOT NULL,
+  n INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (game, b)
+);

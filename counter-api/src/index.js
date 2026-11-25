@@ -96,12 +96,36 @@ async function bumpTotal(env, game) {
   return r ? r.value : totalOf(env, game);
 }
 
+// 順位：自分より上の帯（hist）の記録数の合計＋同じ帯で自分より上の記録数＋1。
+// 前は自分より上の記録を全部数えていて、1回で平均1,000行以上を読んでいた（2026年11月25日に D1 の無料枠を使い切った）
+const BUCKET = 'CAST(floor(ln(?) * 100) AS INTEGER)'; // 点数の帯（1%きざみ）。帯の計算はいつも SQL でする（JS とずれないように）
+const histKey = (game) => 'hist:' + game;
+async function histReady(env, game) {
+  if (await env.DB.prepare('SELECT 1 AS ok FROM counters WHERE key = ?').bind(histKey(game)).first()) return true;
+  // まだないゲーム：scores から作る（まとめて1つの処理で。同時に2回作っても結果は同じ）
+  await env.DB.batch([
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS hist (game TEXT NOT NULL, b INTEGER NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (game, b))'), // 表がまだなければ作る（schema.sql と同じ）
+    env.DB.prepare('DELETE FROM hist WHERE game = ?').bind(game),
+    env.DB.prepare(`INSERT INTO hist (game, b, n) SELECT game, CAST(floor(ln(ms) * 100) AS INTEGER), COUNT(*) FROM scores WHERE game = ?${namedSql(game)} GROUP BY 2`).bind(game),
+    env.DB.prepare('INSERT INTO counters (key, value) VALUES (?, 1) ON CONFLICT(key) DO NOTHING').bind(histKey(game)),
+  ]);
+  return false; // いま作ったので、今回の記録はもう入っている
+}
+// 記録が1件ランキングに入ったとき（名前が必須のゲームは名前のある記録だけ）
+async function histAdd(env, game, ms) {
+  if (!(await histReady(env, game))) return;
+  await env.DB.prepare(`INSERT INTO hist (game, b, n) VALUES (?, ${BUCKET}, 1) ON CONFLICT(game, b) DO UPDATE SET n = n + 1`).bind(game, ms).run();
+}
 async function rankOf(env, game, ms, id) {
   // 同タイムは先に出した人が上。desc のゲームは大きいほど上位
-  const cmp = gameRule(game).desc ? '>' : '<';
-  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM scores WHERE game = ? AND (ms ${cmp} ? OR (ms = ? AND id < ?))${namedSql(game)}`)
-    .bind(game, ms, ms, id).first();
-  return r.n + 1;
+  const desc = gameRule(game).desc, cmp = desc ? '>' : '<';
+  await histReady(env, game);
+  const up = await env.DB.prepare(`SELECT COALESCE(SUM(n), 0) AS n FROM hist WHERE game = ? AND b ${cmp} ${BUCKET}`).bind(game, ms).first();
+  // 同じ帯の中：帯の幅は1%なので、点数を ±1.1% にしぼってから帯が同じものだけ数える
+  const lo = desc ? ms : Math.floor(ms / 1.011) - 1, hi = desc ? Math.ceil(ms * 1.011) + 1 : ms;
+  const same = await env.DB.prepare(`SELECT COUNT(*) AS n FROM scores WHERE game = ? AND ms BETWEEN ? AND ? AND CAST(floor(ln(ms) * 100) AS INTEGER) = ${BUCKET} AND (ms ${cmp} ? OR (ms = ? AND id < ?))${namedSql(game)}`)
+    .bind(game, lo, hi, ms, ms, ms, id).first();
+  return up.n + same.n + 1;
 }
 
 export default {
@@ -139,6 +163,7 @@ export default {
       const token = crypto.randomUUID();
       const row = await env.DB.prepare('INSERT INTO scores (game, ms, token, created, name) VALUES (?, ?, ?, ?, ?) RETURNING id')
         .bind(b.game, ms, token, Date.now(), name).first();
+      await histAdd(env, b.game, ms);
       const rank = await rankOf(env, b.game, ms, row.id);
       const total = await bumpTotal(env, b.game);
       return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: !name && rank <= MAX_N, name });
@@ -155,7 +180,7 @@ export default {
       const rank = await rankOf(env, b.game, s.ms, s.id);
       if (rank > MAX_N) return json(req, { error: 'not_top', rank }, 409);
       await env.DB.prepare('UPDATE scores SET name = ? WHERE id = ?').bind(name, s.id).run();
-      if (needName(b.game)) await bumpTotal(env, b.game);
+      if (needName(b.game)) { await bumpTotal(env, b.game); await histAdd(env, b.game, s.ms); } // 名前が必須のゲームは、名前が付いてからランキングに数える
       return json(req, { ok: true, rank, name });
     }
 

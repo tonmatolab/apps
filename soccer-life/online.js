@@ -110,7 +110,7 @@
   // ===== 入団 =====
   function renderDraft() {
     // 休眠から戻ってきた人には、ひとこと（能力・経歴・お金はそのまま）
-    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + ST.me.draft.map((o, i) => offerCard(o, i)).join('');
+    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 24時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + ST.me.draft.map((o, i) => offerCard(o, i)).join('');
     $('draftList').querySelectorAll('.offer').forEach((b) => b.onclick = async () => {
       const j = await api('/join', { i: +b.dataset.i });
       if (j.error) return toast(errMsg(j.error));

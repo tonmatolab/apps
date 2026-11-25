@@ -165,6 +165,7 @@ export class League extends DurableObject {
   // 1節すすめる（オフシーズン中はオフの残りを1つ減らす）
   tick() {
     const w = this.w, all = [...this.members.values()];
+    for (const m of G.sweepIdleDrafts(w, all)) this.saveMember(m); // クラブを選ばないまま24時間たった人は休眠（定員の枠を空ける）
     if (w.phase === 'season') {
       this.npcSeason = G.playMatchday(w, all, this.npcs, this.npcSeason);
       this.sql.exec("INSERT OR REPLACE INTO npcstats (k, v) VALUES ('season', ?)", JSON.stringify(this.npcSeason));
@@ -328,7 +329,7 @@ export class League extends DurableObject {
   async signup(req, body) {
     const name = cleanName(body.name); if (!name) return err('bad_name');
     if (!G.POS[body.pos]) return err('bad_pos');
-    if ([...this.members.values()].filter((x) => x.status !== 'dormant').length >= MAX_PLAYERS) return err('full', 503);
+    if (this.activeCount() >= MAX_PLAYERS) return err('full', 503);
     const ip = req.headers.get('CF-Connecting-IP') || 'local';
     const now = Date.now(), hits = (this.signups.get(ip) || []).filter((t) => now - t < 3600000);
     if (hits.length >= SIGNUP_PER_HOUR) return err('too_many', 429);
@@ -343,9 +344,11 @@ export class League extends DurableObject {
   }
 
   // ----- 画面に返す形 -----
+  // 参加人数（休眠の人は数えない）。定員の判定にも使う
+  activeCount() { let n = 0; for (const x of this.members.values()) if (x.status !== 'dormant') n++; return n; }
   worldView() {
     const w = this.w;
-    return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, now: Date.now(), tickMin: this.tickMs() / 60000, players: this.members.size };
+    return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, now: Date.now(), tickMin: this.tickMs() / 60000, players: this.activeCount() };
   }
   clubsView() {
     const count = new Map();

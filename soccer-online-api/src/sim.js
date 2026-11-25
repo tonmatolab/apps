@@ -9,6 +9,8 @@ const { POS, GROW, LEAGUES, SEASON_WEEKS, mainStats, ovr, startChance } = SL;
 
 // 休眠：これだけ来ていないプレイヤーは、オフの終わりにクラブの枠を空けて休眠にする（戻ってきたら空いているクラブを選び直す）
 export const DORMANT_MS = 14 * 24 * 3600000;
+// 登録したままクラブを選ばない人は、これだけたつと休眠にして定員の枠を空ける（毎節たしかめる）
+export const DRAFT_IDLE_MS = 24 * 3600000;
 export const OFF_TICKS = 2; // オフシーズンの長さ（節の何回分か。30分ごとなら1時間）。この間に契約を選ぶ
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
 export const CLUB_CAP = 10, GK_CAP = 3; // 1クラブの本物のプレイヤーの上限（GKは別に上限）。名簿は22人のままで、そのぶんNPCが控え組に回る
@@ -405,10 +407,17 @@ export function requestTransfer(m, w, members = []) {
 // 休眠から戻ってきた：入団の画面からやり直す（能力・経歴・お金はそのまま）
 export function wake(m, w, members = []) {
   if (m.status !== 'dormant') return false;
-  m.status = 'draft'; m.returning = true;
+  m.status = 'draft'; m.returning = m.prevClub != null; // 一度もクラブに入らずに休眠した人には「おかえりなさい」を出さない
   m.draft = draftOffers(m, w, members);
   addNews(w, `👋 ${m.pl.name}が休眠から戻ってきた`);
   return true;
+}
+// クラブを選ばないまま長くたった人を休眠にする。休眠にした人を返す（保存は呼び出し側）
+export function sweepIdleDrafts(w, members, now = Date.now()) {
+  const out = members.filter((m) => m.status === 'draft' && now - (m.seenAt || m.created || now) > DRAFT_IDLE_MS);
+  for (const m of out) { m.status = 'dormant'; m.prevClub = null; m.dormantSince = w.year; m.returning = false; }
+  if (out.length) addNews(w, `💤 クラブを選ばないまま24時間たった${out.length}人が休眠に入り、定員の枠が空いた`);
+  return out;
 }
 function autoDecide(m, w, members) {
   const o = m.offer, res = o.res;

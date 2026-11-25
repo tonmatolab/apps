@@ -110,5 +110,31 @@ const pool = (cid, humans = []) => SL.clubSquad(npcs, cid, humans.map((h) => ({ 
   console.log(`    PK ${pkSeen}回（自分で蹴った ${mineSet}）`);
 }
 
+// ----- 1クラブに本物のプレイヤーが上限いっぱい（10人・GK3人）でも試合が組める -----
+{
+  const mk = (pos, i) => ({ p: { name: '人 ' + pos + i, pos, age: 22, stats: { spd: 60, sht: 60, pas: 60, drb: 60, def: 60, phy: 60, gk: pos === 'GK' ? 60 : 10 }, cond: 0, fatigue: 0 }, human: true });
+  const sets = {
+    'GK3・FW7': [...[0, 1, 2].map((i) => mk('GK', i)), ...[0, 1, 2, 3, 4, 5, 6].map((i) => mk('FW', i))],
+    'FW10': Array.from({ length: 10 }, (_, i) => mk('FW', i)),
+    'ばらばら10人': ['GK', 'DF', 'DF', 'DF', 'MF', 'MF', 'MF', 'FW', 'FW', 'FW'].map(mk),
+  };
+  for (const [label, hs] of Object.entries(sets)) {
+    const pl = pool(13, hs);
+    const sq = SL.clubSquad(npcs, 13, hs.map((h) => ({ pos: h.p.pos })));
+    check(pl.length === 22 && sq.npcs.length === 12 && sq.npcs.some((p) => p.pos === 'GK'), `${label}：名簿は22人（NPC12人・NPCのGKも残る）`);
+    let ok = true, humansIn = 0;
+    for (let i = 0; i < 30; i++) {
+      const raw = SL.simMatch([{ club: clubs[13], pool: pool(13, hs) }, { club: clubs[14], pool: pool(14) }]);
+      const f = SL.finishMatch(raw);
+      const xi = raw.S[0].slots.filter((x) => x.start);
+      const cnt = { GK: 0, DF: 0, MF: 0, FW: 0 }; xi.forEach((x) => cnt[x.slot]++);
+      if (xi.length !== 11 || cnt.GK !== 1 || cnt.DF !== 4 || cnt.MF !== 4 || cnt.FW !== 2 || !Number.isInteger(f.gh)) ok = false;
+      humansIn += xi.filter((x) => x.human).length;
+    }
+    check(ok, `${label}：毎試合 4-4-2 の11人が組めて、試合が終わる`);
+    check(humansIn > 0, `${label}：本物のプレイヤーも先発に入る（30試合で延べ${humansIn}人）`);
+  }
+}
+
 console.log(`match: ${failed() ? failed() + ' failed' : 'all passed'}`);
 process.exitCode = failed() ? 1 : 0;

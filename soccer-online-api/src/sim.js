@@ -11,7 +11,7 @@ const { POS, GROW, LEAGUES, SEASON_WEEKS, mainStats, ovr, startChance } = SL;
 export const DORMANT_MS = 14 * 24 * 3600000;
 export const OFF_TICKS = 2; // オフシーズンの長さ（節の何回分か。30分ごとなら1時間）。この間に契約を選ぶ
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
-export const CLUB_CAP = 6, GK_CAP = 2;
+export const CLUB_CAP = 10, GK_CAP = 3; // 1クラブの本物のプレイヤーの上限（GKは別に上限）。名簿は22人のままで、そのぶんNPCが控え組に回る
 // 年俸の上限（万円）。リーグごと
 export const SALARY_CAP = { 0: 30000, 1: 8000, 2: 2000 };
 // ルーレットの台：全員共通で一定時間ごとに1回まわる（間隔は wrangler.toml の RL_MINUTES）

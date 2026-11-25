@@ -5,7 +5,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 
-const MAX_PLAYERS = 180;       // 登録の上限。1クラブ6人 × 30クラブ（これ以上は入れるクラブがない）。増やすときは2つ目のリーグを作る
+const MAX_PLAYERS = G.CLUB_CAP * 30; // 登録の上限（1クラブ10人 × 30クラブ ＝ 300人。これ以上は入れるクラブがない）。増やすときは2つ目のリーグを作る
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限
 const NG_WORDS = ['死ね', 'しね', '殺す', 'ころす', 'fuck', 'shit', 'ちんこ', 'まんこ', 'ちんぽ', 'sex'];

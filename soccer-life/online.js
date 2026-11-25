@@ -27,7 +27,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ10人・GKは3人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（300人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
 

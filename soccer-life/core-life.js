@@ -6,7 +6,6 @@
 (function (SL) {
   const { rnd, ri, chance, clamp, gauss, pick } = SL._;
   const { POS, GROW, ovr } = SL;
-  const K = () => SL.NPC_STAT_KEYS;
 
   // ----- 成長・衰え：総合力を target まで1ずつ動かす（ポジションで使う能力を、型に合わせて選ぶ） -----
   function shiftOvr(p, delta, gt) {

@@ -87,8 +87,7 @@ export function clubFull(members, clubId, pos, except = null) {
 }
 function capSalary(w, o) { const cap = SALARY_CAP[w.clubs[o.club].lg]; if (o.salary > cap) { o.salary = cap; o.capped = true; } return o; }
 export function standings(w, lg) {
-  return w.clubs.filter((c) => c.lg === lg).map((c) => ({ c, t: w.table[c.id] }))
-    .sort((a, b) => b.t.p - a.t.p || (b.t.gf - b.t.ga) - (a.t.gf - a.t.ga) || b.t.gf - a.t.gf || b.c.str - a.c.str);
+  return w.clubs.filter((c) => c.lg === lg).map((c) => ({ c, t: w.table[c.id] })).sort(SL.tableOrder);
 }
 function record(w, h, a, gh, ga) {
   const th = w.table[h], ta = w.table[a];

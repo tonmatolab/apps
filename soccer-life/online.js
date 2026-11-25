@@ -1,10 +1,9 @@
 // ===== サッカー人生 オンラインリーグ（画面側） =====
 // 一人用（index.html の本体スクリプト）と名前がぶつからないよう、全体を1つの関数の中に閉じ込めている。
-// 画面の切り替え showScreen()、esc() などは一人用のものを共有する。
+// 画面の切り替え showScreen()、esc()・toast()・crest()・avatar()・man() などの見た目の部品は一人用のものを共有する。
 'use strict';
 (() => {
   const $ = (id) => document.getElementById('ol-' + id); // オンラインの部品はすべて ol- で始まるID
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const store = {
     get(k) { try { return localStorage.getItem('soccerol-' + k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem('soccerol-' + k, v); } catch {} },
@@ -28,29 +27,13 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい',   club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません',  network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ6人・GKは2人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（180人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
-  function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2000); }
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
 
-  // ----- 見た目の部品 -----
-  function textOn(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) > 170 ? '#1d2433' : '#ffffff'; }
+  // ----- 見た目の部品（オンラインだけのもの） -----
   const club = (id) => ST.clubs[id];
-  const crest = (c) => `<div class="crest" style="background:${c.color};color:${textOn(c.color)}">${esc(c.mark || c.city.slice(0, 2))}</div>`;
-  const posTag = (p) => `<span class="tag t-${p}">${p}</span>`;
-  const man = (v) => v >= 10000 ? `${(v / 10000).toFixed(1)}億円` : `${v.toLocaleString()}万円`;
-  const ratingColor = (r) => r >= 8 ? '#e0a100' : r >= 7 ? '#17924c' : r >= 6 ? '#5f8f6c' : r >= 5 ? '#8a96a0' : '#e5483a';
-  function avatar(color, number, age, pos) {
-    const tc = textOn(color), hair = age >= 34 ? '#8d8d8d' : '#2b2118';
-    const glove = pos === 'GK' ? '<circle cx="22" cy="92" r="8" fill="#ffd166"/><circle cx="98" cy="92" r="8" fill="#ffd166"/>' : '';
-    return `<svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#7fc98f"/><path d="M0 92 Q60 80 120 92 V120 H0Z" fill="#5cb06f"/>
-      <path d="M24 120 V96 Q24 74 60 72 Q96 74 96 96 V120Z" fill="${color}"/><text x="60" y="108" text-anchor="middle" font-family="Outfit,sans-serif" font-weight="800" font-size="24" fill="${tc}">${number}</text>
-      <rect x="52" y="60" width="16" height="14" rx="5" fill="#f2c9a0"/><circle cx="60" cy="44" r="21" fill="#f6d2ad"/>
-      <path d="M39 42 Q38 20 60 20 Q83 20 81 42 Q76 30 60 31 Q46 30 39 42Z" fill="${hair}"/>
-      <circle cx="52" cy="46" r="2.6" fill="#2b2118"/><circle cx="68" cy="46" r="2.6" fill="#2b2118"/>
-      <path d="M53 55 Q60 60 67 55" stroke="#2b2118" stroke-width="2.4" fill="none" stroke-linecap="round"/>${glove}</svg>`;
-  }
-  function startChanceTxt(ovr, c, age) { const x = 1 / (1 + Math.exp(-(ovr - (c.str - 4) + (age <= 20 ? 2 : 0)) / 3)); return x > .75 ? ['◎', 'レギュラー'] : x > .45 ? ['○', '出場多め'] : x > .2 ? ['△', '控え'] : ['✕', '厳しい']; }
+  const startChanceTxt = (ovr, c, age) => SL.chanceLabel(SL.startChanceOvr(ovr, c, age));
   function offerCard(o, i, badge = '') {
     const c = club(o.club), L = SL.LEAGUES[c.lg], pc = startChanceTxt(ST.me.ovr, c, ST.me.age);
     const full = !o.stay && c.humans >= c.cap;

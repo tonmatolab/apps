@@ -471,9 +471,10 @@ const SL = (() => {
     s.p.trainMul = 1; s.p.clinic = false;
   }
 
+  // 順位表の並べ方：勝ち点 → 得失点差 → 得点 → チーム力（一人用・オンライン共通）
+  const tableOrder = (a, b) => b.t.p - a.t.p || (b.t.gf - b.t.ga) - (a.t.gf - a.t.ga) || b.t.gf - a.t.gf || b.c.str - a.c.str;
   function standings(s, lg) {
-    return leagueClubs(s, lg).map((c) => ({ c, t: s.table[c.id] }))
-      .sort((a, b) => b.t.p - a.t.p || (b.t.gf - b.t.ga) - (a.t.gf - a.t.ga) || b.t.gf - a.t.gf || b.c.str - a.c.str);
+    return leagueClubs(s, lg).map((c) => ({ c, t: s.table[c.id] })).sort(tableOrder);
   }
   const rankOf = (s, id) => standings(s, s.clubs[id].lg).findIndex((x) => x.c.id === id) + 1;
 
@@ -628,8 +629,13 @@ const SL = (() => {
   }
 
   // 先発の確率：チームの中での実力（若手は少しだけ我慢して使ってもらえる）・調子・疲れ
+  const chanceDiff = (o, str, age) => o - (str - 4) + (age <= 20 ? 2 : 0);
+  // 総合力・年齢だけから見た先発の確率（オファーの一覧用。オンラインは能力の細かい値を持たないのでこちら）
+  const startChanceOvr = (o, c, age) => sig(chanceDiff(o, c.str, age) / 3);
+  // 先発の確率を ◎○△✕ の見込みにする
+  const chanceLabel = (x) => x > .75 ? ['◎', 'レギュラー'] : x > .45 ? ['○', '出場多め'] : x > .2 ? ['△', '控え'] : ['✕', '厳しい'];
   function startChance(p, c, now = false) {
-    let diff = ovr(p) - (c.str - 4) + (p.age <= 20 ? 2 : 0);
+    let diff = chanceDiff(ovr(p), c.str, p.age);
     if (now) diff += p.cond * 1.5 - (p.fatigue > 60 ? (p.fatigue - 60) / 6 : 0);
     return sig(diff / 3);
   }
@@ -1271,7 +1277,7 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, tableOrder, startChanceOvr, chanceLabel, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, prepareWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, requestTransfer, transferFee, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,

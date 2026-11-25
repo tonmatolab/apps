@@ -18,13 +18,17 @@ const proc = spawn('npx', ['wrangler@4', 'dev', '--config', 'soccer-online-api/w
   '--var', 'DEV:1', '--var', `ADMIN_KEY:${ADMIN}`, '--var', 'RL_MINUTES:60'], { cwd: ROOT, shell: true });
 let log = '';
 proc.stdout.on('data', (d) => { log += d; }); proc.stderr.on('data', (d) => { log += d; });
-function stop() {
-  try { if (process.platform === 'win32') execSync(`taskkill /pid ${proc.pid} /T /F`, { stdio: 'ignore' }); else process.kill(-proc.pid); } catch {}
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
-}
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// サーバーを止めて一時フォルダを消す。Windows は止めた直後だとファイルがまだ掴まれていて消せないので、少し待ちながら何度か試す
+async function stop() {
+  try { if (process.platform === 'win32') execSync(`taskkill /pid ${proc.pid} /T /F`, { stdio: 'ignore' }); else process.kill(-proc.pid); } catch {}
+  for (let i = 0; i < 20 && fs.existsSync(tmp); i++) {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { await wait(500); }
+  }
+  if (fs.existsSync(tmp)) console.log('  （一時フォルダを消せませんでした：' + tmp + '）');
+}
 for (let i = 0; i < 120 && !/Ready on/.test(log); i++) await wait(1000);
-if (!/Ready on/.test(log)) { console.log('サーバーが起動しませんでした\n' + log.slice(-2000)); stop(); process.exit(1); }
+if (!/Ready on/.test(log)) { console.log('サーバーが起動しませんでした\n' + log.slice(-2000)); await stop(); process.exit(1); }
 
 const call = async (p, { code, body, headers = {} } = {}) => {
   const r = await fetch(B + p, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', ...(code ? { Authorization: 'Bearer ' + code } : {}), ...headers }, body: body ? JSON.stringify(body) : undefined });
@@ -184,7 +188,7 @@ try {
 } catch (e) {
   failures++; console.log('  ✗ 例外: ' + (e.stack || e));
 } finally {
-  stop();
+  await stop();
 }
 console.log(`online: ${failures ? failures + ' failed' : 'all passed'}`);
 process.exit(failures ? 1 : 0);

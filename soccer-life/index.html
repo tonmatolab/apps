@@ -790,7 +790,7 @@
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const APP_TITLE = 'サッカー人生';
 const HASHTAGS = ['サッカー人生'];
 const SITE = 'tonmatolab.github.io/apps/soccer-life';
@@ -881,7 +881,7 @@ function radarSVG(p) {
   return `<svg viewBox="0 0 170 145">${grid}<polygon points="${shape}" fill="rgba(23,146,76,.32)" stroke="var(--green)" stroke-width="2" stroke-linejoin="round"/>${labels}</svg>`;
 }
 
-const playChance = (p, c) => { const x = SL.startChance(p, c); return x > .75 ? ['◎', 'レギュラー'] : x > .45 ? ['○', '出場多め'] : x > .2 ? ['△', '控え'] : ['✕', '厳しい']; };
+const playChance = (p, c) => SL.chanceLabel(SL.startChance(p, c));
 
 function offerCard(o, extra = '') {
   const c = S.clubs[o.club], L = SL.LEAGUES[c.lg], pc = playChance(S.p, c);

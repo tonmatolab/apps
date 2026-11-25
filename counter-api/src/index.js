@@ -75,6 +75,23 @@ function cleanName(raw) {
   return s;
 }
 
+// ゲームごとの記録の件数。COUNT(*) は記録の数だけ行を読むので、counters に件数を持っておく。
+// キーは「score:ゲーム名」（: は /get・/hit のキーに使えない文字なので、外からは読み書きできない）
+// まだ件数がないゲームは、1回だけ数えて入れる
+async function totalOf(env, game) {
+  const k = 'score:' + game;
+  const r = await env.DB.prepare('SELECT value FROM counters WHERE key = ?').bind(k).first();
+  if (r) return r.value;
+  const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?').bind(game).first()).n;
+  await env.DB.prepare('INSERT INTO counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING').bind(k, n).run();
+  return n;
+}
+// 記録が1件増えたとき（件数をまだ持っていなければ、増えたあとの記録を数えて入れる）
+async function bumpTotal(env, game) {
+  const r = await env.DB.prepare('UPDATE counters SET value = value + 1 WHERE key = ? RETURNING value').bind('score:' + game).first();
+  return r ? r.value : totalOf(env, game);
+}
+
 async function rankOf(env, game, ms, id) {
   // 同タイムは先に出した人が上。desc のゲームは大きいほど上位
   const cmp = gameRule(game).desc ? '>' : '<';
@@ -117,7 +134,7 @@ export default {
       const row = await env.DB.prepare('INSERT INTO scores (game, ms, token, created) VALUES (?, ?, ?, ?) RETURNING id')
         .bind(b.game, ms, token, Date.now()).first();
       const rank = await rankOf(env, b.game, ms, row.id);
-      const total = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?').bind(b.game).first()).n;
+      const total = await bumpTotal(env, b.game);
       return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N });
     }
 
@@ -139,7 +156,7 @@ export default {
       const game = url.searchParams.get('game');
       if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
       const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, TOP_N).all();
-      const total = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?').bind(game).first()).n;
+      const total = await totalOf(env, game);
       return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || gameRule(game).anon || DEFAULT_NAME, ms: r.ms })) });
     }
 

@@ -96,7 +96,7 @@ try {
     const npcAw = ex2.rosters.flatMap((r) => JSON.parse(r.data)).filter((p) => p.aw && p.aw.length).length;
     check(npcAw >= 30, `NPCの受賞が名簿に保存される（${npcAw}人）`);
     const myRow = st.me.history.at(-1), mine = (w) => myRow.awards.some((a) => a.endsWith(w));
-    const L = h.awards.lg[{ 欧州: 0, '1部': 1, '2部': 2 }[myRow.lg]];
+    const L = h.awards.lg[{ 欧州: 0, '1部': 1, '2部': 2, '3部': 3, '4部': 4 }[myRow.lg]];
     check(mine('得点王') === L.scorer.some((x) => x.name === st.me.name), '自分の得点王と記録が一致');
   }
   check(st.world.phase === 'off' && st.me.status === 'off', 'シーズンが終わってオフになる');
@@ -140,24 +140,45 @@ try {
   // クラブ・名簿（Phase 1）
   {
     const st0 = (await call('/state', { code: A })).j;
-    check(st0.clubs.length === 30 && st0.clubs.every((c) => c.short && c.mark && c.atk != null), 'クラブに略称・エンブレム文字・特徴がある');
+    check(st0.clubs.length === 50 && st0.clubs.every((c) => c.short && c.mark && c.atk != null), 'クラブに略称・エンブレム文字・特徴がある');
     check(st0.squad && st0.squad.rows.length === 22 && st0.squad.rows.some((r) => r.me && r.type === 'user'), `自分のクラブの名簿が22人で、自分が入っている（${st0.squad && st0.squad.rows.length}）`);
     check(st0.squad.rows.filter((r) => r.type === 'npc').every((r) => r.name && r.ovr > 0 && r.style && !('stats' in r)), '名簿のNPCに名前・総合力・スタイルがある（細かい能力は出さない）');
-    check(ex.j.rosters && ex.j.rosters.length === 30, '書き出しに名簿（30クラブ）が入っている');
+    check(ex.j.rosters && ex.j.rosters.length === 50, '書き出しに名簿（50クラブ）が入っている');
     const npcIds = ex.j.rosters.flatMap((r) => JSON.parse(r.data).map((p) => p.id));
-    check(npcIds.length === 660 && new Set(npcIds).size === 660, 'NPCは660人でIDが重複しない');
+    check(npcIds.length === 1100 && new Set(npcIds).size === 1100, 'NPCは1100人でIDが重複しない');
     // 名簿のない、古い形（v1）の世界を読み込むと、クラブ名が付け直され、名簿が作られる
     const w1 = JSON.parse(ex.j.world);
     w1.v = 1; for (const c of w1.clubs) { c.name = `旧クラブ${c.id}`; c.city = `旧${c.id}`; for (const k of ['short', 'mark', 'atk', 'dfn', 'depth', 'youth', 'money', 'pop', 'recruit', 'nat']) delete c[k]; }
     const lgBefore = w1.clubs.map((c) => c.lg).join();
     const im1 = await call('/dev/import', { body: { ...ex.j, world: JSON.stringify(w1), rosters: undefined } });
-    check(im1.status === 200 && im1.j.npcs === 660, `v1の世界を読み込むと名簿ができる（${im1.status} ${im1.j && im1.j.npcs}）`);
+    check(im1.status === 200 && im1.j.npcs === 1100, `v1の世界を読み込むと名簿ができる（${im1.status} ${im1.j && im1.j.npcs}）`);
     const ex1 = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j, w2 = JSON.parse(ex1.world);
-    check(w2.v === 2 && w2.clubs.every((c) => c.short && !c.name.startsWith('旧')), '世界が v2 になり、クラブ名が新しくなる');
+    check(w2.v === 3 && w2.clubs.every((c) => c.short && !c.name.startsWith('旧')), '世界が最新の版になり、クラブ名が新しくなる');
     check(w2.clubs.map((c) => c.lg).join() === lgBefore, '移行しても今の所属リーグはそのまま');
     await call('/dev/import', { body: { ...ex.j, world: JSON.stringify(w1), rosters: undefined } });
     const ex1b = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j;
-    check(ex1.rosters.length === 30 && JSON.stringify(ex1.rosters) === JSON.stringify(ex1b.rosters), '同じデータから作り直すと同じ名簿になる（決まったシード）');
+    check(ex1.rosters.length === 50 && JSON.stringify(ex1.rosters) === JSON.stringify(ex1b.rosters), '同じデータから作り直すと同じ名簿になる（決まったシード）');
+    // v2（30クラブ）の世界：国内3部・4部の20クラブとNPC 440人が足される。前からいるNPC・プレイヤーはそのまま
+    {
+      const w30 = JSON.parse(ex.j.world); w30.v = 2;
+      w30.clubs = w30.clubs.slice(0, 30); for (const k of Object.keys(w30.table)) if (+k >= 30) delete w30.table[k];
+      for (const k of Object.keys(w30.schedule || {})) if (+k >= 3) delete w30.schedule[k];
+      const r30 = ex.j.rosters.filter((r) => r.club < 30);
+      const npc30 = r30.flatMap((r) => JSON.parse(r.data));
+      const imp = await call('/dev/import', { body: { ...ex.j, world: JSON.stringify(w30), rosters: r30 } });
+      const e3 = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j, w3 = JSON.parse(e3.world);
+      const all3 = e3.rosters.flatMap((r) => JSON.parse(r.data));
+      check(imp.status === 200 && w3.v === 3 && w3.clubs.length === 50 && e3.rosters.length === 50 && all3.length === 1100, `30クラブの世界に国内3部・4部が足される（${w3.clubs.length}クラブ・NPC ${all3.length}人）`);
+      check(new Set(all3.map((p) => p.id)).size === 1100 && new Set(all3.map((p) => p.name)).size === 1100, '足したNPCとIDも名前もぶつからない');
+      check(JSON.stringify(all3.filter((p) => p.club < 30)) === JSON.stringify(npc30.sort((x, y) => x.club - y.club || x.no - y.no)) || all3.filter((p) => p.club < 30).length === npc30.length, '前からいるNPCはそのまま');
+      check(w3.phase !== 'season' || (w3.schedule[3] && w3.schedule[4]), 'シーズン中なら3部・4部の日程ができる');
+      check(w3.news.some((n) => n.t.includes('国内3部・4部ができた')), '速報で知らせる');
+      const t3 = await call('/dev/tick', { body: { n: 2 } });
+      check(t3.status === 200, `足したあとも試合が進む（${t3.status}）`);
+      const pub3 = (await call('/public')).j;
+      check(pub3.positions.DF.open > 0, '国内3部・4部に空きができる');
+      await call('/dev/import', { body: ex.j }); // 元に戻す
+    }
     const stA = (await call('/state', { code: A })).j;
     check(stA.me.money === snapshot.me.money && JSON.stringify(stA.me.history) === JSON.stringify(snapshot.me.history), '移行してもプレイヤーのお金・経歴はそのまま');
   }

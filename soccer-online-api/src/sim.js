@@ -18,7 +18,7 @@ export const POS_CAP = { GK: GK_CAP, FW: FW_CAP };
 const XI = { GK: 1, DF: 4, MF: 4, FW: 2 }; // 先発の枠（4-4-2）
 export const POP_BONUS = 6; // 「狙い目」のポジションで始めたときの才能のボーナス
 // 年俸の上限（万円）。リーグごと
-export const SALARY_CAP = { 0: 30000, 1: 8000, 2: 2000 };
+export const SALARY_CAP = { 0: 30000, 1: 8000, 2: 2000, 3: 1000, 4: 600 };
 // ルーレットの台：全員共通で一定時間ごとに1回まわる（間隔は wrangler.toml の RL_MINUTES）
 export function newTable(now, ms) { return { round: 0, nextAt: now + ms, hist: [], last: null }; }
 
@@ -49,10 +49,15 @@ export function addNews(w, t) {
 // ----- データの版管理 -----
 // データの形を変えるときは VERSION を上げて、MIGRATIONS[古い版] に「1つ新しい版へ直す」関数を足す。
 // 移行は起動のたびに読み込んだデータに対して行い、次に保存するときに新しい形で書かれる。
-export const WORLD_VERSION = 2;
+export const WORLD_VERSION = 3;
 const WORLD_MIGRATIONS = {
   // v1→v2：クラブ名・略称・特徴を ID ごとに付け直す（今の所属リーグと強さはそのまま。経歴のクラブ名は当時のまま）
   1: (w) => { SL._.applyClubData(w.clubs); },
+  // v2→v3：国内3部・4部（20クラブ）を足す。シーズン中なら、今の節から残りの日程を戦う。NPCは league.js が名簿に足す
+  2: (w) => {
+    const added = SL.extendClubs(w);
+    if (added.length) addNews(w, `🆕 国内3部・4部ができた！ ${added.length}クラブが加わり、新しい選手が入れるようになった`);
+  },
 };
 // NPC選手を作るときのシード（オンラインの世界は1つなので固定）。名簿は rosters 表にクラブごとに保存する
 export const NPC_SEED = 1;
@@ -351,19 +356,18 @@ export function endSeason(w, members, npcs = [], npcSeason = null) {
   for (const m of active) { const b = bestByClub.get(m.pl.club); if (!b || m.season.goals > b.season.goals) bestByClub.set(m.pl.club, m); }
   for (const [cid, m] of bestByClub) if (m.season.goals > 0) { const cr = clubRec(w, cid); cr.scorers.push({ year: w.year, name: m.pl.name, goals: m.season.goals }); if (cr.scorers.length > 12) cr.scorers.shift(); }
   for (const L of LEAGUES) clubRec(w, standings(w, L.id)[0].c.id).titles.push(`${w.year} ${L.short}`);
-  addNews(w, `🏆 ${w.year}年の優勝：欧州 ${standings(w, 0)[0].c.city}／1部 ${standings(w, 1)[0].c.city}／2部 ${standings(w, 2)[0].c.city}`);
+  addNews(w, `🏆 ${w.year}年の優勝：${LEAGUES.filter((L) => w.clubs.some((c) => c.lg === L.id)).map((L) => `${L.short} ${standings(w, L.id)[0].c.city}`).join('／')}`);
   if (w.cup && w.cup.winner != null) clubRec(w, w.cup.winner).cups.push(w.year);
 
   // 昇格・降格とクラブ力の変動
-  const r1 = standings(w, 1).slice(-2).map((x) => x.c), p2 = standings(w, 2).slice(0, 2).map((x) => x.c);
-  r1.forEach((x) => { x.lg = 2; }); p2.forEach((x) => { x.lg = 1; });
-  for (const m of active) if (p2.some((x) => x.id === m.pl.club) && m.season.apps >= 5) { m.trophies.push(`${w.year} 1部昇格`); m.seasonAwards.push('1部昇格'); }
-  for (const x of w.clubs) {
-    const old = x.str;
-    x.str = clamp(Math.round(x.str + (CLUB_SEED[x.id].str - x.str) * .3 + gauss() * 1.5 + (p2.includes(x) ? 3 : 0) - (r1.includes(x) ? 2 : 0)), 44, 90);
-    if (x.atk != null) { x.atk += x.str - old; x.dfn += x.str - old; }
+  const mv = SL._.leagueMoves(w.clubs, (lg) => standings(w, lg).map((x) => x.c), w.partialLeagues || []);
+  delete w.partialLeagues;
+  for (const m of active) {
+    const c = w.clubs[m.pl.club];
+    if (mv.up.has(c) && m.season.apps >= 5) { const a = `${LEAGUES[c.lg].short}昇格`; m.trophies.push(`${w.year} ${a}`); m.seasonAwards.push(a); }
   }
-  w.history.push({ year: w.year, champions, moves: [...r1.map((x) => `${x.name} が2部へ降格`), ...p2.map((x) => `${x.name} が1部へ昇格`)], awards: awRec });
+  SL._.driftClubs(w.clubs, mv);
+  w.history.push({ year: w.year, champions, moves: mv.text, awards: awRec });
   if (w.history.length > 30) w.history.shift();
 
   // 代表（W杯は全員で同じ大会にしたいので、最小構成ではまだやらない）
@@ -456,7 +460,7 @@ export const POLICY = {
 };
 // 契約が残っていても、方針に合うオファーがあれば移るか
 export const MOVE_SWITCH = { bench: '控えのときだけ', always: 'する', never: 'しない' };
-const LG_RANK = { 0: 3, 1: 2, 2: 1 };
+const LG_RANK = { 0: 5, 1: 4, 2: 3, 3: 2, 4: 1 };
 // そのクラブでの立ち位置（先発に入れるか・何番手か）。npcs がなければ総合力とクラブの強さから
 function seatAt(m, w, clubId, members, npcs) {
   const o = ovr(m.pl);

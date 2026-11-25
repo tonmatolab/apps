@@ -27,8 +27,9 @@ const GAMES = {
   soccer: { min: 1, max: 100000, desc: true, anon: '名無しの選手' }, // サッカー人生の生涯スコア。大きいほど上位
   soccerq: { min: 1, max: 100000, desc: true, anon: '名無しの選手' }, // サッカー人生・60秒モード（おまかせ）は別ランキング
   // 試合の仕組みを新しくした（2026年11月）ので、生涯スコアは新しいランキングに。上の2つは旧ルールの記録として残す
-  soccer2: { min: 1, max: 100000, desc: true, anon: '名無しの選手' },
-  soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手' },
+  // needName：名前を付けた記録だけをランキングに出す（記録を送るときに名前が必須。名無しの記録は数えない）
+  soccer2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true },
+  soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true },
   onigiri: { min: 1, max: 100000, desc: true, anon: '名無しの職人' }, // おにぎり握り職人の査定額（円）。大きいほど上位
 };
 const TOP_N = 10;      // ランキングの表示数（省略したとき）
@@ -78,24 +79,27 @@ function cleanName(raw) {
 // ゲームごとの記録の件数。COUNT(*) は記録の数だけ行を読むので、counters に件数を持っておく。
 // キーは「score:ゲーム名」（: は /get・/hit のキーに使えない文字なので、外からは読み書きできない）
 // まだ件数がないゲームは、1回だけ数えて入れる
+const needName = (game) => !!(gameRule(game) || {}).needName;
+const namedSql = (game) => (needName(game) ? ' AND name IS NOT NULL' : ''); // 名前が必須のゲームは、名前のある記録だけ
+const totalKey = (game) => (needName(game) ? 'named:' : 'score:') + game;
 async function totalOf(env, game) {
-  const k = 'score:' + game;
+  const k = totalKey(game);
   const r = await env.DB.prepare('SELECT value FROM counters WHERE key = ?').bind(k).first();
   if (r) return r.value;
-  const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?').bind(game).first()).n;
+  const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE game = ?' + namedSql(game)).bind(game).first()).n;
   await env.DB.prepare('INSERT INTO counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING').bind(k, n).run();
   return n;
 }
 // 記録が1件増えたとき（件数をまだ持っていなければ、増えたあとの記録を数えて入れる）
 async function bumpTotal(env, game) {
-  const r = await env.DB.prepare('UPDATE counters SET value = value + 1 WHERE key = ? RETURNING value').bind('score:' + game).first();
+  const r = await env.DB.prepare('UPDATE counters SET value = value + 1 WHERE key = ? RETURNING value').bind(totalKey(game)).first();
   return r ? r.value : totalOf(env, game);
 }
 
 async function rankOf(env, game, ms, id) {
   // 同タイムは先に出した人が上。desc のゲームは大きいほど上位
   const cmp = gameRule(game).desc ? '>' : '<';
-  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM scores WHERE game = ? AND (ms ${cmp} ? OR (ms = ? AND id < ?))`)
+  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM scores WHERE game = ? AND (ms ${cmp} ? OR (ms = ? AND id < ?))${namedSql(game)}`)
     .bind(game, ms, ms, id).first();
   return r.n + 1;
 }
@@ -130,12 +134,14 @@ export default {
       const g = gameRule(b.game);
       const ms = Math.round(Number(b.ms));
       if (!g || !Number.isFinite(ms) || ms < g.min || ms > g.max) return json(req, { error: 'invalid' }, 400);
+      let name = null;
+      if (needName(b.game)) { name = cleanName(b.name); if (!name) return json(req, { error: 'bad_name' }, 400); }
       const token = crypto.randomUUID();
-      const row = await env.DB.prepare('INSERT INTO scores (game, ms, token, created) VALUES (?, ?, ?, ?) RETURNING id')
-        .bind(b.game, ms, token, Date.now()).first();
+      const row = await env.DB.prepare('INSERT INTO scores (game, ms, token, created, name) VALUES (?, ?, ?, ?, ?) RETURNING id')
+        .bind(b.game, ms, token, Date.now(), name).first();
       const rank = await rankOf(env, b.game, ms, row.id);
       const total = await bumpTotal(env, b.game);
-      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: rank <= MAX_N });
+      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: !name && rank <= MAX_N, name });
     }
 
     if (req.method === 'POST' && url.pathname === '/name') {
@@ -149,6 +155,7 @@ export default {
       const rank = await rankOf(env, b.game, s.ms, s.id);
       if (rank > MAX_N) return json(req, { error: 'not_top', rank }, 409);
       await env.DB.prepare('UPDATE scores SET name = ? WHERE id = ?').bind(name, s.id).run();
+      if (needName(b.game)) await bumpTotal(env, b.game);
       return json(req, { ok: true, rank, name });
     }
 
@@ -156,7 +163,7 @@ export default {
       const game = url.searchParams.get('game');
       if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
       const n = Math.max(1, Math.min(MAX_N, Math.floor(Number(url.searchParams.get('limit'))) || TOP_N));
-      const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ? ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, n).all();
+      const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ?${namedSql(game)} ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, n).all();
       const total = await totalOf(env, game);
       return json(req, { total, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name || gameRule(game).anon || DEFAULT_NAME, ms: r.ms })) });
     }

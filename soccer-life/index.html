@@ -108,7 +108,7 @@
   .offer .mt { font-size: .74rem; color: var(--sub); line-height: 1.5; }
   .offer .pt { flex: none; text-align: center; font-size: .66rem; color: var(--sub); line-height: 1.2; }
   .offer .pt b { display: block; font-size: 1.3rem; color: var(--ink); }
-  .lg-0 { color: #b8860b; } .lg-1 { color: var(--green); } .lg-2 { color: var(--sub); }
+  .lg-0 { color: #b8860b; } .lg-1 { color: var(--green); } .lg-2 { color: var(--sub); } .lg-3, .lg-4 { color: #8a7a66; }
   .badge { display: inline-block; font-size: .66rem; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: var(--chip); margin-right: 4px; vertical-align: 1px; }
   .badge.eu { background: #fff1c4; color: #8a6300; } .badge.stay { background: #dff3e6; color: #0d6b36; }
   @media (prefers-color-scheme: dark) { .badge.eu { background: #4a3c10; color: #ffd76a; } .badge.stay { background: #173b25; color: #7be3a5; } }
@@ -649,7 +649,7 @@
       <h2>🏆 全国ランキング</h2>
       <div class="rankmsg" id="rankMsg">集計中…</div>
       <div id="nameBox" class="hidden" style="margin-top:10px">
-        <p class="sub" style="margin:0 0 6px;text-align:center">トップ100入り！ランキングに名前を載せよう</p>
+        <p class="sub" style="margin:0 0 6px;text-align:center">名前を入れて全国ランキングに登録しよう（ほかの人にも表示されます）</p>
         <div class="row"><input class="t" id="rankName" maxlength="12" style="flex:2"><button class="btn gold" id="rankNameBtn">登録</button></div>
         <p class="sub" id="rankNameMsg" style="text-align:center;margin:6px 0 0"></p>
       </div>
@@ -683,10 +683,14 @@
     </div>
     <div class="stack" style="margin-top:14px">
       <button class="btn primary" id="ol-startBtn">⚽ 選手になる（無料・メール不要）</button>
+      <div id="ol-fullBox" class="hidden">
+        <p class="sub" style="text-align:center;margin:0 0 8px">🈵 いまオンラインリーグは満員です。空きが出るまで、一人用で選手人生を楽しもう（一人用は登録なしですぐ遊べます）</p>
+        <button class="btn gold ol-solo">🎮 一人用モードで遊ぶ</button>
+      </div>
     </div>
     <div class="card">
       <ul class="feats">
-        <li>🌍 全員が同じ30クラブのリーグに所属。同じクラブになった人とは一緒に試合に出る</li>
+        <li>🌍 全員が同じ50クラブ（欧州・国内1〜4部）の世界に所属。同じクラブになった人とは一緒に試合に出る</li>
         <li>⏰ <b id="ol-tickTxt">30分</b>に1節、試合は自動で進む。あなたが決めるのは練習と契約だけ</li>
         <li>📅 18節でシーズン終了。オフに移籍・残留・引退を選ぶ（1日でおよそ1年）</li>
         <li>👶 引退したら、子どもが次の世代として続きを生きる</li>
@@ -722,6 +726,7 @@
     <div class="stack" style="margin-top:16px">
       <button class="btn primary" id="ol-signupBtn">プロになる ▶</button>
       <p class="sub" id="ol-signupMsg" style="text-align:center;margin:0"></p>
+      <button class="btn gold ol-solo hidden" id="ol-soloBtn2" style="margin-top:8px">🎮 一人用モードで遊ぶ</button>
       <button class="btn ghost" id="ol-createBack">もどる</button>
     </div>
   </section>
@@ -1151,8 +1156,10 @@ function renderTab() {
   const c = SL.clubOf(S);
   if (tab === 'table') {
     const tb = SL.standings(S, c.lg);
-    const zone = (i) => c.lg === 2 && i < 2 ? 'up' : c.lg === 1 && i >= tb.length - 2 ? 'dn' : '';
-    $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${c.lg === 1 ? '（下位2チームは2部へ降格）' : c.lg === 2 ? '（上位2チームが1部へ昇格）' : ''}</div>
+    const lower = S.clubs.some((x) => x.lg === c.lg + 1), upper = c.lg >= 2; // 下のリーグがある＝降格あり、2部より下＝昇格あり
+    const zone = (i) => c.lg > 0 && upper && i < 2 ? 'up' : c.lg > 0 && lower && i >= tb.length - 2 ? 'dn' : '';
+    const rule = c.lg === 0 ? '' : `（${[upper ? `上位2チームが${SL.LEAGUES[c.lg - 1].short}へ昇格` : '', lower ? `下位2チームは${SL.LEAGUES[c.lg + 1].short}へ降格` : ''].filter(Boolean).join('・')}）`;
+    $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${rule}</div>
     <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>試</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
     ${tb.map((x, i) => `<tr class="${x.c.id === c.id ? 'me' : ''} ${zone(i)}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${x.c.color}"></span>${esc(x.c.name)}</td><td>${x.t.w + x.t.d + x.t.l}</td><td>${x.t.w}</td><td>${x.t.d}</td><td>${x.t.l}</td><td>${x.t.gf - x.t.ga > 0 ? '+' : ''}${x.t.gf - x.t.ga}</td><td><b>${x.t.p}</b></td></tr>`).join('')}</table></div>`;
   } else if (tab === 'team') {
@@ -1327,7 +1334,7 @@ function cupHTML(cu) {
 
 function careerTable(h) {
   return `<table class="tb"><tr><th>年</th><th>歳</th><th style="text-align:left">クラブ</th><th>試</th><th>G</th><th>A</th><th>評価</th></tr>
-  ${h.map((r) => `<tr><td>${String(r.year).slice(2)}</td><td>${r.age}</td><td class="l"><span class="lg-${['欧州', '1部', '2部'].indexOf(r.lg)}" style="font-size:.66rem">${r.lg}</span> ${esc(r.club)}${r.awards.length ? ' 🏅'.repeat(Math.min(3, r.awards.length)) : ''}</td><td>${r.apps}</td><td>${r.goals}</td><td>${r.assists}</td><td>${r.rating ? r.rating.toFixed(2) : '-'}</td></tr>`).join('')}</table>`;
+  ${h.map((r) => `<tr><td>${String(r.year).slice(2)}</td><td>${r.age}</td><td class="l"><span class="lg-${['欧州', '1部', '2部', '3部', '4部'].indexOf(r.lg)}" style="font-size:.66rem">${r.lg}</span> ${esc(r.club)}${r.awards.length ? ' 🏅'.repeat(Math.min(3, r.awards.length)) : ''}</td><td>${r.apps}</td><td>${r.goals}</td><td>${r.assists}</td><td>${r.rating ? r.rating.toFixed(2) : '-'}</td></tr>`).join('')}</table>`;
 }
 
 // ===== 試合の流れ（一人用・オンライン共通） =====
@@ -1632,12 +1639,7 @@ async function doRetire() {
   }
   save();
   renderEnd();
-  // ランキングに送る（1回だけ）
-  const sm = S.summary;
-  if (!sm.sent) {
-    const r = await api('/score', 'POST', { game: boardGame(sm.mode), ms: sm.score });
-    sm.sent = true; sm.rankInfo = r && !r.error ? r : null; save();
-  }
+  // ランキングには、名前を入れて「登録」したときに送る（名前が必須）
   renderRank();
 }
 
@@ -1708,13 +1710,29 @@ function renderEnd() {
 }
 function renderRank() {
   const sm = S.summary, r = sm.rankInfo;
+  if (!sm.sent) { // まだ送っていない：名前を入れて登録
+    $('rankMsg').innerHTML = `${sm.mode === 'quick' ? '60秒モード ' : ''}生涯スコア <b class="num" style="font-size:1.4rem;color:var(--green)">${sm.score.toLocaleString()}</b>`;
+    $('nameBox').classList.remove('hidden'); if (!$('rankName').value) $('rankName').value = sm.name; $('rankNameMsg').textContent = '';
+    loadBoard($('boardEnd'), null, sm.mode); return;
+  }
   if (!r) { $('rankMsg').textContent = 'ランキングに接続できませんでした'; loadBoard($('boardEnd'), null, sm.mode); return; }
   $('rankMsg').innerHTML = `${sm.mode === 'quick' ? '60秒モード ' : ''}全国 <b class="num" style="font-size:1.4rem;color:var(--green)">${r.rank}</b> 位 <span class="sub">/ ${r.total.toLocaleString()}人中</span>`;
   if ((r.canName ?? r.top10) && !sm.named) { $('nameBox').classList.remove('hidden'); $('rankName').value = sm.name; }
   loadBoard($('boardEnd'), r.rank, sm.mode);
 }
 async function submitName() {
-  const sm = S.summary, r = sm.rankInfo; if (!r) return;
+  const sm = S.summary, r = sm.rankInfo;
+  if (!sm.sent) { // 名前と一緒に記録を送る
+    const name = $('rankName').value.trim();
+    if (!name) { $('rankNameMsg').textContent = '名前を入れてください'; return; }
+    $('rankNameBtn').disabled = true;
+    const j = await api('/score', 'POST', { game: boardGame(sm.mode), ms: sm.score, name });
+    $('rankNameBtn').disabled = false;
+    if (!j || j.error) { $('rankNameMsg').textContent = j && j.error === 'bad_name' ? 'その名前は使えません' : '登録できませんでした。通信を確かめてもう一度'; return; }
+    sm.sent = true; sm.named = true; sm.rankInfo = j; save();
+    $('nameBox').classList.add('hidden'); renderRank(); toast('ランキングに登録しました！'); return;
+  }
+  if (!r) return;
   $('rankNameBtn').disabled = true;
   const j = await api('/name', 'POST', { game: boardGame(sm.mode), id: r.id, token: r.token, name: $('rankName').value });
   $('rankNameBtn').disabled = false;

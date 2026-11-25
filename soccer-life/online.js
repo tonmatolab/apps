@@ -57,6 +57,10 @@
     const j = await api('/public');
     if (j.error) { $('startWorld').innerHTML = `<div style="grid-column:1/-1">${errMsg(j.error)}</div>`; $('startScorers').innerHTML = '<li class="empty">-</li>'; return; }
     const w = j.world; skew = w.now - Date.now(); POSI = j.positions || null;
+    const full = !!POSI && Object.values(POSI).every((p) => !p.open);
+    $('fullBox').classList.toggle('hidden', !full);
+    $('startBtn').textContent = full ? '🈵 いまは満員です（新しい選手は登録できません）' : '⚽ 選手になる（無料・メール不要）';
+    $('startBtn').disabled = full;
     $('tickTxt').textContent = w.tickMin >= 60 ? `${w.tickMin / 60}時間` : `${w.tickMin}分`;
     $('startWorld').innerHTML = `<div>シーズン<b>${w.year}年</b></div><div>${w.phase === 'season' ? '節' : 'オフ'}<b>${w.phase === 'season' ? `${w.week}/${w.weeks}` : `残り${w.offLeft}`}</b></div><div>プレイヤー<b>${w.players}人</b></div>`;
     $('startNewsCard').classList.toggle('hidden', !(j.news && j.news.length));
@@ -84,6 +88,7 @@
     const allFull = btns.every((b) => b.disabled);
     $('signupMsg').textContent = allFull ? 'いまはどのポジションも満員です。空きが出るまでお待ちください' : '';
     $('signupBtn').disabled = allFull;
+    $('soloBtn2').classList.toggle('hidden', !allFull);
   }
   function renderCreate(next = false) {
     $('createTitle').textContent = next ? '子どもの名前は？' : 'あなたの名前は？';
@@ -398,7 +403,7 @@
         const h = club(r.h), a = club(r.a);
         const g = r.goals.filter((x) => x.who || x.assist).map((x) => `${x.min}' ${esc(x.who || '')}${x.assist ? `（A ${esc(x.assist)}）` : ''}`).join('、');
         return `<li style="display:block"><span class="dot" style="background:${h.color}"></span>${esc(h.city)} <b class="num">${r.gh} - ${r.ga}</b> ${esc(a.city)} <span class="dot" style="background:${a.color};margin-left:4px"></span><span class="sub">${SL.LEAGUES[r.lg].short}</span>${g ? `<div class="sub">⚽ ${g}</div>` : ''}</li>`;
-      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">欧州 ${esc(x.champions[0])}／1部 ${esc(x.champions[1])}／2部 ${esc(x.champions[2])}</span></li>`).join('')}</ul>` : ''}${ST.seasonHistory.some((x) => x.awards) ? `<h2 style="margin-top:12px">🏅 歴代の受賞者（${SL.LEAGUES[lg].name}）</h2>${awardHistoryHTML(ST.seasonHistory.map((x) => x.awards).filter(Boolean), String(lg))}` : ''}<h2 style="margin-top:12px">🌟 NPCレジェンド</h2>${legendsHTML(ST.records && ST.records.npcLegends)}${cupResultsHTML()}`;
+      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">${x.champions.map((nm, i) => `${SL.LEAGUES[i].short} ${esc(nm)}`).join('／')}</span></li>`).join('')}</ul>` : ''}${ST.seasonHistory.some((x) => x.awards) ? `<h2 style="margin-top:12px">🏅 歴代の受賞者（${SL.LEAGUES[lg].name}）</h2>${awardHistoryHTML(ST.seasonHistory.map((x) => x.awards).filter(Boolean), String(lg))}` : ''}<h2 style="margin-top:12px">🌟 NPCレジェンド</h2>${legendsHTML(ST.records && ST.records.npcLegends)}${cupResultsHTML()}`;
     } else {
       const aw = me.trophies.map((t) => `<li>🏆 ${esc(t)}</li>`).concat(me.awards.map((t) => `<li>🏅 ${esc(t)}</li>`));
       body.innerHTML = `<div class="bigstat"><div>通算出場<b>${me.totals.apps}</b></div><div>通算G<b>${me.totals.goals}</b></div><div>通算A<b>${me.totals.assists}</b></div><div>代表<b>${me.caps}</b></div></div>
@@ -434,6 +439,8 @@
     const cz = ST.casino;
     if (cz && cz.myBets.length && cz.nextAt + 3000 - (Date.now() + skew) < 0 && Date.now() - fetchedAt > 15000 && document.visibilityState === 'visible' && !document.querySelector('.sheet.casino')) load();
   }, 1000);
+  // 満員のときの「一人用モードで遊ぶ」
+  document.addEventListener('click', (e) => { if (e.target.closest('.ol-solo')) location.href = location.pathname; });
   // 移籍方針の「変える」（ホーム・オフの画面）
   document.addEventListener('click', (e) => { if (e.target.closest('#ol-polBtn, #ol-polBtn2')) openPolicy(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ST && Date.now() - fetchedAt > 60000) load(); });

@@ -189,7 +189,13 @@
     }
     // 2. 残りの枠を、クラブの国に合った名前の選手で埋める
     const R = makeRng(hashStr('world:' + seed));
-    for (const c of clubs.slice().sort((a, b) => a.id - b.id)) {
+    for (const c of clubs.slice().sort((a, b) => a.id - b.id)) fillClub(c, { R, used, nextId, byClub, count, add });
+    numberSquads(byClub);
+    return out.sort((a, b) => a.club - b.club || a.no - b.no);
+  }
+  // クラブ1つの22人の枠を埋める（有名選手が先に入っていれば、その分を除いて）
+  function fillClub(c, { R, used, nextId, byClub, count, add }) {
+    {
       const home = c.nat || (c.lg === 0 ? 'イングランド' : '日本');
       // 有名選手が強さを押し上げた分だけ、ほかの先発クラスを少し下げる（先発11人の平均がクラブの強さ str に近くなるように）
       const fam = byClub.get(c.id);
@@ -216,7 +222,9 @@
         }
       }
     }
-    // 3. 背番号（GKは1・21・31、ほかは強い順に2〜）
+  }
+  // 背番号（GKは1・21・31、ほかは強い順に2〜）
+  function numberSquads(byClub) {
     for (const list of byClub.values()) {
       const gks = list.filter((p) => p.pos === 'GK').sort((a, b) => ovr(b) - ovr(a));
       gks.forEach((p, i) => { p.no = [1, 21, 31][i] || 41 + i; });
@@ -224,7 +232,42 @@
       const rest = list.filter((p) => p.pos !== 'GK').sort((a, b) => ovr(b) - ovr(a) || order.indexOf(a.pos) - order.indexOf(b.pos));
       let no = 2; for (const p of rest) { if (no === 21) no = 22; p.no = no++; }
     }
-    return out.sort((a, b) => a.club - b.club || a.no - b.no);
+  }
+
+  // ----- あとから増えたクラブ（国内3部・4部）を、今の世界に足す -----
+  // state：{ clubs, table?, schedule?, phase? }（一人用のセーブデータ・オンラインの世界のどちらも）。足したクラブを返す
+  // シーズン中なら、増えたリーグの日程と順位表も作る（残りの節だけ戦う）
+  function extendClubs(state) {
+    const seed = SL._.newWorld(), added = [];
+    for (let id = state.clubs.length; id < seed.length; id++) { state.clubs.push(seed[id]); added.push(seed[id]); }
+    if (!added.length) return added;
+    if (state.table) {
+      const sample = Object.values(state.table)[0];
+      for (const c of added) state.table[c.id] = { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, ...(sample && 'form' in sample ? { form: [] } : {}) };
+    }
+    if (state.schedule && state.phase === 'season') {
+      const made = [];
+      for (const L of SL.LEAGUES) if (!state.schedule[L.id]) { state.schedule[L.id] = SL._.roundRobin(state.clubs.filter((c) => c.lg === L.id).map((c) => c.id)); made.push(L.id); }
+      if (made.length && state.week > 0) state.partialLeagues = made; // 途中の節から始めたリーグは、このシーズンの昇格・降格をしない
+    }
+    return added;
+  }
+  // NPCが1人もいないクラブに、22人を作って足す（npcs に足す。足した選手を返す）。legends：引退したNPCのID（番号がぶつからないように）
+  function extendNpcs(npcs, clubs, seed = 1, legends = []) {
+    const has = new Set(npcs.map((p) => p.club));
+    const empty = clubs.filter((c) => !has.has(c.id)).sort((a, b) => a.id - b.id);
+    if (!empty.length) return [];
+    const used = new Set(FAMOUS.map((f) => f[0]).concat(npcs.map((p) => p.name)));
+    let n = Math.max(0, ...npcs.map((p) => Number(String(p.id).slice(1)) || 0), ...legends.map((l) => Number(String(l.id || 'n0').slice(1)) || 0));
+    const nextId = () => 'n' + String(++n).padStart(4, '0');
+    const byClub = new Map(empty.map((c) => [c.id, []])), out = [];
+    const count = (cid, pos) => byClub.get(cid).filter((p) => p.pos === pos).length;
+    const add = (p, cid) => { p.club = cid; byClub.get(cid).push(p); out.push(p); };
+    const R = makeRng(hashStr(`world+:${seed}:${empty[0].id}`));
+    for (const c of empty) fillClub(c, { R, used, nextId, byClub, count, add });
+    numberSquads(byClub);
+    npcs.push(...out);
+    return out;
   }
 
   // ----- 試合に出られる名簿：本物のプレイヤーが入ったクラブでは、NPCが枠を譲る -----
@@ -287,10 +330,13 @@
   // クラブは ID ごとに名前・色・特徴を付け直す（所属リーグと今の強さはそのまま）。NPCがいなければ、その世界に決まったシードで作る
   function upgradeWorld(s, seed) {
     SL._.applyClubData(s.clubs);
-    if (!Array.isArray(s.npcs)) s.npcs = newNpcWorld(s.clubs, seed != null ? seed : hashStr(`${s.p ? s.p.name : ''}:${s.year}:${s.gen || 1}`));
+    extendClubs(s);
+    const sd = seed != null ? seed : hashStr(`${s.p ? s.p.name : ''}:${s.year}:${s.gen || 1}`);
+    if (!Array.isArray(s.npcs)) s.npcs = newNpcWorld(s.clubs, sd);
+    else extendNpcs(s.npcs, s.clubs, sd, s.npcLegends || []);
     return s;
   }
 
-  Object.assign(SL, { depthOf, SKILLS, skillsOf, SQUAD_SIZE, upgradeWorld, SQUAD_QUOTA, STYLES, NAME_POOLS, FAMOUS_COUNT: FAMOUS.length, styleOf, newNpcWorld, clubSquad, npcView });
+  Object.assign(SL, { extendClubs, extendNpcs, depthOf, SKILLS, skillsOf, SQUAD_SIZE, upgradeWorld, SQUAD_QUOTA, STYLES, NAME_POOLS, FAMOUS_COUNT: FAMOUS.length, styleOf, newNpcWorld, clubSquad, npcView });
   SL._.worldRng = makeRng; SL._.hashStr = hashStr; SL._.FAMOUS = FAMOUS; SL._.npcName = fullName; SL._.makeNpc = makeNpc; SL._.awkwardName = awkward; SL._.ABROAD = { EU: ABROAD_EU, JP: ABROAD_JP };
 })(typeof SL !== 'undefined' ? SL : require('./core.js'));

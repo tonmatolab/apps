@@ -92,8 +92,12 @@ const SL = (() => {
     { id: 0, name: '欧州リーグ', short: '欧州', npcGoals: [11, 18], npcAssists: [7, 12] },
     { id: 1, name: '国内1部', short: '1部', npcGoals: [9, 15], npcAssists: [6, 10] },
     { id: 2, name: '国内2部', short: '2部', npcGoals: [8, 14], npcAssists: [5, 9] },
+    { id: 3, name: '国内3部', short: '3部', npcGoals: [7, 13], npcAssists: [5, 9] },
+    { id: 4, name: '国内4部', short: '4部', npcGoals: [7, 12], npcAssists: [4, 8] },
   ];
-  // クラブ（ID 0〜29 は保存データの所属に使っているので変えない）。lg は新しい世界を始めるときの所属リーグ。
+  // 昇格・降格：国内1部〜4部のあいだで、上のリーグの下位2クラブと下のリーグの上位2クラブが入れ替わる（欧州は入れ替えなし）
+  const LOWEST = 4;
+  // クラブ（ID 0〜49 は保存データの所属に使っているので変えない。30〜49 は国内3部・4部としてあとから足した）。lg は新しい世界を始めるときの所属リーグ。
   // short：画面で使う略称（同じ都市のクラブも見分けられる）、mark：エンブレムの文字、nat：地元の国（NPCの国籍の割合に使う）
   // 特徴8項目：str 総合力 / atk 攻撃力 / dfn 守備力（数値）、depth 選手層 / youth 若手育成 / money 資金力 / pop 人気 / recruit 獲得力（1〜5）
   const CLUB_SEED = [
@@ -130,6 +134,28 @@ const SL = (() => {
     { name: '広島サンフォース', short: '広島', mark: '広島', lg: 2, str: 58, atk: 57, dfn: 60, depth: 3, youth: 4, money: 2, pop: 3, recruit: 2, color: '#5b2d8e', nat: '日本' },
     { name: '福岡アヴィオン', short: '福岡', mark: '福岡', lg: 2, str: 55, atk: 56, dfn: 54, depth: 2, youth: 2, money: 2, pop: 2, recruit: 2, color: '#0e3a75', nat: '日本' },
     { name: '長崎ヴァレリア', short: '長崎', mark: '長崎', lg: 2, str: 54, atk: 53, dfn: 56, depth: 2, youth: 3, money: 2, pop: 2, recruit: 2, color: '#1aa3c4', nat: '日本' },
+    // 国内3部（ID 30〜39）
+    { name: '札幌コンサドール', short: '札幌', mark: '札幌', lg: 3, str: 51, atk: 52, dfn: 50, depth: 2, youth: 3, money: 2, pop: 3, recruit: 2, color: '#d50f25', nat: '日本' },
+    { name: '仙台ベガルド', short: '仙台', mark: '仙台', lg: 3, str: 50, atk: 50, dfn: 51, depth: 2, youth: 3, money: 2, pop: 3, recruit: 2, color: '#f8b500', nat: '日本' },
+    { name: '磐田ジュピロス', short: '磐田', mark: '磐田', lg: 3, str: 50, atk: 51, dfn: 49, depth: 2, youth: 4, money: 2, pop: 3, recruit: 2, color: '#5aa7d8', nat: '日本' },
+    { name: '鳥栖サガニス', short: '鳥栖', mark: '鳥栖', lg: 3, str: 48, atk: 47, dfn: 49, depth: 2, youth: 4, money: 1, pop: 2, recruit: 2, color: '#45a1d8', nat: '日本' },
+    { name: '大宮アルディーノ', short: '大宮', mark: '大宮', lg: 3, str: 49, atk: 50, dfn: 48, depth: 2, youth: 3, money: 3, pop: 2, recruit: 2, color: '#f06c00', nat: '日本' },
+    { name: '甲府ヴァンフォール', short: '甲府', mark: '甲府', lg: 3, str: 47, atk: 47, dfn: 47, depth: 2, youth: 3, money: 1, pop: 2, recruit: 1, color: '#1a3c8f', nat: '日本' },
+    { name: '山形モンテリオ', short: '山形', mark: '山形', lg: 3, str: 47, atk: 46, dfn: 48, depth: 2, youth: 2, money: 1, pop: 2, recruit: 1, color: '#0f2c6e', nat: '日本' },
+    { name: '徳島ヴォルテクス', short: '徳島', mark: '徳島', lg: 3, str: 46, atk: 47, dfn: 45, depth: 2, youth: 3, money: 1, pop: 2, recruit: 1, color: '#2b2a8c', nat: '日本' },
+    { name: '大分トリニティス', short: '大分', mark: '大分', lg: 3, str: 46, atk: 45, dfn: 47, depth: 2, youth: 3, money: 1, pop: 2, recruit: 1, color: '#1d3f99', nat: '日本' },
+    { name: 'いわきブレイズFC', short: 'いわき', mark: 'いわき', lg: 3, str: 45, atk: 46, dfn: 44, depth: 1, youth: 3, money: 1, pop: 1, recruit: 1, color: '#c8102e', nat: '日本' },
+    // 国内4部（ID 40〜49）
+    { name: '秋田ブラウリッツ', short: '秋田', mark: '秋田', lg: 4, str: 44, atk: 43, dfn: 45, depth: 1, youth: 2, money: 1, pop: 2, recruit: 1, color: '#2a63ae', nat: '日本' },
+    { name: '富山カターリ', short: '富山', mark: '富山', lg: 4, str: 43, atk: 44, dfn: 42, depth: 1, youth: 2, money: 1, pop: 1, recruit: 1, color: '#1e4ba0', nat: '日本' },
+    { name: '藤枝マイティFC', short: '藤枝', mark: '藤枝', lg: 4, str: 43, atk: 45, dfn: 41, depth: 1, youth: 3, money: 1, pop: 1, recruit: 1, color: '#6b2d8b', nat: '日本' },
+    { name: '愛媛オランジュFC', short: '愛媛', mark: '愛媛', lg: 4, str: 42, atk: 42, dfn: 42, depth: 1, youth: 2, money: 1, pop: 1, recruit: 1, color: '#f39800', nat: '日本' },
+    { name: 'FC今治マリーナ', short: '今治', mark: '今治', lg: 4, str: 42, atk: 43, dfn: 41, depth: 1, youth: 3, money: 2, pop: 1, recruit: 1, color: '#0b3a7a', nat: '日本' },
+    { name: '山口レノヴァ', short: '山口', mark: '山口', lg: 4, str: 41, atk: 41, dfn: 41, depth: 1, youth: 2, money: 1, pop: 1, recruit: 1, color: '#ef7a1a', nat: '日本' },
+    { name: '熊本ロアッサ', short: '熊本', mark: '熊本', lg: 4, str: 41, atk: 42, dfn: 40, depth: 1, youth: 3, money: 1, pop: 1, recruit: 1, color: '#c4161c', nat: '日本' },
+    { name: '栃木グリーンSC', short: '栃木', mark: '栃木', lg: 4, str: 40, atk: 39, dfn: 41, depth: 1, youth: 2, money: 1, pop: 1, recruit: 1, color: '#1f8c3a', nat: '日本' },
+    { name: '群馬ザスパーク', short: '群馬', mark: '群馬', lg: 4, str: 39, atk: 40, dfn: 38, depth: 1, youth: 2, money: 1, pop: 1, recruit: 1, color: '#2c4a8c', nat: '日本' },
+    { name: '鹿児島サザンユナイテッド', short: '鹿児島', mark: '鹿児島', lg: 4, str: 38, atk: 39, dfn: 37, depth: 1, youth: 2, money: 1, pop: 1, recruit: 1, color: '#1b4f9c', nat: '日本' },
   ];
   const CLUB_TRAITS = { str: '総合力', atk: '攻撃力', dfn: '守備力', depth: '選手層', youth: '若手育成', money: '資金力', pop: '人気', recruit: '獲得力' };
   // 保存済みの世界のクラブに、名前・色・特徴を付け直す（所属リーグ lg と今の強さ str はそのまま。経歴に残ったクラブ名は書き換えない）
@@ -216,7 +242,7 @@ const SL = (() => {
     s.p.kidsBorn = s.p.kidsBorn || [];
     if (s.p.potLo == null) Object.assign(s.p, potRange(s.p.pot));
     s.records = s.records || newRecords();
-    if (SL.upgradeWorld && (!Array.isArray(s.npcs) || !s.clubs[0].short)) SL.upgradeWorld(s); // クラブの新しい名前・NPC（core-world.js）
+    if (SL.upgradeWorld && (!Array.isArray(s.npcs) || !s.clubs[0].short || s.clubs.length < CLUB_SEED.length)) SL.upgradeWorld(s); // クラブの新しい名前・NPC（core-world.js）
     if (!s.npcSeason) s.npcSeason = {};
     if (!s.rival) { s.rival = newRival(s); if (s.p.club != null && s.rival.club === s.p.club) s.rival.club = (s.rival.club + 1) % 10 + 10; }
     return s;
@@ -227,7 +253,8 @@ const SL = (() => {
     const o = ovr(s.p);
     const lg1 = s.clubs.filter((c) => c.lg === 1).sort((a, b) => a.str - b.str);
     const lg2 = s.clubs.filter((c) => c.lg === 2).sort((a, b) => a.str - b.str);
-    const big = pick(lg1.slice(-4)), mid = pick(lg1.slice(0, 4)), small = pick(lg2.slice(0, 5));
+    const low = s.clubs.filter((c) => c.lg >= 3); // 国内3部・4部（試合に出やすい）
+    const big = pick(lg1.slice(-4)), mid = low.length ? pick(lg2.slice(0, 5)) : pick(lg1.slice(0, 4)), small = low.length ? pick(low) : pick(lg2.slice(0, 5));
     return [big, mid, small].map((c) => ({ club: c.id, salary: wageFor(c, o, s.p.fame), years: 3, rookie: true }));
   }
 
@@ -274,7 +301,7 @@ const SL = (() => {
     s.rival = newRival(s);
     s.draft = rookieOffers(s);
     if (s.challenge === 'weak') {
-      const c = s.clubs.slice().sort((a, b) => a.str - b.str)[0];
+      const c = s.clubs.filter((x) => x.lg === 1 || x.lg === 2).sort((a, b) => a.str - b.str)[0]; // 1部・2部でいちばん弱いクラブ（3部・4部ができる前と同じ難しさ）
       s.draft = [{ club: c.id, salary: wageFor(c, ovr(s.p), s.p.fame), years: 3, rookie: true }];
       s.challengeClub = c.id;
     }
@@ -325,8 +352,9 @@ const SL = (() => {
 
   function wageFor(c, o, fame) {
     // 単位：万円／年
-    const base = c.lg === 0 ? 4000 + (o - 70) * 600 : c.lg === 1 ? 600 + (o - 50) * 90 : 240 + (o - 45) * 25;
-    return Math.max(c.lg === 2 ? 180 : c.lg === 1 ? 420 : 3000, Math.round((base + fame * (c.lg === 0 ? 60 : 12)) / 10) * 10);
+    const base = c.lg === 0 ? 4000 + (o - 70) * 600 : c.lg === 1 ? 600 + (o - 50) * 90 : c.lg === 2 ? 240 + (o - 45) * 25 : c.lg === 3 ? 160 + (o - 40) * 14 : 100 + (o - 35) * 9;
+    const min = [3000, 420, 180, 120, 80][c.lg];
+    return Math.max(min, Math.round((base + fame * (c.lg === 0 ? 60 : c.lg <= 2 ? 12 : 6)) / 10) * 10);
   }
 
   function assignNumber(s) {
@@ -477,6 +505,29 @@ const SL = (() => {
     return leagueClubs(s, lg).map((c) => ({ c, t: s.table[c.id] })).sort(tableOrder);
   }
   const rankOf = (s, id) => standings(s, s.clubs[id].lg).findIndex((x) => x.c.id === id) + 1;
+  // 昇格・降格をまとめて行う。order(lg)：そのリーグのクラブを順位順に並べた配列。{ up, down（Set）, text（速報の文） } を返す
+  // skip：途中から始まったリーグ（そのシーズンは、そのリーグが関わる入れ替えをしない）
+  function leagueMoves(clubs, order, skip = []) {
+    const plan = [];
+    for (let lg = 1; lg < LOWEST; lg++) {
+      if (!clubs.some((c) => c.lg === lg + 1) || skip.includes(lg) || skip.includes(lg + 1)) continue;
+      plan.push([order(lg).slice(-2), lg + 1, false], [order(lg + 1).slice(0, 2), lg, true]);
+    }
+    const up = new Set(), down = new Set(), text = [];
+    for (const [list, to, isUp] of plan) for (const c of list) {
+      c.lg = to; (isUp ? up : down).add(c);
+      text.push(`${c.name} が${LEAGUES[to].short}へ${isUp ? '昇格' : '降格'}`);
+    }
+    return { up, down, text };
+  }
+  // シーズン後のクラブ力の変動（本来の強さに少し戻る・昇格組は補強で強く・降格組は弱く）
+  function driftClubs(clubs, mv) {
+    for (const x of clubs) {
+      const base = CLUB_SEED[x.id].str, old = x.str;
+      x.str = clamp(Math.round(x.str + (base - x.str) * .3 + gauss() * 1.5 + (mv.up.has(x) ? 3 : 0) - (mv.down.has(x) ? 2 : 0)), 34, 90);
+      if (x.atk != null) { x.atk += x.str - old; x.dfn += x.str - old; }
+    }
+  }
 
   function record(s, h, a, gh, ga) {
     const th = s.table[h], ta = s.table[a];
@@ -834,13 +885,11 @@ const SL = (() => {
     const myLg = awRec.lg[c.lg], npcG = myLg.scorer.length ? myLg.scorer[0].v : 0, npcA = myLg.assist.length ? myLg.assist[0].v : 0;
 
     // 昇格・降格
-    const moves = [];
-    const up = (from) => standings(s, from).slice(0, 2).map((x) => x.c), down = (from) => standings(s, from).slice(-2).map((x) => x.c);
-    const r1 = down(1), p2 = up(2);
-    r1.forEach((x) => { x.lg = 2; moves.push(`${x.name} が2部へ降格`); });
-    p2.forEach((x) => { x.lg = 1; moves.push(`${x.name} が1部へ昇格`); });
-    const promoted = p2.includes(c), relegated = r1.includes(c);
-    if (promoted && S.apps >= 5) awards.push('1部昇格');
+    const mv = leagueMoves(s.clubs, (lg) => standings(s, lg).map((x) => x.c), s.partialLeagues || []);
+    delete s.partialLeagues;
+    const moves = mv.text;
+    const promoted = mv.up.has(c), relegated = mv.down.has(c);
+    if (promoted && S.apps >= 5) awards.push(`${LEAGUES[c.lg].short}昇格`);
     if (s.cup && s.cup.winner === c.id && S.cup && S.cup.apps > 0) {
       awards.push(c.lg === 2 && !promoted ? 'カップ優勝（2部から）' : 'カップ優勝');
     }
@@ -849,12 +898,7 @@ const SL = (() => {
       addLog(s, 'challenge', `${s.year}年、最弱と呼ばれた${c.name}を1部優勝に導いた。`);
       addPaper(s, 'title', `${c.short} 奇跡のV`, '最弱クラブが頂点へ', `かつてリーグ最弱だった${c.name}が1部優勝。${p.name}は入団から${s.history.length + 1}年目で悲願を果たした。`);
     }
-    // クラブ力の変動（2部→1部の昇格組は補強で少し強くなる）
-    for (const x of s.clubs) {
-      const base = CLUB_SEED[x.id].str, old = x.str;
-      x.str = clamp(Math.round(x.str + (base - x.str) * .3 + gauss() * 1.5 + (p2.includes(x) ? 3 : 0) - (r1.includes(x) ? 2 : 0)), 44, 90);
-      if (x.atk != null) { x.atk += x.str - old; x.dfn += x.str - old; }
-    }
+    driftClubs(s.clubs, mv); // クラブ力の変動（昇格組は補強で少し強くなる）
 
     const real = awards.filter(Boolean);
     if (real.some((a) => a.startsWith('カップ優勝'))) addPaper(s, 'cup', `${c.short} カップ制覇`, real.includes('カップ優勝（2部から）') ? '2部から大番狂わせ' : '一発勝負を勝ち抜く', `${c.name}がカップ戦を制した。${p.name}も${S.cup.apps}試合に出場し${S.cup.goals ? `${S.cup.goals}得点` : '優勝に貢献'}。`);
@@ -1029,7 +1073,7 @@ const SL = (() => {
   function transferFee(p, from, contractLeft) {
     if (!from || contractLeft <= 0) return 0;
     const o = ovr(p), age = p.age;
-    const base = Math.max(0, o - 55) ** 2 * 4 * (age <= 23 ? 1.5 : age <= 27 ? 1.2 : age <= 30 ? 1 : .5) * (from.lg === 0 ? 1.6 : from.lg === 1 ? 1 : .6) * (.6 + .2 * Math.min(contractLeft, 4));
+    const base = Math.max(0, o - 55) ** 2 * 4 * (age <= 23 ? 1.5 : age <= 27 ? 1.2 : age <= 30 ? 1 : .5) * [1.6, 1, .6, .4, .3][from.lg] * (.6 + .2 * Math.min(contractLeft, 4));
     return Math.round(base / 100) * 100;
   }
   // 契約更新・移籍のオファー。contract が null なら戦力外
@@ -1061,8 +1105,9 @@ const SL = (() => {
     if (s.challenge === 'loyal' || (s.challenge === 'weak' && !s.challengeDone)) res.transfers = [];
     if (s.challenge === 'domestic') res.transfers = res.transfers.filter((t) => s.clubs[t.club].lg !== 0);
     // 戦力外でどこからも声がかからない → 2部の弱いクラブがテスト入団を打診（35歳まで）
-    if (res.released && !res.transfers.length && p.age <= 35 && s.challenge !== 'loyal') {
-      const weak = s.clubs.filter((x) => x.lg === 2 && x.id !== c.id).sort((a, b) => a.str - b.str)[ri(0, 2)];
+    if (res.released && !res.transfers.length && p.age <= 35 && s.challenge !== 'loyal') { // いちばん下のリーグの弱いクラブがテスト入団を打診
+      const bottom = Math.max(...s.clubs.map((x) => x.lg));
+      const weak = s.clubs.filter((x) => x.lg === bottom && x.id !== c.id).sort((a, b) => a.str - b.str)[ri(0, 2)];
       if (o >= weak.str - 12) res.transfers.push({ club: weak.id, salary: 180, years: 1, trial: true });
     }
     return res;
@@ -1124,7 +1169,12 @@ const SL = (() => {
     const csW = s.p.pos === 'GK' ? 9 : s.p.pos === 'DF' ? 11 : 4;
     const winW = s.p.pos === 'DF' ? .4 : s.p.pos === 'MF' ? .45 : 0;
     const posW = s.p.pos === 'GK' || s.p.pos === 'DF' ? 4 : 2;
-    return Math.round(T.goals * 10 + T.assists * 8 + T.cs * csW + T.apps * posW + ((T.tackles || 0) + (T.inters || 0)) * winW + s.caps * 6 + s.natGoals * 15 +
+    // 国内3部・4部での成績は軽く数える（3部は6.5割・4部は4.5割。そこでの賞・優勝・昇格は半分）
+    const LOWF = { '3部': .65, '4部': .45 };
+    const rowPts = (h) => (h.goals || 0) * 10 + (h.assists || 0) * 8 + (h.cs || 0) * csW + (h.apps || 0) * posW + ((h.tackles || 0) + (h.inters || 0)) * winW;
+    const lowCut = s.history.reduce((a, h) => a + (LOWF[h.lg] != null ? rowPts(h) * (1 - LOWF[h.lg]) : 0), 0);
+    const lowAw = (list, w) => list.filter((a) => /[34]部/.test(a)).length * w * .5;
+    return Math.round(-lowCut - lowAw(s.awards, 40) - lowAw(s.trophies, 60) + T.goals * 10 + T.assists * 8 + T.cs * csW + T.apps * posW + ((T.tackles || 0) + (T.inters || 0)) * winW + s.caps * 6 + s.natGoals * 15 +
       s.awards.length * 40 + s.trophies.length * 60 + s.history.filter((h) => h.lg === '欧州').length * 30 + wcBest +
       s.awards.filter((a) => a.includes('世界年間')).length * 300 + (s.lastMatch?.hit ? 50 : 0) + (s.family?.combo || 0) * 40);
   }
@@ -1284,7 +1334,7 @@ const SL = (() => {
     CHALLENGES, SHOP, shopList, buy, narrowPot, CUP_WEEKS,
     migrate, inheritBonus, lastMatchInfo, playLastMatch, familyTitle, POLICY, autoDraft, autoYear, autoLastMatch, lastName,
     // オンライン版のサーバーが同じルールで試合を回すための部品
-    _: { applyClubData, kidPlayer, rnd, challengeCleared, trackRecords, healWeek, condDown, newCup, cupPair, cupFinish, newRecords, potRange, train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp, sig, roundRobin, wageFor, rookieOffers, newPlayer, assignNumber, goalHow, assistHow, CLUB_SEED, rankLetter, legendTitle },
+    _: { leagueMoves, driftClubs, applyClubData, kidPlayer, rnd, challengeCleared, trackRecords, healWeek, condDown, newCup, cupPair, cupFinish, newRecords, potRange, train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp, sig, roundRobin, wageFor, rookieOffers, newPlayer, assignNumber, goalHow, assistHow, CLUB_SEED, rankLetter, legendTitle },
   };
 })();
 

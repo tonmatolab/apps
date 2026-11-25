@@ -6,7 +6,7 @@ import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（全国ランキングと共通）
 
-const MAX_PLAYERS = G.CLUB_CAP * 30; // 登録の上限（1クラブ10人 × 30クラブ ＝ 300人。これ以上は入れるクラブがない）。増やすときは2つ目のリーグを作る
+const MAX_PLAYERS = G.CLUB_CAP * G.SL._.CLUB_SEED.length; // 登録の上限（1クラブ10人 × 50クラブ ＝ 500人。これ以上は入れるクラブがない）
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -74,6 +74,7 @@ export class League extends DurableObject {
     for (const r of this.sql.exec('SELECT club, data FROM rosters ORDER BY club')) this.npcs.push(...JSON.parse(r.data));
     this.rostersDirty = false;
     if (!this.npcs.length) { this.npcs = G.SL.newNpcWorld(this.w.clubs, G.NPC_SEED); this.rostersDirty = true; }
+    else if (G.SL.extendNpcs(this.npcs, this.w.clubs, G.NPC_SEED, (this.w.records && this.w.records.npcLegends) || []).length) this.rostersDirty = true; // 国内3部・4部ができたとき
     const ns = this.sql.exec("SELECT v FROM npcstats WHERE k = 'season'").toArray()[0];
     this.npcSeason = ns ? JSON.parse(ns.v) : { season: this.w.season, stats: {} };
     this.accounts = new Map(); // hash -> account id
@@ -198,7 +199,7 @@ export class League extends DurableObject {
       if (req.method === 'GET' && path === '/rankings') return json(this.rankingsView(await this.me(req)));
       // 今季の個人ランキング（NPCも含む）：?lg=0〜2&cat=goals|assists|rating|defense|saves|cs&who=all|npc|user
       if (req.method === 'GET' && path === '/ranking') {
-        const q = url.searchParams, lg = q.get('lg') === 'all' ? null : Math.max(0, Math.min(2, Number(q.get('lg')) || 0));
+        const q = url.searchParams, lg = q.get('lg') === 'all' ? null : Math.max(0, Math.min(G.LEAGUES.length - 1, Number(q.get('lg')) || 0));
         const cat = G.SL.RANK_CATS[q.get('cat')] ? q.get('cat') : 'goals', who = ['all', 'npc', 'user'].includes(q.get('who')) ? q.get('who') : 'all';
         const me = await this.me(req);
         const r = G.SL.ranking(this.seasonEntries(), cat, { lg, who, n: 100, meKey: me ? 'u:' + me.id : null });

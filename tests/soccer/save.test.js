@@ -38,11 +38,12 @@ function sane(s, label) {
 
 // v1→v2：クラブは ID ごとに新しい名前・特徴になり、所属リーグと強さ・経歴のクラブ名はそのまま。NPCが22人ずつできる
 function migratedWorld(old, s, label) {
-  check(s.clubs.length === 30 && s.clubs.every((c, i) => c.id === i && c.lg === old.clubs[i].lg && c.str === old.clubs[i].str), `${label}: クラブのIDと所属リーグ・強さはそのまま`);
-  check(s.clubs.every((c) => c.short && c.mark && c.atk != null && c.recruit >= 1 && c.name !== old.clubs[c.id].name), `${label}: クラブ名・略称・特徴が新しくなる`);
+  check(s.clubs.length === 50 && s.clubs.slice(0, 30).every((c, i) => c.id === i && c.lg === old.clubs[i].lg && c.str === old.clubs[i].str), `${label}: 前からの30クラブのIDと所属リーグ・強さはそのまま`);
+  check(s.clubs.slice(30).every((c) => c.lg === 3 || c.lg === 4) && s.clubs.filter((c) => c.lg === 3).length === 10, `${label}: 国内3部・4部の20クラブが足される`);
+  check(s.clubs.slice(0, 30).every((c) => c.short && c.mark && c.atk != null && c.recruit >= 1 && c.name !== old.clubs[c.id].name), `${label}: クラブ名・略称・特徴が新しくなる`);
   check(JSON.stringify(s.history.map((h) => h.club)) === JSON.stringify(old.history.map((h) => h.club)), `${label}: 経歴のクラブ名は当時のまま`);
   check(s.p.club === old.p.club && s.p.name === old.p.name && JSON.stringify(s.p.stats) === JSON.stringify(old.p.stats), `${label}: 選手本人のデータは変わらない`);
-  check(Array.isArray(s.npcs) && s.npcs.length === 660 && s.clubs.every((c) => s.npcs.filter((n) => n.club === c.id).length === 22), `${label}: NPCが各クラブ22人`);
+  check(Array.isArray(s.npcs) && s.npcs.length === 1100 && s.clubs.length === 50 && s.clubs.every((c) => s.npcs.filter((n) => n.club === c.id).length === 22), `${label}: NPCが各クラブ22人`);
   const again = SL.upgradeWorld(JSON.parse(JSON.stringify(old)));
   check(JSON.stringify(again.npcs) === JSON.stringify(s.npcs), `${label}: 同じセーブから移行すると同じNPCになる`);
 }

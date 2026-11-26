@@ -442,6 +442,9 @@
   .winterbar { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 12px 14px; border-radius: 18px; background: linear-gradient(135deg, #e8f4ff, #cfe6ff); border: 2px solid #8cc2ff; cursor: pointer; font-weight: 800; color: #12406e; }
   .winterbar .ic { font-size: 1.6rem; } .winterbar small { display: block; font-weight: 700; opacity: .8; }
   @media (prefers-color-scheme: dark) { .winterbar { background: linear-gradient(135deg, #12304d, #0d2236); border-color: #2c6fb0; color: #cfe6ff; } }
+  .lgtabs .tabs { gap: 4px; margin-bottom: 6px; }
+  .lgtabs button { padding: 6px 4px; font-size: .74rem; }
+  .lgtabs button.mine:not(.on) { box-shadow: inset 0 0 0 2px var(--green); }
   .tcard .new { display: inline-block; font-size: .6rem; background: var(--red); color: #fff; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; letter-spacing: 0; }
   @media (prefers-color-scheme: dark) { .tcard { background: #2c2610; } .tcard.locked { background: var(--chip); } }
   .achrow { padding: 8px 0; border-bottom: 1px dashed var(--line); }
@@ -901,14 +904,28 @@ function loadSave() { const r = SaveData.read(store); saveStatus = r.status; ret
 const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
 // 同じランキング・人数を、短い間に何度も取りに行かない（無料枠を守る）。記録や名前を送ったら捨てる。
 // 記録を送った返事には上位10件が入っているので、それをそのゲームのランキングとして覚える
-const API_MEMO = {};
+// ランキング・人数（/board・/get）は5分使い回す。ページを開き直しても使えるように、タブを閉じるまで sessionStorage にも残す
+const API_MEMO = {}, MEMO_MS = 5 * 60000;
+function memoGet(path) {
+  let m = API_MEMO[path];
+  if (!m) try { m = JSON.parse(sessionStorage.getItem('memo:' + path)); } catch { m = null; }
+  return m && Date.now() - m.t < MEMO_MS ? m.j : null;
+}
+function memoSet(path, j) {
+  API_MEMO[path] = { t: Date.now(), j };
+  try { sessionStorage.setItem('memo:' + path, JSON.stringify(API_MEMO[path])); } catch {}
+}
+function memoClear() {
+  for (const k in API_MEMO) delete API_MEMO[k];
+  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith('memo:')) sessionStorage.removeItem(k); } catch {}
+}
 async function api(path, method = 'GET', data) {
   const memo = method === 'GET' && /^\/(board|get)\?/.test(path);
-  if (memo && API_MEMO[path] && Date.now() - API_MEMO[path].t < 60000) return API_MEMO[path].j;
-  if (method !== 'GET') for (const k in API_MEMO) delete API_MEMO[k];
+  if (memo) { const hit = memoGet(path); if (hit) return hit; }
+  if (method !== 'GET') memoClear();
   const j = await apiFetch(path, method, data);
-  if (memo && j && !j.error) API_MEMO[path] = { t: Date.now(), j };
-  if (path === '/score' && j && j.top && data) for (const p of [`/board?game=${data.game}`, `/board?game=${data.game}&limit=10`]) API_MEMO[p] = { t: Date.now(), j: { total: j.total, top: j.top } };
+  if (memo && j && !j.error) memoSet(path, j);
+  if (path === '/score' && j && j.top && data) for (const p of [`/board?game=${data.game}`, `/board?game=${data.game}&limit=10`]) memoSet(p, { total: j.total, top: j.top });
   return j;
 }
 async function apiFetch(path, method = 'GET', data) {
@@ -1118,6 +1135,14 @@ function topTitleHTML(sm) {
 // タイトルのランキング：じっくり／60秒モード × 全期間／今週／先週（押したときだけ読み込む）
 const BOARD = { mode: 'normal', period: 'all' };
 const weekLabel = (wk) => { const d = new Date(wk + 'T00:00:00Z'), e = new Date(d.getTime() + 6 * 86400000); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}（月）〜${e.getUTCMonth() + 1}/${e.getUTCDate()}（日）`; };
+// タイトルのランキングは、その場所が画面に入ったとき（少し手前）に読み込む。開くたびに読まない
+let boardObs = null;
+function watchTitleBoard() {
+  if (!('IntersectionObserver' in window)) return loadTitleBoard();
+  if (boardObs) boardObs.disconnect();
+  boardObs = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { boardObs.disconnect(); boardObs = null; loadTitleBoard(); } }, { rootMargin: '200px' });
+  boardObs.observe($('boardTitle'));
+}
 async function loadTitleBoard() {
   document.querySelectorAll('#boardMode button').forEach((x) => x.classList.toggle('on', x.dataset.m === BOARD.mode));
   document.querySelectorAll('#boardPeriod button').forEach((x) => x.classList.toggle('on', x.dataset.p === BOARD.period));
@@ -1172,7 +1197,7 @@ function renderTitle() {
   show('scrTitle');
   { const col = loadCol(); $('colBtn').textContent = `📚 称号図鑑・実績（称号 ${Object.keys(col.titles).length}/${SL.TITLES.length}）`; }
   if (window.OL) OL.entryCard();
-  loadTitleBoard();
+  watchTitleBoard();
   api('/get?keys=soccer-play').then((j) => { $('sPlays').textContent = j ? (j['soccer-play'] || 0).toLocaleString() : '-'; });
 }
 
@@ -1224,7 +1249,7 @@ function renderCreate(ctx = null) {
   show('scrCreate');
 }
 let selAppeal = null;
-function toDraft() {
+async function toDraft() {
   const name = [...$('nameIn').value.normalize('NFKC').replace(/[<>&"'`\\]/g, '').trim()].slice(0, 12).join('') || '名無しの選手';
   if (selChal === 'keeper') selPos = 'GK';
   const extra = { ...(selChal ? { challenge: selChal } : {}), appeal: SL.appealChoices(selPos).includes(selAppeal) ? selAppeal : null };
@@ -1232,6 +1257,7 @@ function toDraft() {
   else { store.set('lastName', name); S = SL.newGame(name, selPos, extra); }
   S.mode = selMode; store.set('mode', selMode);
   save();
+  if (S.p.star) await celebrate({ tier: 'world', icon: '⭐', kick: 'A STAR IS BORN', title: 'スターの器', who: esc(S.p.name), sub: `100人に1人の才能。<br>得意な能力が最初から高く、才能の上限も特別に高い。` });
   if (!store.get('played')) { store.set('played', '1'); api('/hit/soccer-play', 'POST'); }
   if (selMode === 'quick') return quickLife(selPol);
   renderDraft();
@@ -1339,18 +1365,24 @@ function renderShop() {
   });
 }
 
+let tableLg = null; // 順位表で見ているリーグ（最初は自分のリーグ）
 function renderTab() {
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
   const c = SL.clubOf(S);
   if (tab === 'table') {
-    const tb = SL.standings(S, c.lg);
-    const upLg = SL.upperLg(c.lg), dnLg = SL.lowerLg(c.lg); // 昇格先・降格先（欧州の中・国内の中）
+    if (tableLg == null || !S.clubs.some((x) => x.lg === tableLg)) tableLg = c.lg;
+    const lgv = tableLg, tb = SL.standings(S, lgv);
+    const lgBtn = (i) => `<button data-lg="${i}" class="${i === lgv ? 'on' : ''}${i === c.lg ? ' mine' : ''}">${SL.LEAGUES[i].short}</button>`;
+    const has = SL.LEAGUE_ORDER.filter((i) => S.clubs.some((x) => x.lg === i));
+    const lgTabs = `<div class="lgtabs"><div class="tabs">${has.filter(SL.isEU).map(lgBtn).join('')}</div><div class="tabs">${has.filter((i) => !SL.isEU(i)).map(lgBtn).join('')}</div></div>`; // 上の段：欧州、下の段：国内
+    const upLg = SL.upperLg(lgv), dnLg = SL.lowerLg(lgv); // 昇格先・降格先（欧州の中・国内の中）
     const lower = dnLg != null && S.clubs.some((x) => x.lg === dnLg), upper = upLg != null;
     const zone = (i) => upper && i < SL.MOVES ? 'up' : lower && i >= tb.length - SL.MOVES ? 'dn' : '';
     const rule = !upper && !lower ? '' : `（${[upper ? `${SL.MOVES === 1 ? '1位' : `上位${SL.MOVES}チーム`}が${SL.LEAGUES[upLg].short}へ昇格` : '', lower ? `${SL.MOVES === 1 ? '最下位' : `下位${SL.MOVES}チーム`}は${SL.LEAGUES[dnLg].short}へ降格` : ''].filter(Boolean).join('・')}）`;
-    $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${rule}</div>
+    $('tabBody').innerHTML = lgTabs + `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[lgv].name}${rule}</div>
     <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>試</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
     ${tb.map((x, i) => `<tr class="${x.c.id === c.id ? 'me' : ''} ${zone(i)}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${x.c.color}"></span>${esc(x.c.name)}</td><td>${x.t.w + x.t.d + x.t.l}</td><td>${x.t.w}</td><td>${x.t.d}</td><td>${x.t.l}</td><td>${x.t.gf - x.t.ga > 0 ? '+' : ''}${x.t.gf - x.t.ga}</td><td><b>${x.t.p}</b></td></tr>`).join('')}</table></div>`;
+    $('tabBody').querySelectorAll('.lgtabs button').forEach((b) => b.onclick = () => { tableLg = +b.dataset.lg; renderTab(); });
   } else if (tab === 'team') {
     const me = S.p, sq = SL.clubSquad(S.npcs || [], c.id, [{ pos: me.pos }]);
     $('tabBody').innerHTML = squadHTML(c, sq.npcs.map(SL.npcView).concat([{ type: 'user', me: true, name: me.name, pos: me.pos, age: me.age, ovr: SL.ovr(me), no: me.number, nat: '日本', style: '' }]), sq.reserves.length);
@@ -1791,6 +1823,7 @@ async function contractStep() {
   else if (off.released) msg = `${esc(c.name)} から戦力外通告を受けた…${opts.length ? '他のクラブから声がかかっている！' : ''}`;
   else if (off.expiring) msg = `${esc(c.name)} との契約が切れた。`;
   else msg = `${esc(c.name)} との契約はあと${p.contract}年。${opts.length ? '他のクラブからオファーが届いた！' : ''}`;
+  if (off.scout && !forced) msg += off.scout === 'bloom' ? '<br>🌸 遅れて開いた才能に、欧州のクラブが注目している！' : '<br>🔭 欧州のスカウトが、あなたの将来性に注目している！';
   const notes = O.notes.map((n) => `<p class="note sub">${esc(n)}</p>`).join('');
   const cards = opts.map((o) => offerCard(o, o.stay ? '<span class="badge stay">残留</span>' : SL.isEU(S.clubs[o.club].lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('');
   const btns = [];

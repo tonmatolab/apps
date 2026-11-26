@@ -6,7 +6,7 @@ let failures = 0;
 const check = (c, m) => { if (!c) { failures++; console.log('  ✗ ' + m); } else if (process.env.VERBOSE) console.log('  ✓ ' + m); };
 
 const w = G.newWorldState();
-const dom = w.clubs.filter((c) => !G.SL.isEU(c.lg)); // 新人が入れる国内のクラブ
+const dom = G.rookieClubs(w); // 新人が入れるクラブ（国内＋欧州3部）
 let n = 0;
 const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '選手' + n++, pos); m.pl.club = club; m.status = 'active'; members.push(m); return m; };
 
@@ -31,7 +31,7 @@ const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '�
   for (const c of dom) for (let i = 0; i < 4; i++) add(ms, 'FW', c.id);
   const P = G.positionInfo(w, ms);
   check(P.FW.open === 0 && P.FW.label === '満員', `FWが全部埋まると満員（空き${P.FW.open}・${P.FW.label}）`);
-  check(P.DF.open === dom.length * (G.CLUB_CAP - G.FW_CAP) && P.DF.label === '狙い目' && P.DF.bonus === G.POP_BONUS, `DFは空き${P.DF.open}・${P.DF.label}・ボーナス${P.DF.bonus}`);
+  check(P.DF.open === dom.reduce((a, c) => a + G.capOf(c.id) - G.FW_CAP, 0) && P.DF.label === '狙い目' && P.DF.bonus === G.POP_BONUS, `DFは空き${P.DF.open}・${P.DF.label}・ボーナス${P.DF.bonus}`);
   check(P.GK.open === dom.length * 3, `GKの空きはGKの上限まで（${P.GK.open}）`);
   // 満員のポジションでは入団先の候補が出ない。空いているポジションは出る
   const fw = G.newMember('x1', 'x1', 'あたらしいFW', 'FW'), df = G.newMember('x2', 'x2', 'あたらしいDF', 'DF');

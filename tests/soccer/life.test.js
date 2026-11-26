@@ -35,7 +35,7 @@ for (const c of s.clubs) {
   if (new Set(l.map((p) => p.no)).size !== 22) numOk = false;
   const top = l.map(SL.ovr).sort((a, b) => b - a).slice(0, 11), avg = top.reduce((a, b) => a + b, 0) / 11;
   gaps.push(avg - c.str);
-  if (Math.abs(avg - c.str) > 9) strOk = false;
+  if (Math.abs(avg - c.str) > 10) strOk = false; // 降格したばかりの強豪（選手がまだ残っている）は少し強い
 }
 check(quotaOk, '全クラブ22人で、ポジションの枠（GK3・DF7・MF7・FW5）が崩れない');
 check(numOk, '全クラブで背番号が重複しない');

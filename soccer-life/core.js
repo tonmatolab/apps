@@ -312,6 +312,28 @@ const SL = (() => {
     }
   }
 
+  // ===== スターの器・覚醒 =====
+  // スターの器：生まれつき才能が高い（一人用だけ。作った瞬間にわかる）。オンラインは作り直しで狙えてしまうので「覚醒」だけ
+  const STAR_RATE = .01, AWAKE_RATE = .005; // 覚醒：19〜22歳のオフに1年あたり0.5%（4年で約2%）・1回だけ
+  function makeStar(s) {
+    const p = s.p;
+    p.star = true;
+    p.pot = clamp(ri(90, 97), 60, 99); Object.assign(p, potRange(p.pot));
+    for (const k of mainStats(p.pos)) p.stats[k] = Math.min(99, p.stats[k] + ri(6, 8));
+    p.fame += 10;
+    addLog(s, 'star', `「スターの器」と呼ばれ、鳴り物入りでプロの世界へ。`);
+  }
+  function awaken(s) {
+    const p = s.p;
+    if (p.awake || p.age < 19 || p.age > 22 || !chance(AWAKE_RATE)) return null;
+    p.awake = s.year;
+    p.pot = Math.min(98, p.pot + ri(6, 10)); Object.assign(p, potRange(p.pot));
+    for (const k of mainStats(p.pos)) p.stats[k] = Math.min(99, p.stats[k] + ri(1, 3));
+    p.fame += 5;
+    addLog(s, 'awake', `${s.year}年、${p.age}歳で才能が覚醒。プレーが一段上のレベルに変わった。`);
+    addPaper(s, 'awake', `${lastName(p.name)} 覚醒`, '眠っていた才能が目を覚ます', `${p.name}（${p.age}歳）の成長が止まらない。関係者は「別人になった」と口をそろえる。`);
+    return `⚡ 覚醒！ 眠っていた才能が目を覚ました（才能が大きく上がり、伸びも速くなる）`;
+  }
   function newGame(name, pos, opt = {}) {
     if (opt.challenge === 'keeper') pos = 'GK';
     const s = {
@@ -327,6 +349,7 @@ const SL = (() => {
     s.records = newRecords();
     // NPC選手（core-world.js）。次の世代は親の世界の選手をそのまま引き継ぐ
     s.npcs = opt.npcs || (SL.newNpcWorld ? SL.newNpcWorld(s.clubs, ri(1, 999999999)) : []);
+    if (opt.star !== false && opt.challenge !== 'lowpot' && chance(STAR_RATE)) makeStar(s);
     if (opt.challenge && CHALLENGES[opt.challenge]) {
       s.challenge = opt.challenge;
       if (s.challenge === 'lowpot') { s.p.pot = Math.min(s.p.pot, 70); Object.assign(s.p, potRange(s.p.pot)); }
@@ -696,7 +719,9 @@ const SL = (() => {
     const cap = Math.min(99, p.pot + (main ? 6 : -10) + gt.cap);
     amt *= gt.mul(k) * (p.appeal === k ? 1.25 : 1); // 成長の型と得意能力
     const over = p.age - GROW[p.grow].peak;
-    const ageF = over <= 0 ? (p.age <= 21 ? 1.15 : 1) : Math.max(.15, .55 - over * .1);
+    // 早熟・晩成の伸び方の差は、本物の選手だけ（NPCの世界の強さは変えない）
+    const young = p.type === 'npc' ? (p.age <= 21 ? 1.15 : 1) : p.grow === 'early' ? (p.age <= 21 ? 1.5 : p.age <= 23 ? 1.15 : 1) : p.grow === 'late' ? (p.age <= 21 ? 1 : p.age >= 24 && p.age <= 29 ? 1.2 : 1) : (p.age <= 21 ? 1.15 : 1);
+    const ageF = (over <= 0 ? young : Math.max(.15, .55 - over * .1)) * (p.awake ? 1.25 : 1);
     const head = clamp((cap - p.stats[k]) / (cap - 30), 0, 1.2);
     const condF = 1 + p.cond * .08;
     const fatF = p.fatigue > 65 ? .6 : 1;
@@ -1084,6 +1109,7 @@ const SL = (() => {
     // オフのキャンプ：若いうちはひと伸び
     if (p.age <= GROW[p.grow].peak) { const k = pick(mainStats(p.pos)); const d = ri(1, 3); p.stats[k] = Math.min(99, p.stats[k] + d); notes.push(`オフのキャンプで${STATS[k]}+${d}`); }
     if (p.camp) { const k = pick(mainStats(p.pos)); p.stats[k] = Math.min(99, p.stats[k] + 2); p.camp = false; notes.push(`✈️ 海外キャンプで${STATS[k]}+2`); }
+    { const aw = awaken(s); if (aw) notes.push(aw); }
     const was = p.potLo === p.potHi;
     if (chance(.5) && narrowPot(p, 1) && !was) { addLog(s, 'pot', `${s.year}年、自分の才能の限界（${p.pot}）を知った。`); notes.push(`🔬 才能を見抜いた！あなたの才能は${p.pot}`); }
     else if (p.age - GROW[p.grow].peak >= 3) notes.push('体の衰えを感じるようになってきた…');
@@ -1126,15 +1152,22 @@ const SL = (() => {
     }
     // 移籍：自分の実力に近いクラブから
     const others = s.clubs.filter((x) => x.id !== c.id);
+    const prevO = (s.history.at(-2) || {}).ovr;
+    const scout = p.age <= 21 && p.pot >= 80 && last.apps >= 6 && last.rating >= 6.6; // 若手スカウト：将来性を買う
+    const bloom = p.age >= 24 && p.age <= 29 && prevO != null && o - prevO >= 3 && last.rating >= 6.6; // 遅咲き：急に伸びた
     const fits = others.filter((x) => {
+      if ((scout || bloom) && (x.lg === 5 || x.lg === 6) && o >= x.str - (scout ? 13 : 7)) return true;
       if (x.lg === 0) return o >= x.str - 12 && p.fame >= 25 && p.age <= 31 && (last.rating >= 6.7 || o >= x.str - 6);
       if (x.lg === 5) return o >= x.str - 10 && p.fame >= 15 && p.age <= 31 && (last.rating >= 6.6 || o >= x.str - 5);
       if (x.lg === 6) return o >= x.str - 9 && p.fame >= 8 && p.age <= 32 && (last.rating >= 6.5 || o >= x.str - 4);
       return o >= x.str - (opt.request ? 10 : 8) && o <= x.str + 18;
     }).sort(() => rnd() - .5);
-    const nOff = opt.request ? ri(2, 4) : res.released ? ri(0, 2) : chance(.35 + (last.rating >= 7 ? .35 : 0)) ? ri(1, 3) : 0;
+    const bigFish = o >= c.str + 12 && !isEU(c.lg); // 下のリーグで無双している
+    if (bigFish) fits.sort((a, b) => LG_LEVEL[b.lg] - LG_LEVEL[a.lg] || 0);
+    const nOff = Math.max(bigFish ? 2 : 0, opt.request ? ri(2, 4) : res.released ? ri(0, 2) : chance(.35 + (last.rating >= 7 ? .35 : 0)) ? ri(1, 3) : 0);
     // 欧州からの声がかかるなら優先
     fits.sort((a, b) => isEU(b.lg) - isEU(a.lg) || 0);
+    res.scout = scout && fits.some((x) => isEU(x.lg)) ? 'scout' : bloom && fits.some((x) => isEU(x.lg)) ? 'bloom' : null;
     for (const x of fits.slice(0, nOff)) {
       const sal = Math.round(wageFor(x, o, p.fame) * (.95 + rnd() * .3) / 10) * 10;
       res.transfers.push({ club: x.id, salary: sal, years: p.age >= 32 ? 1 : ri(2, 4), fee: transferFee(p, c, p.contract) });
@@ -1191,8 +1224,9 @@ const SL = (() => {
       if (s.challenge === 'domestic' && isEU(x.lg)) return false;
       if (bench) return x.str <= c.str && startChance(p, x) >= .5 && (lv(x) >= lv(c) - 1); // 試合に出られて、下がりすぎないクラブ
       if (x.lg === 0 && !(o >= x.str - 10 && p.fame >= 25 && p.age <= 31)) return false;
-      if (x.lg === 5 && !(o >= x.str - 8 && p.fame >= 15 && p.age <= 31)) return false;
-      if (x.lg === 6 && !(o >= x.str - 7 && p.fame >= 8 && p.age <= 32)) return false;
+      const young = p.age <= 21 && p.pot >= 80; // 若手スカウト
+      if (x.lg === 5 && !(o >= x.str - (young ? 12 : 8) && (young || p.fame >= 15) && p.age <= 31)) return false;
+      if (x.lg === 6 && !(o >= x.str - (young ? 12 : 7) && (young || p.fame >= 8) && p.age <= 32)) return false;
       return (lv(x) > lv(c) || x.str >= c.str + 4) && o >= x.str - 8;
     }).sort(() => rnd() - .5);
     if (star) fits.sort((a, b) => lv(b) - lv(a));
@@ -1414,7 +1448,7 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, MOVES, tableOrder, startChanceOvr, chanceLabel, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, WINTER, winterOffers, acceptWinter, declineWinter, autoWinter, LEAGUES, isEU, LEAGUE_ORDER, LG_LEVEL, LEAGUE_CHAINS, upperLg, lowerLg, isEuShort, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, MOVES, tableOrder, startChanceOvr, chanceLabel, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, STAR_RATE, AWAKE_RATE, makeStar, awaken, WINTER, winterOffers, acceptWinter, declineWinter, autoWinter, LEAGUES, isEU, LEAGUE_ORDER, LG_LEVEL, LEAGUE_CHAINS, upperLg, lowerLg, isEuShort, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, prepareWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, requestTransfer, transferFee, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,

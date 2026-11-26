@@ -26,7 +26,7 @@
       rv: rv ? { w: rv.h2h.w, d: rv.h2h.d, l: rv.h2h.l, n: rv.h2h.w + rv.h2h.d + rv.h2h.l, goals: rv.totals.goals, apps: rv.totals.apps } : null,
       last: s.lastMatch, gen: s.gen, earned: sum.earned, score: sum.score, mode: s.mode, R: s.records || newRecords(),
       potKnown: s.p.potLo === s.p.potHi, pot: s.p.pot, grow: s.p.grow, house: s.p.house, edu: s.p.edu || 0, donated: s.p.donated || 0,
-      ch: s.challenge && challengeCleared(s, sum.score) ? s.challenge : null,
+      ch: s.challenge && challengeCleared(s, sum.score) ? s.challenge : null, star: !!s.p.star, awake: !!s.p.awake,
     };
   }
   const ACE = { FW: 9, MF: 10, DF: 4, GK: 1 };
@@ -149,6 +149,8 @@
     ['patient', 'じっくり派', '一週一週を大切に生きた。', 'じっくりモードで15シーズン以上', (c) => c.mode === 'normal' && c.seasons >= 15],
     ['ace', 'エースナンバー', 'チームの顔の背番号を背負った。', 'エースの背番号（FW9・MF10・DF4・GK1）を着ける', (c) => c.nums.has(ACE[c.pos])],
     ['nums', '背番号コレクター', 'いろんな番号を背負った。', '5種類以上の背番号を着ける', (c) => c.nums.size >= 5],
+    ['star', 'スターの器', '生まれた瞬間から、何かが違った。', 'スターの器として生まれる（一人用・100人に1人くらい）', (c) => c.star],
+    ['awake', '覚醒', 'ある年、眠っていた才能が目を覚ました。', '19〜22歳で才能が覚醒する（30人に1人くらい）', (c) => c.awake],
     // ----- LR（神話）：1万人に1人くらい。自動で4900人の人生を送って、どれも0〜1人だった条件 -----
     ['god', 'サッカーの神', '手にできるものは、すべて手にした。', 'W杯優勝・欧州リーグ優勝・世界年間最優秀選手・リーグ優勝・カップ優勝・MVP・新人王をすべて獲る', (c) => c.wcWins >= 1 && c.euTitle >= 1 && c.world >= 1 && c.lgTitle >= 1 && c.cup >= 1 && c.mvp >= 1 && c.rookie >= 1],
     ['g500', 'ゴールの化身', '500。もはや人の数字ではない。', '通算500得点', (c) => c.T.goals >= 500],
@@ -177,7 +179,7 @@
     sns: 85,
     eu1: 82.5,
     rB: 81,
-    god: 0.01, g500: 0.01, ruler: 0.01, st33: 0.01, wall: 0.01,
+    star: 1, awake: 3, god: 0.01, g500: 0.01, ruler: 0.01, st33: 0.01, wall: 0.01,
     kids3: 79.5,
     rvg: 79,
     t1: 78.2,

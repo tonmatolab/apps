@@ -134,8 +134,10 @@ export function clubFull(members, clubId, pos, except = null) {
 }
 // ポジションごとの空きと混み具合（新人が入れる国内のクラブで数える）
 //   open：あと何人入れるか / crowd：本物のプレイヤーの数 ÷ 先発の枠の数 / label：激戦・ふつう・狙い目 / bonus：狙い目なら才能のボーナス
+// 新人が入れるクラブ：国内の全クラブ＋欧州3部（国内が満員のときの受け皿。海外の育成枠として入る）
+export const rookieClubs = (w) => w.clubs.filter((c) => !SL.isEU(c.lg) || c.lg === 6);
 export function positionInfo(w, members) {
-  const dom = w.clubs.filter((c) => !SL.isEU(c.lg)), out = {};
+  const dom = rookieClubs(w), out = {};
   for (const pos of ['GK', 'DF', 'MF', 'FW']) {
     let open = 0, humans = 0;
     for (const c of dom) {
@@ -201,6 +203,12 @@ export function draftOffers(m, w, members = []) {
     const o = SL.ovr(m.pl);
     for (const c of w.clubs.filter((x) => !SL.isEU(x.lg) && !clubFull(members, x.id, m.pl.pos)).sort((a, b) => a.str - b.str).slice(0, 2)) { // 弱いクラブから
       out.push(capSalary(w, { club: c.id, salary: SL._.wageFor(c, o, m.pl.fame), years: 3, rookie: true }));
+    }
+  }
+  if (!out.length) { // 国内がどこも満員：欧州3部の弱いクラブが「育成枠」として受け入れる（出番は少なめ・年俸は国内並み）
+    const o = SL.ovr(m.pl);
+    for (const c of w.clubs.filter((x) => x.lg === 6 && !clubFull(members, x.id, m.pl.pos)).sort((a, b) => a.str - b.str).slice(0, 2)) {
+      out.push(capSalary(w, { club: c.id, salary: Math.min(600, SL._.wageFor(c, o, m.pl.fame)), years: 3, rookie: true, youth: true }));
     }
   }
   return out;

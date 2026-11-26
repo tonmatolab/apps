@@ -49,6 +49,8 @@
   }
   // オフが終わる（開幕する）時刻の言い方
   const offUntil = (w) => w.endAt ? new Date(w.endAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : `約${w.offLeft * w.tickMin}分後`;
+  // 入団先が欧州3部の育成枠なら一言
+  const youthNote = (o) => (o && o.youth ? '<span class="badge eu">育成枠</span>' : '');
   function countdown() {
     if (!ST) return '';
     const off = ST.world.phase !== 'season';
@@ -175,7 +177,7 @@
   }
   function renderDraft() {
     // 休眠から戻ってきた人には、ひとこと（能力・経歴・お金はそのまま）
-    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 1時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + (ST.me.draft && ST.me.draft.length ? ST.me.draft.map((o, i) => offerCard(o, i)).join('') : '<p class="empty">いまは入れるクラブがすべて満員です。席が空いたら、ここにクラブが出ます（しばらくしてから開き直してください）</p>');
+    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 1時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + (ST.me.draft && ST.me.draft.length ? ST.me.draft.map((o, i) => offerCard(o, i, youthNote(o))).join('') : '<p class="empty">いまは入れるクラブがすべて満員です。席が空いたら、ここにクラブが出ます（しばらくしてから開き直してください）</p>');
     $('draftList').querySelectorAll('.offer').forEach((b) => b.onclick = async () => {
       const j = await api('/join', { i: +b.dataset.i });
       if (j.error) return toast(errMsg(j.error));
@@ -385,6 +387,7 @@
 
   // 今季の個人ランキング（NPCも含む。サーバーで並べたものを読む）
   let RV = null;
+  let TABLE_LG = null; // 順位表で見ているリーグ（最初は自分のリーグ）
   async function renderRanking(body, me, lg) {
     if (!RV) RV = { lg: String(lg), cat: me.pos === 'GK' ? 'saves' : me.pos === 'DF' ? 'defense' : me.pos === 'MF' ? 'assists' : 'goals', who: 'all' };
     const v = { ...RV };
@@ -398,9 +401,13 @@
     document.querySelectorAll('#ol-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
     const me = ST.me, lg = me.club != null ? club(me.club).lg : 1, body = $('tabBody');
     if (tab === 'table') {
-      body.innerHTML = SL.LEAGUE_ORDER.map((i) => SL.LEAGUES[i]).filter((L) => ST.tables[L.id] && ST.tables[L.id].length).map((L, k) => `<div class="sub" style="margin:${k === 0 ? 0 : 12}px 0 4px;font-weight:800">${L.name}</div>
+      const lgs = SL.LEAGUE_ORDER.filter((i) => ST.tables[i] && ST.tables[i].length);
+      if (TABLE_LG == null || !lgs.includes(TABLE_LG)) TABLE_LG = lgs.includes(lg) ? lg : lgs[0];
+      const lgBtn = (i) => `<button data-lg="${i}" class="${i === TABLE_LG ? 'on' : ''}${i === lg && me.club != null ? ' mine' : ''}">${SL.LEAGUES[i].short}</button>`;
+      body.innerHTML = `<div class="lgtabs"><div class="tabs">${lgs.filter(SL.isEU).map(lgBtn).join('')}</div><div class="tabs">${lgs.filter((i) => !SL.isEU(i)).map(lgBtn).join('')}</div></div>` + [SL.LEAGUES[TABLE_LG]].map((L, k) => `<div class="sub" style="margin:0 0 4px;font-weight:800">${L.name}</div>
         <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
         ${ST.tables[L.id].map((t, i) => { const c = club(t.id); return `<tr class="${t.id === me.club ? 'me' : ''}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}${c.humans ? `<span class="hum">👤${c.humans}</span>` : ''}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf - t.ga > 0 ? '+' : ''}${t.gf - t.ga}</td><td><b>${t.p}</b></td></tr>`; }).join('')}</table></div>`).join('');
+      body.querySelectorAll('.lgtabs button').forEach((b) => b.onclick = () => { TABLE_LG = +b.dataset.lg; renderTab(); });
     } else if (tab === 'rank') {
       renderRanking(body, me, lg);
     } else if (tab === 'mates') {

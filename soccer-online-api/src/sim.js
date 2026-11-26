@@ -15,7 +15,8 @@ export const RETIRE_IDLE_MS = 30 * 24 * 3600000;
 // 休眠・引退のまま、これだけ来ていない人は「しまっておく」（起動のたびに読み込まない。来たときに読み込む）
 export const ARCHIVE_MS = 3 * 24 * 3600000;
 // 登録したままクラブを選ばない人は、これだけたつと休眠にして定員の枠を空ける（毎節たしかめる）
-export const DRAFT_IDLE_MS = 24 * 3600000;
+// 作り直し（リセマラ）で捨てられたアカウントが枠をふさがないように1時間。普通は登録して数分で選ぶ。あとで来れば、また選べる
+export const DRAFT_IDLE_MS = 1 * 3600000;
 export const OFF_TICKS = 12; // オフシーズンの長さ（節の何回分か。30分ごとなら6時間）。この間に契約を選ぶ。選ばなかった人は移籍方針で自動で決まる
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
 export const CLUB_CAP = 12, GK_CAP = 3, FW_CAP = 4; // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
@@ -452,7 +453,7 @@ export function wake(m, w, members = []) {
 export function sweepIdleDrafts(w, members, now = Date.now()) {
   const out = members.filter((m) => m.status === 'draft' && now - (m.seenAt || m.created || now) > DRAFT_IDLE_MS);
   for (const m of out) { m.status = 'dormant'; m.prevClub = null; m.dormantSince = w.year; m.returning = false; }
-  if (out.length) addNews(w, `💤 クラブを選ばないまま24時間たった${out.length}人が休眠に入り、定員の枠が空いた`);
+  if (out.length) addNews(w, `💤 クラブを選ばないまま1時間たった${out.length}人が休眠に入り、定員の枠が空いた`);
   return out;
 }
 // ----- 移籍方針：オフに選ばなかったときの決め方（いつでも変えられる） -----
@@ -561,6 +562,14 @@ export function returnFromIdle(m, w, now = Date.now()) {
   retire(m, w);
   m.idleRetired = true; // 画面で「長く来なかったので引退した」と出す
   return true;
+}
+// 名前が同じかどうか（全角・半角、大文字・小文字、空白のちがいは同じとみなす）
+export const nameKey = (s) => String(s || '').normalize('NFKC').replace(/[\s・._\-]+/g, '').toLowerCase();
+export const SAME_NAME_MAX = 2; // 同じ名前の選手は2人まで（休眠・引退の人は数えない）
+export function nameCrowded(members, name, except = null) {
+  const k = nameKey(name); let n = 0;
+  for (const m of members) if (m !== except && m.status !== 'dormant' && m.status !== 'retired' && nameKey(m.pl.name) === k) n++;
+  return n >= SAME_NAME_MAX;
 }
 export function nextGeneration(old, id, name, pos, w, members = [], appeal = null, extraBonus = 0) {
   const sm = old.summary;

@@ -34,7 +34,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ12人・GKは3人・FWは4人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員に達しています。空きが出るまでお待ちください（3日来ていない人は休眠になり、枠が空きます）', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ12人・GKは3人・FWは4人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', too_many_today: '同じ回線からの登録は1日3人までです。明日またどうぞ（前に作ったアカウントは、引き継ぎコードで続けられます）', name_crowded: 'その名前の選手はもう2人います。ほかの名前にしてください', full: 'オンラインリーグは定員に達しています。空きが出るまでお待ちください（3日来ていない人は休眠になり、枠が空きます）', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
 
@@ -172,7 +172,7 @@
   }
   function renderDraft() {
     // 休眠から戻ってきた人には、ひとこと（能力・経歴・お金はそのまま）
-    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 24時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + (ST.me.draft && ST.me.draft.length ? ST.me.draft.map((o, i) => offerCard(o, i)).join('') : '<p class="empty">いまは入れるクラブがすべて満員です。席が空いたら、ここにクラブが出ます（しばらくしてから開き直してください）</p>');
+    $('draftList').innerHTML = (ST.me.returning ? '<p style="font-weight:800;margin:0 0 8px">👋 おかえりなさい！ 休眠の間にクラブの枠を空けていました。空いているクラブから選び直してください（能力・経歴・お金はそのまま）</p>' : '') + '<p class="sub" style="margin:0 0 8px">⏰ 1時間以内にクラブを選んでください。選ばないままだと休眠になり、定員の枠を空けます（あとで来れば、また選べます）</p>' + (ST.me.draft && ST.me.draft.length ? ST.me.draft.map((o, i) => offerCard(o, i)).join('') : '<p class="empty">いまは入れるクラブがすべて満員です。席が空いたら、ここにクラブが出ます（しばらくしてから開き直してください）</p>');
     $('draftList').querySelectorAll('.offer').forEach((b) => b.onclick = async () => {
       const j = await api('/join', { i: +b.dataset.i });
       if (j.error) return toast(errMsg(j.error));

@@ -8,7 +8,8 @@ import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉�
 
 const MAX_PLAYERS = G.CLUB_CAP * G.SL._.CLUB_SEED.length; // 登録の上限（1クラブ12人 × 50クラブ ＝ 600人。これ以上は入れるクラブがない）
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
-const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限
+const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限（1時間。メモリだけなので、サーバーが休むと消える）
+const SIGNUP_PER_DAY = 3;      // 同じIPからの新規登録の上限（日本時間の1日。保存するので消えない）
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function cleanName(raw) {
@@ -51,6 +52,8 @@ export class League extends DurableObject {
     // （SQLは条件に合わない行も読んだ数に入るので、同じ表に置いたままだと減らない）
     this.sql.exec('CREATE TABLE IF NOT EXISTS idle (account TEXT PRIMARY KEY, id TEXT, data TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS past (id TEXT PRIMARY KEY, account TEXT, data TEXT)');
+    // 同じIPからの登録の回数（IPはそのまま残さず、元に戻せない形にして保存）。起動のときは読まない
+    this.sql.exec('CREATE TABLE IF NOT EXISTS signups (ip TEXT PRIMARY KEY, day TEXT, n INTEGER)');
     // 前の世代（active = 0）は past へ移す（一度だけ。済んだ印を1行で持つ。毎回 players を数えると、そのたびに全員分を読んでしまう）
     if (!this.sql.exec("SELECT k FROM npcstats WHERE k = 'pastMoved'").toArray().length) this.ctx.storage.transactionSync(() => {
       this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) SELECT id, account, data FROM players WHERE active = 0');
@@ -211,7 +214,7 @@ export class League extends DurableObject {
   // 1節すすめる（オフシーズン中はオフの残りを1つ減らす）
   tick() {
     const w = this.w, all = [...this.members.values()];
-    for (const m of G.sweepIdleDrafts(w, all)) this.saveMember(m); // クラブを選ばないまま24時間たった人は休眠（定員の枠を空ける）
+    for (const m of G.sweepIdleDrafts(w, all)) this.saveMember(m); // クラブを選ばないまま1時間たった人は休眠（定員の枠を空ける）
     this.archiveIdle(); // 休眠・引退のまま3日来ていない人は、しまっておく（起動のたびに読まない）
     if (w.phase === 'season') {
       this.npcSeason = G.playMatchday(w, all, this.npcs, this.npcSeason);
@@ -431,6 +434,7 @@ export class League extends DurableObject {
       if (req.method === 'POST' && path === '/nextgen') {
         if (m.status !== 'retired') return err('not_now');
         const name = cleanName(body.name); if (!name) return err('bad_name');
+        if (G.nameCrowded(this.members.values(), name, m)) return err('name_crowded', 409);
         if (!G.POS[body.pos]) return err('bad_pos');
         const PI = G.positionInfo(this.w, [...this.members.values()]);
         if (!PI[body.pos].open) return err('pos_full', 409);
@@ -452,10 +456,18 @@ export class League extends DurableObject {
     if (this.activeCount() >= MAX_PLAYERS) return err('full', 503);
     const PI = G.positionInfo(this.w, [...this.members.values()]);
     if (!PI[body.pos].open) return err('pos_full', 409);
+    if (G.nameCrowded(this.members.values(), name)) return err('name_crowded', 409);
     const ip = req.headers.get('CF-Connecting-IP') || 'local';
     const now = Date.now(), hits = (this.signups.get(ip) || []).filter((t) => now - t < 3600000);
     if (hits.length >= SIGNUP_PER_HOUR) return err('too_many', 429);
+    // 1日の回数（保存する）。同じ人が何十個も作れないように
+    const perDay = Number(this.env.SIGNUP_PER_DAY) || SIGNUP_PER_DAY;
+    const ipKey = (await sha('ip:' + ip + ':' + (this.env.ADMIN_KEY || ''))).slice(0, 32), day = new Date(now + 9 * 3600000).toISOString().slice(0, 10);
+    const row = this.sql.exec('SELECT day, n FROM signups WHERE ip = ?', ipKey).toArray()[0];
+    const used = row && row.day === day ? row.n : 0;
+    if (used >= perDay) return err('too_many_today', 429);
     hits.push(now); this.signups.set(ip, hits);
+    this.sql.exec('INSERT INTO signups (ip, day, n) VALUES (?, ?, ?) ON CONFLICT(ip) DO UPDATE SET day = excluded.day, n = excluded.n', ipKey, day, used + 1);
     const code = newCode(), hash = await sha(code), acc = crypto.randomUUID();
     this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', acc, hash, now);
     this.accounts.set(hash, acc);

@@ -15,7 +15,7 @@ const check = (c, m) => { if (!c) { failures++; console.log('  ✗ ' + m); } els
 
 // サーバーを起動
 const proc = spawn('npx', ['wrangler@4', 'dev', '--config', 'soccer-online-api/wrangler.toml', '--port', String(PORT), '--persist-to', tmp,
-  '--var', 'DEV:1', '--var', `ADMIN_KEY:${ADMIN}`, '--var', 'RL_MINUTES:60'], { cwd: ROOT, shell: true });
+  '--var', 'DEV:1', '--var', 'SIGNUP_PER_DAY:100', '--var', `ADMIN_KEY:${ADMIN}`, '--var', 'RL_MINUTES:60'], { cwd: ROOT, shell: true });
 let log = '';
 proc.stdout.on('data', (d) => { log += d; }); proc.stderr.on('data', (d) => { log += d; });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -224,19 +224,19 @@ try {
     check(back.me.status === 'draft' && back.me.returning && back.me.draft.length > 0 && back.me.move === '雷鳴シュートとても長', '戻ってくると、空いているクラブから選び直せる（必殺技などはそのまま）');
     const jn = await call('/join', { code: C2, body: { i: 0 } });
     check(jn.status === 200 && (jn.j.me.status === 'active' || jn.j.me.status === 'decided') && jn.j.me.debutYear === debut && !jn.j.me.returning, '選び直すとまた試合に出られる（デビューの年はそのまま）');
-    // 登録したままクラブを選ばない人は、24時間で休眠になり定員の枠を空ける（同じIPの登録の上限に当たらないよう、別のIPから登録）
+    // 登録したままクラブを選ばない人は、1時間で休眠になり定員の枠を空ける（同じIPの登録の上限に当たらないよう、別のIPから登録）
     const su3 = await call('/signup', { body: { name: '未選択 確認', pos: 'DF' }, headers: { 'CF-Connecting-IP': '10.9.9.9' } });
     check(su3.status === 200 && su3.j.state.me.status === 'draft', `クラブを選ぶ前の人を作れる（${su3.status} ${su3.j && su3.j.error || ''}）`);
     const before = (await call('/public')).j.world.players;
-    await call('/dev/seen', { body: { ms: 23 * 3600000 } }); await call('/dev/tick', { body: { n: 1 } });
+    await call('/dev/seen', { body: { ms: 50 * 60000 } }); await call('/dev/tick', { body: { n: 1 } });
     const st47 = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j.players.map((p) => JSON.parse(p.data)).find((m) => m.pl.name === '未選択 確認');
-    check(st47 && st47.status === 'draft', '24時間たつまでは、クラブを選ぶ前のまま');
-    await call('/dev/seen', { body: { ms: 25 * 3600000 } }); await call('/dev/tick', { body: { n: 1 } });
+    check(st47 && st47.status === 'draft', '1時間たつまでは、クラブを選ぶ前のまま');
+    await call('/dev/seen', { body: { ms: 70 * 60000 } }); await call('/dev/tick', { body: { n: 1 } });
     const exI = (await call('/admin/export', { headers: { 'X-Admin-Key': ADMIN } })).j.players.map((p) => JSON.parse(p.data));
     const idle = exI.find((m) => m.pl.name === '未選択 確認');
-    check(idle && idle.status === 'dormant' && idle.pl.club == null, `24時間クラブを選ばないと休眠になる（${idle && idle.status}）`);
+    check(idle && idle.status === 'dormant' && idle.pl.club == null, `1時間クラブを選ばないと休眠になる（${idle && idle.status}）`);
     const joined = exI.find((m) => m.pl.name === '得意 確認');
-    check(joined && joined.status !== 'dormant' && joined.pl.club != null, `クラブにいる人は24時間来なくても休眠にならない（${joined && joined.status}）`);
+    check(joined && joined.status !== 'dormant' && joined.pl.club != null, `クラブにいる人は1時間来なくても休眠にならない（${joined && joined.status}）`);
     const after = (await call('/public')).j.world.players;
     check(after === before - 1, `休眠の人は参加人数に数えない（${before}人 → ${after}人）`);
     const back3 = (await call('/state', { code: su3.j.code })).j;

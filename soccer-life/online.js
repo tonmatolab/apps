@@ -47,12 +47,15 @@
     return `<button class="offer" data-i="${i}"${full ? ' disabled style="opacity:.55"' : ''}>${crest(c)}<div class="bd"><div class="nm">${badge}${esc(c.name)}<span class="hum">👤${c.humans}/${c.cap}</span>${full ? ' <span class="full">満員</span>' : ''}</div>
       <div class="mt"><b>${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>${o.capped ? '（上限）' : ''}・${o.years}年契約${o.trial ? '（テスト入団）' : ''}${o.fee ? `<br>移籍金 <b>${man(o.fee)}</b>` : ''}</div></div><div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
   }
+  // オフが終わる（開幕する）時刻の言い方
+  const offUntil = (w) => w.endAt ? new Date(w.endAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : `約${w.offLeft * w.tickMin}分後`;
   function countdown() {
     if (!ST) return '';
-    const left = ST.world.nextAt - (Date.now() + skew);
+    const off = ST.world.phase !== 'season';
+    const left = (off && ST.world.endAt ? ST.world.endAt : ST.world.nextAt) - (Date.now() + skew); // オフは「開幕まで」
     if (left <= 0) return '集計中…';
-    const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
-    return `${ST.world.phase === 'season' ? '次の節' : 'オフ終了まで'} ${m}:${String(s).padStart(2, '0')}`;
+    const h = Math.floor(left / 3600000), m = Math.floor(left / 60000) % 60, s = Math.floor(left / 1000) % 60;
+    return `${off ? '開幕まで' : '次の節'} ${h ? `${h}:${String(m).padStart(2, '0')}` : m}:${String(s).padStart(2, '0')}`;
   }
 
   // ===== はじめに =====
@@ -152,7 +155,7 @@
   const policyText = (me) => `${POLICY[me.policy].icon} ${POLICY[me.policy].name}${me.policy === 'stay' ? '' : `・契約中も移る：${MOVE_SWITCH[me.sw]}`}`;
   function openPolicy() {
     const html = () => `<h3 style="margin:0 0 4px">🔁 移籍方針</h3>
-      <p class="sub" style="margin:0 0 8px">オフ（3時間）に契約を選ばなかったとき、この方針で自動で決まります。いつでも変えられます</p>
+      <p class="sub" style="margin:0 0 8px">オフ（毎日 2〜5時・14〜17時）に契約を選ばなかったとき、この方針で自動で決まります。いつでも変えられます</p>
       <div class="stack">${Object.entries(POLICY).map(([k, p]) => `<button class="btn pol${ST.me.policy === k ? ' primary' : ''}" data-p="${k}" style="text-align:left">${p.icon} ${p.name}<br><span class="sub" style="font-weight:600">${p.desc}</span></button>`).join('')}</div>
       <h3 style="margin:12px 0 4px">契約が残っていても移る？</h3>
       <div class="tabs rk">${Object.entries(MOVE_SWITCH).map(([k, v]) => `<button class="sw${ST.me.sw === k ? ' on' : ''}" data-s="${k}">${v}</button>`).join('')}</div>
@@ -283,7 +286,7 @@
           ${!o.forced && !o.requested ? '<button class="btn" id="ol-requestBtn">📣 移籍を希望する（オファーが増える・人気-1）</button>' : ''}
           ${o.forced || o.canRetire ? `<button class="btn ${o.forced ? 'primary' : 'ghost'}" data-c="retire">👋 引退する</button>` : ''}
         </div>
-        <p class="sub" style="margin:8px 0 0">選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}へ移籍` : `${esc(c.name)}に残留`}</b>` : ''}</p>
+        <p class="sub" style="margin:8px 0 0">⏰ オフは${offUntil(w)}まで（毎日 2〜5時・14〜17時）。選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}へ移籍` : `${esc(c.name)}に残留`}</b>` : ''}</p>
         <button class="btn small" id="ol-polBtn2" style="margin-top:6px">🔁 移籍方針を変える</button></div>`;
       const pick = async (choice) => {
         if (choice === 'retire' && !confirm('本当に引退しますか？')) return;
@@ -296,7 +299,7 @@
       const rq = el.querySelector('#ol-requestBtn');
       if (rq) rq.onclick = async () => { rq.disabled = true; const j = await api('/request', {}); if (j.error) { rq.disabled = false; return toast(errMsg(j.error)); } setState(j); renderHome(); toast('移籍を希望した。オファーが届いた'); };
     } else if (me.status === 'decided') {
-      el.innerHTML = `<div class="card"><h2>✅ 契約済み</h2><p style="margin:0;font-weight:700">${esc(club(me.club).name)}で新シーズンを待とう。開幕は約${w.offLeft * w.tickMin}分後。</p></div>`;
+      el.innerHTML = `<div class="card"><h2>✅ 契約済み</h2><p style="margin:0;font-weight:700">${esc(club(me.club).name)}で新シーズンを待とう。開幕は${offUntil(w)}。</p><p class="sub" style="margin:6px 0 0">試合は毎日 5〜14時・17〜深夜2時に30分ごと。オフは 2〜5時・14〜17時</p></div>`;
     } else if (me.status === 'retired') {
       const sm = me.summary;
       el.innerHTML = `<div class="card panel" style="text-align:center"><div class="sub" style="font-weight:800">${sm.retireAge}歳で現役引退</div>

@@ -160,11 +160,32 @@ export class League extends DurableObject {
     // 「次の時刻」も同じまとまりで保存するので、成功したあとにアラームがやり直されても二重には進まない
     this.atomic(() => {
       if (now >= this.w.rl.nextAt - 500 && this.betCount()) this.rlSpin();
-      if (now >= this.w.nextAt - 500) { this.tick(); this.w.nextAt = now + this.tickMs(); this.saveWorld(); }
+      if (now >= this.w.nextAt - 500) {
+        if (this.clockMode()) { this.clockCatchUp(now); this.w.nextAt = G.nextSlot(now) + 2000; }
+        else { this.tick(); this.w.nextAt = now + this.tickMs(); }
+        this.saveWorld();
+      }
     });
     await this.armAlarm();
   }
 
+  // 日程を時刻で決めるか（本番）。手元のテスト（DEV）は今までどおり一定の間隔で進める
+  // 時刻に切りかえるのは、今のオフが終わってから（オフの途中で急に打ち切らない）。一度切りかえたら印を残す
+  clockMode() {
+    if (this.env.DEV === '1' && this.env.SCHEDULE !== 'clock') return false;
+    if (!this.w.clock && this.w.phase === 'season') this.w.clock = true;
+    return !!this.w.clock;
+  }
+  // 時刻に追いつくまで節を進める（ずれていたとき・止まっていたときは、まとめて進める。1回に40節まで）
+  clockCatchUp(now) {
+    const T = G.clockTarget(now);
+    for (let n = 0; n < 40; n++) {
+      const w = this.w;
+      if (w.phase === 'season' && T.phase === 'season' && w.week >= T.week) break;
+      if (w.phase === 'off' && T.phase === 'off' && w.offLeft <= T.left) break;
+      this.tick();
+    }
+  }
   // ルーレットを1回まわし、賭けている全員を同じ出目で精算する。
   // 書き込むのは「賭けていた人」と「台の状態（世界の1行）」だけ。
   rlSpin() {
@@ -483,7 +504,10 @@ export class League extends DurableObject {
   activeCount() { let n = 0; for (const x of this.members.values()) if (x.status !== 'dormant' && x.status !== 'retired') n++; return n; }
   worldView() {
     const w = this.w;
-    return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, now: Date.now(), tickMin: this.tickMs() / 60000, players: this.activeCount() };
+    const now = Date.now();
+    // 今の区切りが終わる時刻（時刻で決まる日程なら決まった時刻。切りかえ前は残りの節から見積もる）
+    const endAt = w.clock ? G.phaseEndAt(now, w.phase) : w.phase === 'off' ? w.nextAt + Math.max(0, w.offLeft - 1) * this.tickMs() : w.nextAt + Math.max(0, G.SEASON_WEEKS - w.week - 1) * this.tickMs();
+    return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, endAt, clock: !!w.clock, now, tickMin: this.tickMs() / 60000, players: this.activeCount() };
   }
   clubsView() {
     const count = new Map();

@@ -17,6 +17,30 @@ export const ARCHIVE_MS = 3 * 24 * 3600000;
 // 登録したままクラブを選ばない人は、これだけたつと休眠にして定員の枠を空ける（毎節たしかめる）
 // 作り直し（リセマラ）で捨てられたアカウントが枠をふさがないように1時間。普通は登録して数分で選ぶ。あとで来れば、また選べる
 export const DRAFT_IDLE_MS = 1 * 3600000;
+// ----- 時刻で決まる日程（日本時間）-----
+// シーズンは毎日 5時と17時に開幕し、30分ごとに1節（18節＝9時間）。オフは 2〜5時・14〜17時（3時間＝6節分）。
+// いちばん遊ばれる夜（19〜24時）は必ず試合中になる
+export const SEASON_STARTS_JST = [5, 17];
+const SLOT_MS = 30 * 60000, HOUR = 3600000, JST = 9 * HOUR;
+// その時刻に「どこまで進んでいるべきか」：{ phase: 'season', week: 消化した節 } か { phase: 'off', left: オフの残り（節の数） }
+export function clockTarget(now) {
+  const t = now + JST, day = Math.floor(t / (24 * HOUR)) * 24 * HOUR;
+  let start = -Infinity;
+  for (const d of [day - 24 * HOUR, day]) for (const h of SEASON_STARTS_JST) { const s = d + h * HOUR; if (s <= t && s > start) start = s; }
+  const slots = Math.floor((t - start) / SLOT_MS);
+  if (slots < SL.SEASON_WEEKS) return { phase: 'season', week: slots };
+  return { phase: 'off', left: Math.max(1, OFF_TICKS - (slots - SL.SEASON_WEEKS)) };
+}
+// 次の区切り（毎時 0分・30分）
+export const nextSlot = (now) => (Math.floor(now / SLOT_MS) + 1) * SLOT_MS;
+// 今のシーズン（またはオフ）が終わる時刻
+export function phaseEndAt(now, phase) {
+  const t = now + JST, day = Math.floor(t / (24 * HOUR)) * 24 * HOUR;
+  const marks = phase === 'off' ? SEASON_STARTS_JST : SEASON_STARTS_JST.map((h) => h + 9); // オフの終わり＝開幕。シーズンの終わり＝開幕から9時間後
+  let best = Infinity;
+  for (const d of [day - 24 * HOUR, day, day + 24 * HOUR]) for (const h of marks) { const x = d + h * HOUR; if (x > t && x < best) best = x; }
+  return best - JST;
+}
 export const OFF_TICKS = 6; // オフシーズンの長さ（節の何回分か。30分ごとなら3時間）。この間に契約を選ぶ。選ばなかった人は移籍方針で自動で決まる
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
 export const CLUB_CAP = 12, GK_CAP = 3, FW_CAP = 4; // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る

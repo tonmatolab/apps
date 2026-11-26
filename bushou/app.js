@@ -183,7 +183,7 @@ let TENKA = null;
 async function startTenka(name) {
   const btn = $('tenkaBtn'); btn.disabled = true; btn.textContent = '全国の武将を集めています…';
   audio();
-  const r = await fetch(API + '/bushou/tenka', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
+  const r = await fetch(API + '/bushou/tenka', { method: 'POST', body: JSON.stringify({ name }) } /* Content-Type なし＝事前確認なし */)
     .then((x) => x.json()).catch(() => null);
   btn.disabled = false; btn.textContent = '出陣する';
   if (!r || r.error) { alert(r && r.error === 'bad_name' ? 'その名前では出陣できません。別の名前にしてください。' : '通信に失敗しました。時間をおいてもう一度お試しください。'); return; }

@@ -17,13 +17,20 @@
   let skew = 0;       // サーバー時計とのずれ
   let fetchedAt = 0;
 
+  // サーバーとのやりとり。ブラウザが「事前確認」のリクエストを先に送らない形（ヘッダーなし・本文は text/plain の JSON）で送る。
+  // 引き継ぎコードは本文の auth に入れる。読むだけのもの（GET）でも、コードがあれば POST にして _m: 'GET' を付ける
+  // みんな共通の情報（概要・ランキング）は30秒使い回す（何かを送ったら捨てる）
+  const MEMO = {};
   async function api(path, body) {
+    const shared = !body && /^\/(public|rankings|ranking)(\?|$)/.test(path), key = path + '|' + (CODE || '');
+    if (shared && MEMO[key] && Date.now() - MEMO[key].t < 30000) return MEMO[key].j;
+    if (body) for (const k in MEMO) delete MEMO[k];
     try {
-      const opt = { method: body ? 'POST' : 'GET', headers: {}, signal: AbortSignal.timeout(10000) };
-      if (body) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
-      if (CODE) opt.headers.Authorization = 'Bearer ' + CODE;
+      const opt = { method: 'GET', signal: AbortSignal.timeout(10000) };
+      if (body || CODE) { opt.method = 'POST'; opt.body = JSON.stringify({ ...(body || { _m: 'GET' }), ...(CODE ? { auth: CODE } : {}) }); }
       const r = await fetch(API + path, opt);
       const j = await r.json().catch(() => null);
+      if (r.ok && shared) MEMO[key] = { t: Date.now(), j };
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }

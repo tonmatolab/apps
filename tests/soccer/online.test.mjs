@@ -56,6 +56,18 @@ try {
   check(pk.status === 410 && pk.j.error === 'pk_ended', 'PKチャレンジは終了している');
   const bet = await call('/casino/bet', { code: A, body: { bets: [{ k: 'red', a: 10 }] } });
   check(bet.status === 200 && bet.j.myBets.length === 1, 'ルーレットに賭けられる');
+  // 画面は「事前確認」の要らない形で送る：ヘッダーなしの POST（text/plain）、コードは本文の auth、読むだけのものは _m: 'GET'
+  {
+    const raw = async (p, body) => { const r = await fetch(B + p, { method: 'POST', body: JSON.stringify(body) }); return { status: r.status, j: await r.json().catch(() => null) }; };
+    const viaHeader = (await call('/state', { code: A })).j, viaBody = await raw('/state', { _m: 'GET', auth: A });
+    check(viaBody.status === 200 && viaBody.j.me.name === viaHeader.me.name, 'ヘッダーなしでも、本文の auth でログインできる');
+    check((await raw('/state', { _m: 'GET', auth: 'XXXX-XXXX-XXXX-XXXX' })).status === 401 && (await raw('/state', { _m: 'GET' })).status === 401, '本文のコードが違う・ないときは拒否');
+    check((await raw('/casino', { _m: 'GET', auth: A })).j.myBets.length === 1, '読むだけのもの（ルーレットの台）も本文の形で読める');
+    check((await raw('/training', { k: 'pas', auth: A })).status === 200 && !(await raw('/state', { _m: 'GET', auth: A })).j.auth, '書きこむもの（練習）も本文の形で送れる');
+    check((await raw('/public', { _m: 'GET' })).status === 200, 'みんなの情報も本文の形で読める');
+    const tv = (await call('/casino', { code: A })).j;
+    check(tv.nextAt > tv.now, 'ルーレットの次に回る時刻は、いつも先の時刻');
+  }
   // 節の途中で失敗させると、保存が取り消される
   const before = (await call('/state', { code: A })).j;
   const fail = await call('/dev/fail-tick', { body: {} });

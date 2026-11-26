@@ -1346,7 +1346,7 @@ async function apiFetch(path, method = 'GET', data) {
   if (LOCAL && method !== 'GET') return path === '/score' ? { id: 1, token: 't', rank: 3, total: 42, top10: true } : path === '/name' ? { ok: true, rank: 3, name: data.name } : { value: 42 };
   try {
     const opt = { method, signal: AbortSignal.timeout(8000) };
-    if (data) { opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(data); }
+    if (data) opt.body = JSON.stringify(data); // Content-Type を付けない（text/plain になり、ブラウザが事前確認のリクエストを送らない。サーバーは JSON として読む）
     const res = await fetch(API + path, opt); const j = await res.json().catch(() => null);
     return res.ok ? j : (j && j.error ? { error: j.error } : null);
   } catch { return null; }

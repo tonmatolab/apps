@@ -527,7 +527,7 @@ async function createRoom() {
   myName();
   $('btnCreate').disabled = true; $('homeErr').textContent = '';
   try {
-    const r = await fetch(API + '/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: 'reversi' }) });
+    const r = await fetch(API + '/rooms', { method: 'POST', body: JSON.stringify({ game: 'reversi' }) } /* Content-Type なし＝事前確認なし */);
     const j = await r.json();
     if (!r.ok || !j.code) throw new Error(j.error || 'エラー');
     enterRoom(j.code);

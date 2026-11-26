@@ -1669,7 +1669,7 @@ async function api(path, method = 'GET', data) {
 async function apiFetch(path, method = 'GET', data) {
   try {
     const opt = { method, signal: AbortSignal.timeout(8000) };
-    if (data) { opt.headers = { 'Content-Type': 'application/json' }; opt.body = JSON.stringify(data); }
+    if (data) opt.body = JSON.stringify(data); // Content-Type を付けない（text/plain になり、ブラウザが事前確認のリクエストを送らない。サーバーは JSON として読む）
     const res = await fetch(API + path, opt);
     const j = await res.json().catch(() => null);
     return res.ok ? j : (j && j.error ? { error: j.error } : null);

@@ -47,6 +47,7 @@ export class League extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS rosters (club INTEGER PRIMARY KEY, data TEXT)');
     // NPCの今季の成績（1行。節ごとに書く）
     this.sql.exec('CREATE TABLE IF NOT EXISTS npcstats (k TEXT PRIMARY KEY, v TEXT)');
+    this.reqAuth = new WeakMap(); // リクエストごとの引き継ぎコード（本文で送られてきたとき）
     const fresh = this.loadState();
     this.ensureSchedule(fresh);
     await this.armAlarm();
@@ -98,7 +99,14 @@ export class League extends DurableObject {
   tickMs() { return Math.max(1, Number(this.env.TICK_MINUTES || 60)) * 60000; }
   rlMs() { return Math.max(.1, Number(this.env.RL_MINUTES || 3)) * 60000; }
   // アラームは1つだけなので「次の試合」と「次のルーレット」の早いほうに合わせる
-  async armAlarm() { await this.ctx.storage.setAlarm(Math.min(this.w.nextAt, this.w.rl.nextAt)); }
+  // 次に起きる時刻：次の節か、賭けがあるときだけ次のルーレット（誰も賭けていないのに3分ごとに起きない）
+  async armAlarm() { this.rlCatchUp(); await this.ctx.storage.setAlarm(this.betCount() ? Math.min(this.w.nextAt, this.w.rl.nextAt) : this.w.nextAt); }
+  // 誰も賭けずに回る時刻を過ぎていたら、回さずに次の区切り（3分ごと）まで時刻を進める（保存はしない。いつ計算しても同じになる）
+  rlCatchUp(now = Date.now()) {
+    const T = this.w.rl, ms = this.rlMs();
+    if (now < T.nextAt || this.betCount()) return;
+    T.nextAt += Math.floor((now - T.nextAt) / ms + 1) * ms;
+  }
   saveWorld() { this.sql.exec("INSERT OR REPLACE INTO world (k, v) VALUES ('w', ?)", JSON.stringify(this.w)); }
   saveRosters() {
     const by = new Map(this.w.clubs.map((c) => [c.id, []]));
@@ -112,7 +120,7 @@ export class League extends DurableObject {
     const now = Date.now();
     // 「次の時刻」も同じまとまりで保存するので、成功したあとにアラームがやり直されても二重には進まない
     this.atomic(() => {
-      if (now >= this.w.rl.nextAt - 500) this.rlSpin();
+      if (now >= this.w.rl.nextAt - 500 && this.betCount()) this.rlSpin();
       if (now >= this.w.nextAt - 500) { this.tick(); this.w.nextAt = now + this.tickMs(); this.saveWorld(); }
     });
     await this.armAlarm();
@@ -156,6 +164,7 @@ export class League extends DurableObject {
   }
   betCount() { let n = 0; for (const m of this.members.values()) if (m.rlBet) n++; return n; }
   tableView(m) {
+    this.rlCatchUp();
     const T = this.w.rl;
     return {
       now: Date.now(), nextAt: T.nextAt, round: T.round + 1, intervalMin: this.rlMs() / 60000, last: T.last, hist: T.hist,
@@ -180,8 +189,9 @@ export class League extends DurableObject {
     this.saveWorld();
   }
 
+  // 引き継ぎコードは Authorization ヘッダーか、本文の auth（ヘッダーを付けると、ブラウザは毎回「事前確認」のリクエストを先に送る＝リクエスト数が増える）
   async me(req) {
-    const code = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    const code = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '') || this.reqAuth.get(req) || '';
     if (!code) return null;
     const acc = this.accounts.get(await sha(code));
     if (!acc) return null;
@@ -192,13 +202,17 @@ export class League extends DurableObject {
 
   async fetch(req) {
     const url = new URL(req.url), path = url.pathname.replace(/^\/api/, '');
-    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const body = req.method === 'POST' ? (await req.json().catch(() => ({}))) || {} : {};
+    // 画面は「事前確認」が要らない形（text/plain の POST）で送ってくる。読むだけのものは本文に _m: 'GET'
+    const method = req.method === 'POST' && body._m === 'GET' ? 'GET' : req.method;
+    if (typeof body.auth === 'string') { this.reqAuth.set(req, body.auth); delete body.auth; }
+    delete body._m;
     try {
-      if (req.method === 'GET' && path === '/public') return json(this.publicView());
+      if (method === 'GET' && path === '/public') return json(this.publicView());
       // 全国ランキング（ログインしていれば自分の順位も返す）
-      if (req.method === 'GET' && path === '/rankings') return json(this.rankingsView(await this.me(req)));
+      if (method === 'GET' && path === '/rankings') return json(this.rankingsView(await this.me(req)));
       // 今季の個人ランキング（NPCも含む）：?lg=0〜2&cat=goals|assists|rating|defense|saves|cs&who=all|npc|user
-      if (req.method === 'GET' && path === '/ranking') {
+      if (method === 'GET' && path === '/ranking') {
         const q = url.searchParams, lg = q.get('lg') === 'all' ? null : Math.max(0, Math.min(G.LEAGUES.length - 1, Number(q.get('lg')) || 0));
         const cat = G.SL.RANK_CATS[q.get('cat')] ? q.get('cat') : 'goals', who = ['all', 'npc', 'user'].includes(q.get('who')) ? q.get('who') : 'all';
         const me = await this.me(req);
@@ -242,7 +256,7 @@ export class League extends DurableObject {
         return json({ ok: true, players: this.members.size, npcs: this.npcs.length, world: this.worldView() });
       }
       // 管理用：使えない言葉を含む名前の一覧（言葉を増やしたあと、前からいる人を探す）
-      if (req.method === 'GET' && path === '/admin/ng') {
+      if (method === 'GET' && path === '/admin/ng') {
         if (!this.isAdmin(req)) return err('not_found', 404);
         return json({ players: [...this.members.values()].filter((m) => isNg(m.pl.name) || (m.pl.move && isNg(m.pl.move))).map((m) => ({ id: m.id, name: m.pl.name, move: m.pl.move || null, status: m.status })) });
       }
@@ -270,7 +284,7 @@ export class League extends DurableObject {
         return json({ ok: true, from, to });
       }
       // 管理用：全データの書き出し（バックアップ）。ADMIN_KEY（Cloudflareの秘密の設定）を知っている人だけ
-      if (req.method === 'GET' && path === '/admin/export') {
+      if (method === 'GET' && path === '/admin/export') {
         const key = this.env.ADMIN_KEY || '';
         if (key.length < 16 || req.headers.get('X-Admin-Key') !== key) return err('not_found', 404);
         const dump = {
@@ -287,10 +301,10 @@ export class League extends DurableObject {
         if (this.env.DEV !== '1') return err('not_found', 404);
         this.rlSpin(); await this.armAlarm(); return json({ ok: true, last: this.w.rl.last });
       }
-      if (req.method === 'GET' && path === '/casino') return json(this.tableView(await this.me(req)));
+      if (method === 'GET' && path === '/casino') return json(this.tableView(await this.me(req)));
       const m = await this.me(req);
       if (!m) return err('unauthorized', 401);
-      if (req.method === 'GET' && path === '/state') {
+      if (method === 'GET' && path === '/state') {
         if (G.wake(m, this.w, [...this.members.values()])) { this.saveMember(m); this.saveWorld(); }
         if (m.status === 'draft') {
           const all = [...this.members.values()];
@@ -310,10 +324,12 @@ export class League extends DurableObject {
       if (req.method === 'POST' && path === '/casino/bet') {
         if (m.status === 'draft' || m.status === 'retired') return err('not_now');
         const bets = Array.isArray(body.bets) ? body.bets.map((b) => ({ k: String(b && b.k), a: Number(b && b.a) })) : [];
-        if (!bets.length) { if (m.rlBet) { m.rlBet = null; this.saveMember(m); } return json(this.tableView(m)); }
+        if (!bets.length) { if (m.rlBet) { m.rlBet = null; this.saveMember(m); await this.armAlarm(); } return json(this.tableView(m)); }
         const e = G.SL.rlCheck(m.pl, bets); if (e) return err(e);
+        this.rlCatchUp(); // 誰も賭けていなかった間に過ぎた回は飛ばして、次に回る時刻に賭ける
         m.rlBet = { bets, at: Date.now() };
         this.saveMember(m);
+        await this.armAlarm();
         return json(this.tableView(m));
       }
       if (req.method === 'POST' && path === '/buy') {

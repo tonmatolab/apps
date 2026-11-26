@@ -85,6 +85,8 @@ try {
     const real = JSON.parse(sql("SELECT game, COUNT(*) AS n FROM scores WHERE name IS NOT NULL OR game NOT IN ('soccer2','soccerq2') GROUP BY game"))[0].results;
     check(hs.every((h) => real.find((r) => r.game === h.game).n === h.n), '帯の記録数の合計が、実際の記録数と同じ（' + hs.map((h) => h.game + ' ' + h.n).join('・') + '）');
   }
+  // 画面は Content-Type を付けずに送る（text/plain。ブラウザが事前確認のリクエストを送らない）
+  { const send = () => fetch(B + '/score', { method: 'POST', headers: { Origin: 'http://localhost:5173' }, body: JSON.stringify({ game: 'iai', ms: 250 }) }); const r = await send().catch(async () => { await wait(300); return send(); }); const j = await r.json(); check(r.status === 200 && j.rank >= 1 && j.top, 'Content-Type なしの送信も受け付ける'); }
   check((await call('/hit/test-key', {})).j.value === 1 && (await call('/get?keys=test-key')).j['test-key'] === 1, 'カウンターは今までどおり');
   const bad = log.split(/\r?\n/).filter((l) => /Uncaught|TypeError|ReferenceError|D1_ERROR/.test(l)); check(!bad.length, 'サーバーのログにエラーがない' + (bad.length ? '：' + bad.slice(0, 3).join(' / ') : ''));
 } catch (e) { failures++; console.log('  ✗ 例外: ' + (e.stack || e)); } finally { await stop(); }

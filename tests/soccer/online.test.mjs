@@ -130,7 +130,7 @@ try {
     check(p1.status === 200 && p1.j.me.policy === 'money' && p1.j.me.sw === 'always', '移籍方針を変えられる');
     check((await call('/policy', { code: A, body: { policy: 'xxx' } })).j.error === 'bad_choice' && (await call('/policy', { code: A, body: { sw: 'yes' } })).j.error === 'bad_choice', 'ない方針は選べない');
   }
-  await call('/dev/tick', { body: { n: 12 } }); // オフは6時間（30分ごとなら12節分）
+  await call('/dev/tick', { body: { n: 6 } }); // オフは3時間（30分ごとなら6節分）
   st = (await call('/state', { code: A })).j;
   check(st.world.phase === 'season' && st.me.status === 'active', 'オフが終わって新シーズン');
   // ランキング・公開情報

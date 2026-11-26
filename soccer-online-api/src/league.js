@@ -223,6 +223,7 @@ export class League extends DurableObject {
       for (const m of all) if (m.status === 'active' || m.status === 'off') this.saveMember(m);
       if (this.failNext) { this.failNext = false; throw new Error('テスト用の失敗（途中まで保存したところで止める）'); }
     } else {
+      if (w.offLeft > G.OFF_TICKS) w.offLeft = G.OFF_TICKS; // オフを短くしたとき、今のオフも新しい長さに合わせる
       w.offLeft--;
       if (w.offLeft <= 0) { G.finishOffseason(w, all, Date.now(), this.npcs); for (const m of all) if (this.members.has(m.id)) this.saveMember(m); }
     }

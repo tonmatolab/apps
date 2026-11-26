@@ -152,7 +152,7 @@
   const policyText = (me) => `${POLICY[me.policy].icon} ${POLICY[me.policy].name}${me.policy === 'stay' ? '' : `・契約中も移る：${MOVE_SWITCH[me.sw]}`}`;
   function openPolicy() {
     const html = () => `<h3 style="margin:0 0 4px">🔁 移籍方針</h3>
-      <p class="sub" style="margin:0 0 8px">オフ（6時間）に契約を選ばなかったとき、この方針で自動で決まります。いつでも変えられます</p>
+      <p class="sub" style="margin:0 0 8px">オフ（3時間）に契約を選ばなかったとき、この方針で自動で決まります。いつでも変えられます</p>
       <div class="stack">${Object.entries(POLICY).map(([k, p]) => `<button class="btn pol${ST.me.policy === k ? ' primary' : ''}" data-p="${k}" style="text-align:left">${p.icon} ${p.name}<br><span class="sub" style="font-weight:600">${p.desc}</span></button>`).join('')}</div>
       <h3 style="margin:12px 0 4px">契約が残っていても移る？</h3>
       <div class="tabs rk">${Object.entries(MOVE_SWITCH).map(([k, v]) => `<button class="sw${ST.me.sw === k ? ' on' : ''}" data-s="${k}">${v}</button>`).join('')}</div>

@@ -305,19 +305,23 @@
       el.innerHTML = `<div class="card panel" style="text-align:center"><div class="sub" style="font-weight:800">${sm.retireAge}歳で現役引退</div>
         <div style="font-family:var(--head);font-size:1.7rem;color:var(--green);margin:6px 0 2px">${esc(sm.title)}</div><div class="sub">${esc(sm.titleDesc)}</div>
         <div style="margin-top:8px;font-family:var(--num);font-weight:800"><span style="font-size:2.6rem;color:var(--gold)">${sm.letter}</span> ${sm.score.toLocaleString()}pt</div>
+        ${typeof topTitleHTML === 'function' ? topTitleHTML(sm) : ''}
         <div class="bigstat"><div>シーズン<b>${sm.years}</b></div><div>出場<b>${sm.apps}</b></div><div>ゴール<b>${sm.goals}</b></div><div>代表<b>${sm.caps}</b></div></div>
-        <button class="btn primary" id="ol-nextGenBtn">👶 次の世代へ（${me.gen + 1}代目）</button></div>`;
+        <div class="stack" style="margin-top:12px">${typeof shareCareer === 'function' ? `<button class="btn x" id="ol-shareBtn">𝕏 で引退を報告${(() => { const t = SL.titleInfo(SL.topTitle(sm.titles)); return t && t.rarity.rank >= 2 ? `（【${t.rarity.id}】の画像つき）` : ''; })()}</button>` : ''}
+        <button class="btn primary" id="ol-nextGenBtn">👶 次の世代へ（${me.gen + 1}代目）</button></div></div>`;
       $('nextGenBtn').onclick = () => renderCreate(true);
+      if ($('shareBtn')) { $('shareBtn').onclick = () => shareCareer(sm, '【オンライン】'); prepShareImage(sm); }
       try {
         const done = JSON.parse(store.get('colIds') || '[]');
         if (sm.titles && !done.includes(me.id) && typeof loadCol === 'function') {
           const r = SL.addToCollection(loadCol(), sm, 'online');
           saveCol(r.col); done.push(me.id); store.set('colIds', JSON.stringify(done));
           if (r.newTitles.length) toast(`称号を${r.newTitles.length}個手に入れた！（図鑑に記録）`);
+          if (typeof celebrateTopTitle === 'function') celebrateTopTitle(sm); // 激レア以上なら演出（初めて引退画面を開いたとき）
         }
       } catch {}
-      const ts = (sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean);
-      if (ts.length) el.insertAdjacentHTML('beforeend', `<div class="card"><h2>🎖️ 手に入れた称号 <span class="sub" style="margin-left:auto">${ts.length}個</span></h2><div class="tgrid">${ts.map((t) => `<div class="tcard"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></div>`).join('')}</div></div>`);
+      const ts = SL.byRarity ? SL.byRarity(sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean) : (sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean);
+      if (ts.length) el.insertAdjacentHTML('beforeend', `<div class="card"><h2>🎖️ 手に入れた称号 <span class="sub" style="margin-left:auto">${ts.length}個</span></h2><div class="tgrid">${typeof titleCardsHTML === 'function' ? titleCardsHTML(sm.titles || []) : ts.map((t) => `<div class="tcard"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></div>`).join('')}</div></div>`);
     }
   }
 

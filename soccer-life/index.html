@@ -436,6 +436,9 @@
   @media (prefers-reduced-motion: reduce) { .rb.UR, .toptitle.UR, .toptitle::after { animation: none !important; } }
   /* ランキング：名前の横の称号 */
   .board .nm .tg { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: .68rem; font-weight: 800; color: var(--sub); vertical-align: 1px; }
+  .tcard .cond { color: var(--green); font-weight: 800; margin-top: 2px; }
+  .tcard.LR .cond { color: #ffd76a; }
+  .toptitle .cd { font-size: .78rem; font-weight: 800; margin-top: 4px; }
   .tcard .new { display: inline-block; font-size: .6rem; background: var(--red); color: #fff; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; letter-spacing: 0; }
   @media (prefers-color-scheme: dark) { .tcard { background: #2c2610; } .tcard.locked { background: var(--chip); } }
   .achrow { padding: 8px 0; border-bottom: 1px dashed var(--line); }
@@ -1061,7 +1064,7 @@ function renderCol() {
   if (colTab === 'titles') {
     $('colBody').innerHTML = `<p class="sub" style="margin:0 0 6px">手に入れていない称号は「？？？」。下の小さな文字が取り方のヒント</p><p class="sub" style="margin:0 0 8px;display:flex;flex-wrap:wrap;gap:4px 10px">${tierCount}</p><div class="tgrid">${SL.byRarity(SL.TITLES.map((t) => t[0])).map((id) => {
       const [, name, desc, hint] = SL.TITLES.find((t) => t[0] === id), got = col.titles[id], R = SL.rarityOf(id);
-      return got ? `<div class="tcard ${R.id}"><b><span class="rb ${R.id}">${R.id}</span>${esc(name)}</b><span>${esc(desc)}</span><span>🏃 ${esc(got.by)}</span></div>` : `<div class="tcard locked"><b><span class="rb ${R.id}">${R.id}</span>？？？</b><span>${esc(hint)}</span></div>`;
+      return got ? `<div class="tcard ${R.id}"><b><span class="rb ${R.id}">${R.id}</span>${esc(name)}</b><span>${esc(desc)}</span><span class="cond">🎯 ${esc(hint)}</span><span>🏃 ${esc(got.by)}</span></div>` : `<div class="tcard locked"><b><span class="rb ${R.id}">${R.id}</span>？？？</b><span>${esc(hint)}</span></div>`;
     }).join('')}</div>`;
   } else {
     $('colBody').innerHTML = SL.ACHIEVEMENTS.map(([id, name, desc, fn]) => {
@@ -1091,11 +1094,22 @@ async function loadBoard(el, mine, mode = 'normal', period = 'all', limit = mine
 function tagHTML(id) { const t = id && SL.titleInfo(id); return t ? `<span class="tg"><span class="rb ${t.rarity.id}">${t.rarity.id}</span>${esc(t.name)}</span>` : ''; }
 // 持っている人の割合の言い方（とてもまれなものは「◯人に1人」）
 const rateText = (r) => (r < 0.05 ? `約${Math.round(100 / r).toLocaleString()}人に1人` : r < 1 ? '1%未満' : `約${Math.round(r)}%`);
+// 手に入れた称号の一覧（レアな順・レア度の印つき）
+function titleCardsHTML(ids, fresh = []) {
+  return SL.byRarity(ids).map((id) => SL.titleInfo(id)).filter(Boolean).map((t) => `<div class="tcard ${t.rarity.id}"><b><span class="rb ${t.rarity.id}">${t.rarity.id}</span>${esc(t.name)}${fresh.includes(t.id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(t.desc)}</span><span class="cond">🎯 ${esc(t.hint)}</span></div>`).join('');
+}
+// いちばんレアな称号が激レア（SSR）以上なら演出（引退したときに1回）
+function celebrateTopTitle(sm) {
+  const top = SL.titleInfo(SL.topTitle(sm.titles));
+  if (!top || top.rarity.rank < 3) return Promise.resolve();
+  return celebrate({ tier: top.rarity.rank >= 4 ? 'world' : 'wc', icon: top.rarity.id === 'LR' ? '👑' : top.rarity.id === 'UR' ? '🌈' : '✨', kick: `${top.rarity.id}・${top.rarity.name}の称号`, title: esc(top.name), who: esc(sm.name),
+    sub: `🎯 ${esc(top.hint)}<br>${esc(top.desc)}<br>持っているのは、引退した選手の${rateText(top.rate)}` });
+}
 // 引退画面の「いちばんレアな称号」
 function topTitleHTML(sm) {
   const t = SL.titleInfo(SL.topTitle(sm.titles)); if (!t) return '';
   const rt = rateText(t.rate);
-  return `<div class="toptitle ${t.rarity.id}"><div class="lb">いちばんレアな称号</div><div class="nmx"><span class="rb ${t.rarity.id}">${t.rarity.id}</span> ${esc(t.name)}</div><div class="ds">${esc(t.desc)}</div><div class="rt">${t.rarity.name}・持っているのは引退した選手の${rt}</div></div>`;
+  return `<div class="toptitle ${t.rarity.id}"><div class="lb">いちばんレアな称号</div><div class="nmx"><span class="rb ${t.rarity.id}">${t.rarity.id}</span> ${esc(t.name)}</div><div class="cd">🎯 ${esc(t.hint)}</div><div class="ds">${esc(t.desc)}</div><div class="rt">${t.rarity.name}・持っているのは引退した選手の${rt}</div></div>`;
 }
 // タイトルのランキング：じっくり／60秒モード × 全期間／今週／先週（押したときだけ読み込む）
 const BOARD = { mode: 'normal', period: 'all' };
@@ -1792,7 +1806,7 @@ async function doRetire() {
   if (top && top.rarity.rank >= 3 && !S.summary.rareShown) {
     S.summary.rareShown = true; save();
     await celebrate({ tier: top.rarity.rank >= 4 ? 'world' : 'wc', icon: top.rarity.id === 'LR' ? '👑' : top.rarity.id === 'UR' ? '🌈' : '✨', kick: `${top.rarity.id}・${top.rarity.name}の称号`, title: esc(top.name), who: esc(S.summary.name),
-      sub: `${esc(top.desc)}<br>持っているのは、引退した選手の${rateText(top.rate)}` });
+      sub: `🎯 ${esc(top.hint)}<br>${esc(top.desc)}<br>持っているのは、引退した選手の${rateText(top.rate)}` });
   }
   renderEnd();
   // ランキングには、名前を入れて「登録」したときに送る（名前が必須）
@@ -1854,7 +1868,7 @@ function renderEnd() {
   const added = sm.colAdded || { t: [], a: [] };
   const ts = SL.byRarity(sm.titles).map((id) => SL.titleInfo(id)).filter(Boolean);
   $('endTitlesHead').innerHTML = `🎖️ 手に入れた称号 <span class="sub" style="margin-left:auto">${ts.length}個（NEW ${added.t.length}）</span>`;
-  $('endTitles').innerHTML = ts.map((t) => `<div class="tcard ${t.rarity.id}"><b><span class="rb ${t.rarity.id}">${t.rarity.id}</span>${esc(t.name)}${added.t.includes(t.id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(t.desc)}</span></div>`).join('');
+  $('endTitles').innerHTML = titleCardsHTML(sm.titles, added.t);
   const na = added.a.map((id) => SL.ACHIEVEMENTS.find((a) => a[0] === id)).filter(Boolean);
   $('endNewAch').innerHTML = (sm.challenge ? `<p style="font-weight:800;margin:10px 0 0">${SL.CHALLENGES[sm.challenge.id].icon} 縛り「${esc(sm.challenge.name)}」：${sm.challenge.cleared ? '🎉 達成！' : '未達成…'}</p>` : '')
     + (na.length ? `<p style="font-weight:800;margin:10px 0 4px">🏅 実績を解除！</p><ul class="ach">${na.map((a) => `<li class="gold">${esc(a[1])}</li>`).join('')}</ul>` : '');
@@ -1904,9 +1918,9 @@ async function submitName() {
 // Xで引退を報告。文は短く。いちばんレアな称号が SR 以上なら、その称号の画像も添える
 // （画像は引退画面を出したときに作っておく。押した瞬間に共有しないと、ブラウザが共有やウィンドウを止めるため）
 let shareImg = null; // { id: 称号, file }
-async function prepShareImage() {
+async function prepShareImage(sm = S && S.summary) {
   shareImg = null;
-  const sm = S && S.summary, tt = sm && SL.titleInfo(SL.topTitle(sm.titles));
+  const tt = sm && SL.titleInfo(SL.topTitle(sm.titles));
   if (!tt || tt.rarity.rank < 2) return;
   try {
     const c = await titleImage(sm, tt);
@@ -1914,10 +1928,12 @@ async function prepShareImage() {
     shareImg = { id: tt.id, file: new File([blob], `soccer-life-${tt.id}.png`, { type: 'image/png' }) };
   } catch {}
 }
-function share() {
-  const sm = S.summary, tt = SL.titleInfo(SL.topTitle(sm.titles));
+function share() { shareCareer(S.summary); }
+// 引退した選手1人を共有する（一人用・オンライン共通）。label：名前のあとに付ける【60秒】【オンライン】など
+function shareCareer(sm, label = sm.mode === 'quick' ? '【60秒】' : '') {
+  const tt = SL.titleInfo(SL.topTitle(sm.titles));
   const rk = sm.rankInfo ? `・全国${sm.rankInfo.rank}位` : '';
-  const text = `⚽ ${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${SL.POS[sm.pos].name}）${sm.retireAge}歳で引退${sm.mode === 'quick' ? '【60秒】' : ''}\n生涯ランク${sm.letter}・${sm.score.toLocaleString()}pt${rk}${tt ? `\n${tt.rarity.rank >= 3 ? '🌈' : '🎖️'}【${tt.rarity.id}】${tt.name}` : ''}`;
+  const text = `⚽ ${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${SL.POS[sm.pos].name}）${sm.retireAge}歳で引退${label}\n生涯ランク${sm.letter}・${sm.score.toLocaleString()}pt${rk}${tt ? `\n${tt.rarity.rank >= 3 ? '🌈' : '🎖️'}【${tt.rarity.id}】${tt.name}` : ''}`;
   const url = location.origin + location.pathname;
   const img = shareImg && tt && shareImg.id === tt.id ? shareImg.file : null;
   if (img) {
@@ -1940,7 +1956,7 @@ function share() {
 // レアな称号の画像（正方形）。レア度の色の背景に、称号を大きく
 async function titleImage(sm, tt) {
   const G = '"Dela Gothic One", sans-serif', M = '"M PLUS Rounded 1c", sans-serif', N = '"Outfit", sans-serif';
-  const txt = tt.name + tt.desc + sm.name + SL.POS[sm.pos].name + 'いちばんレアな称号サッカー人生引退した選手の約人に1人未満代目歳で引退生涯ランクpt0123456789%・（）' + tt.rarity.name + tt.rarity.id + SITE;
+  const txt = tt.name + tt.desc + tt.hint + sm.name + SL.POS[sm.pos].name + 'いちばんレアな称号サッカー人生引退した選手の約人に1人未満代目歳で引退生涯ランクpt0123456789%・（）' + tt.rarity.name + tt.rarity.id + SITE;
   await Promise.all([document.fonts.load(`60px ${G}`, txt), document.fonts.load(`800 40px ${M}`, txt), document.fonts.load(`800 40px ${N}`, txt)]);
   const W = 1080, H = 1080, c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d'), id = tt.rarity.id;
@@ -1972,8 +1988,12 @@ async function titleImage(sm, tt) {
   g.fillText(tt.name, W / 2, 520);
   g.shadowBlur = 0;
   g.font = `800 40px ${M}`; let fs3 = 40; while (g.measureText(tt.desc).width > W - 160) { fs3 -= 2; g.font = `800 ${fs3}px ${M}`; }
-  g.fillText(tt.desc, W / 2, 610);
-  g.font = `800 46px ${M}`; g.fillText(`引退した選手の${rateText(tt.rate)}`, W / 2, 700);
+  g.fillText(tt.desc, W / 2, 596);
+  // 条件（長いときは小さくして、それでも入らなければ2行にする）
+  let fs4 = 40; const cond = '🎯 ' + tt.hint; g.font = `800 ${fs4}px ${M}`; while (g.measureText(cond).width > W - 160 && fs4 > 32) { fs4 -= 2; g.font = `800 ${fs4}px ${M}`; }
+  if (g.measureText(cond).width <= W - 160) g.fillText(cond, W / 2, 656);
+  else { const mid = cond.indexOf('・', Math.floor(cond.length / 2) - 4); const cut = mid > 0 ? mid + 1 : Math.ceil(cond.length / 2); g.fillText(cond.slice(0, cut), W / 2, 640); g.fillText(cond.slice(cut), W / 2, 680); }
+  g.font = `800 42px ${M}`; g.fillText(`引退した選手の${rateText(tt.rate)}`, W / 2, 726);
   // 選手
   g.fillStyle = id === 'SSR' ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.28)'; g.beginPath(); g.roundRect(110, 770, W - 220, 150, 34); g.fill();
   g.fillStyle = ink; g.font = `800 48px ${M}`;

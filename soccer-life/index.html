@@ -1861,9 +1861,11 @@ function renderEnd() {
   const lin = S.lineage.concat([lineEntry(sm)]);
   $('endTreeHead').innerHTML = treeHead(sm.gen);
   $('endTree').innerHTML = treeHTML(lin, null);
+  { const tt = SL.titleInfo(SL.topTitle(sm.titles)); $('shareBtn').textContent = tt && tt.rarity.rank >= 2 ? `𝕏 で引退を報告（【${tt.rarity.id}】の画像つき）` : '𝕏 で引退を報告'; }
   $('nextGenBtn').textContent = sm.child ? `👨‍👧 ${sm.child.name}の物語へ（${S.gen + 1}代目）` : sm.kids ? `👶 子どもに夢を託す（${S.gen + 1}代目）` : `👶 次の世代へ（あなたに憧れた子が${S.gen + 1}代目に）`;
   $('nameBox').classList.add('hidden');
   show('scrEnd');
+  prepShareImage();
 }
 function renderRank() {
   const sm = S.summary, r = sm.rankInfo;
@@ -1899,18 +1901,89 @@ async function submitName() {
   $('rankNameMsg').textContent = why === 'bad_name' ? 'その名前は使えません' : why === 'not_top' ? 'トップ100から外れてしまいました…' : why === 'already' ? '登録済みです' : '登録できませんでした';
 }
 
+// Xで引退を報告。文は短く。いちばんレアな称号が SR 以上なら、その称号の画像も添える
+// （画像は引退画面を出したときに作っておく。押した瞬間に共有しないと、ブラウザが共有やウィンドウを止めるため）
+let shareImg = null; // { id: 称号, file }
+async function prepShareImage() {
+  shareImg = null;
+  const sm = S && S.summary, tt = sm && SL.titleInfo(SL.topTitle(sm.titles));
+  if (!tt || tt.rarity.rank < 2) return;
+  try {
+    const c = await titleImage(sm, tt);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    shareImg = { id: tt.id, file: new File([blob], `soccer-life-${tt.id}.png`, { type: 'image/png' }) };
+  } catch {}
+}
 function share() {
-  const sm = S.summary;
-  const posName = SL.POS[sm.pos].name;
-  const big = sm.pos === 'GK' || sm.pos === 'DF' ? `無失点${sm.cs}試合` : `${sm.goals}ゴール${sm.assists}アシスト`;
-  const extra = [sm.challenge && sm.challenge.cleared ? `縛り「${sm.challenge.name}」達成🎯` : '', sm.titles ? `称号${sm.titles.length}個` : '', sm.wc.some((w) => w.reached === '優勝') ? 'W杯優勝🏆' : '', sm.family.combo ? '親子弾👨‍👧' : '', sm.lastMatch?.hit ? '引退試合で有終の美🎉' : ''].filter(Boolean).join('｜');
-  const tt = SL.titleInfo(SL.topTitle(sm.titles));
-  const text = `⚽ サッカー人生を終えました${sm.mode === 'quick' ? '（60秒モード）' : ''}\n${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${posName}）${sm.retireAge}歳で引退\n称号「${sm.title}」ランク${sm.letter}\n${tt ? `${tt.rarity.rank >= 3 ? '🌈' : '🎖️'}いちばんレアな称号【${tt.rarity.id}】${tt.name}（引退した選手の${rateText(tt.rate)}）\n` : ''}${sm.years}年・${sm.apps}試合・${big}｜代表${sm.caps}試合${extra ? `\n${extra}` : ''}${sm.rankInfo ? `\n全国${sm.rankInfo.rank}位${sm.rankInfo.week && sm.rankInfo.week.rank ? `・今週${sm.rankInfo.week.rank}位` : ''}` : ''}\n\nあなたはどんな選手人生を送る？`;
+  const sm = S.summary, tt = SL.titleInfo(SL.topTitle(sm.titles));
+  const rk = sm.rankInfo ? `・全国${sm.rankInfo.rank}位` : '';
+  const text = `⚽ ${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${SL.POS[sm.pos].name}）${sm.retireAge}歳で引退${sm.mode === 'quick' ? '【60秒】' : ''}\n生涯ランク${sm.letter}・${sm.score.toLocaleString()}pt${rk}${tt ? `\n${tt.rarity.rank >= 3 ? '🌈' : '🎖️'}【${tt.rarity.id}】${tt.name}` : ''}`;
+  const url = location.origin + location.pathname;
+  const img = shareImg && tt && shareImg.id === tt.id ? shareImg.file : null;
+  if (img) {
+    // スマホ：画像つきで共有（Xを選ぶと画像と文がそのまま入る）
+    if (navigator.canShare && navigator.canShare({ files: [img], text })) {
+      navigator.share({ files: [img], text: `${text}\n${HASHTAGS.map((h) => '#' + h).join(' ')}\n${url}` }).catch(() => {});
+      return;
+    }
+    // パソコンなど：画像を保存してから投稿画面を開く（画像は投稿画面で添付）
+    const a = document.createElement('a'); a.href = URL.createObjectURL(img); a.download = img.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('称号の画像を保存しました。Xの投稿に添付してください');
+  }
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);
-  u.searchParams.set('url', location.origin + location.pathname);
+  u.searchParams.set('url', url);
   u.searchParams.set('hashtags', HASHTAGS.join(','));
   window.open(u.toString(), '_blank', 'noopener');
+}
+// レアな称号の画像（正方形）。レア度の色の背景に、称号を大きく
+async function titleImage(sm, tt) {
+  const G = '"Dela Gothic One", sans-serif', M = '"M PLUS Rounded 1c", sans-serif', N = '"Outfit", sans-serif';
+  const txt = tt.name + tt.desc + sm.name + SL.POS[sm.pos].name + 'いちばんレアな称号サッカー人生引退した選手の約人に1人未満代目歳で引退生涯ランクpt0123456789%・（）' + tt.rarity.name + tt.rarity.id + SITE;
+  await Promise.all([document.fonts.load(`60px ${G}`, txt), document.fonts.load(`800 40px ${M}`, txt), document.fonts.load(`800 40px ${N}`, txt)]);
+  const W = 1080, H = 1080, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), id = tt.rarity.id;
+  const BG = { SR: ['#9b55ff', '#3d1290'], SSR: ['#ffd34d', '#b86e00'], UR: null, LR: ['#3a2d6b', '#0b0716'] }[id];
+  // 背景
+  if (BG) { const gr = g.createRadialGradient(W / 2, H * .38, 60, W / 2, H / 2, W * .75); gr.addColorStop(0, BG[0]); gr.addColorStop(1, BG[1]); g.fillStyle = gr; }
+  else { const gr = g.createLinearGradient(0, 0, W, H); ['#ff4d6d', '#ffb300', '#3ccf7a', '#2c9bff', '#a64dff'].forEach((x, k) => gr.addColorStop(k / 4, x)); g.fillStyle = gr; }
+  g.fillRect(0, 0, W, H);
+  // 光の筋
+  g.save(); g.translate(W / 2, H * .42); g.globalAlpha = id === 'LR' ? .16 : .14; g.fillStyle = '#ffffff';
+  for (let k = 0; k < 24; k++) { g.rotate(Math.PI * 2 / 24); g.beginPath(); g.moveTo(0, 0); g.lineTo(-40, -900); g.lineTo(40, -900); g.closePath(); g.fill(); }
+  g.restore();
+  // 紙吹雪
+  const COL = id === 'LR' ? ['#ffd76a', '#ffffff', '#c9b6ff'] : ['#ffffff', '#ffd76a', '#ff6b8b', '#7fd6ff'];
+  for (let k = 0; k < 70; k++) { g.save(); g.translate((k * 397) % W, (k * 251) % (H * .9)); g.rotate(k); g.fillStyle = COL[k % COL.length]; g.globalAlpha = .7; g.fillRect(-10, -4, 20, 8); g.restore(); }
+  const ink = id === 'SSR' ? '#3a2600' : id === 'LR' ? '#ffe9a8' : '#ffffff';
+  g.textAlign = 'center'; g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = id === 'SSR' ? 0 : 12;
+  // 上の見出し
+  g.fillStyle = ink; g.font = `800 40px ${M}`; g.fillText(`${tt.rarity.name}の称号を獲得！`, W / 2, 170);
+  // レア度の札
+  g.shadowBlur = 0;
+  g.fillStyle = id === 'LR' ? '#111' : 'rgba(255,255,255,.92)'; g.beginPath(); g.roundRect(W / 2 - 170, 210, 340, 96, 48); g.fill();
+  if (id === 'LR') { g.strokeStyle = '#ffd76a'; g.lineWidth = 4; g.stroke(); }
+  g.fillStyle = id === 'LR' ? '#ffd76a' : id === 'SSR' ? '#b86e00' : id === 'SR' ? '#6b2fd1' : '#d6336c';
+  g.font = `900 64px ${N}`; g.fillText(id, W / 2, 280);
+  // 称号
+  g.shadowBlur = id === 'SSR' ? 0 : 18; g.fillStyle = ink;
+  let fs2 = 150; g.font = `${fs2}px ${G}`; while (g.measureText(tt.name).width > W - 140) { fs2 -= 6; g.font = `${fs2}px ${G}`; }
+  g.fillText(tt.name, W / 2, 520);
+  g.shadowBlur = 0;
+  g.font = `800 40px ${M}`; let fs3 = 40; while (g.measureText(tt.desc).width > W - 160) { fs3 -= 2; g.font = `800 ${fs3}px ${M}`; }
+  g.fillText(tt.desc, W / 2, 610);
+  g.font = `800 46px ${M}`; g.fillText(`引退した選手の${rateText(tt.rate)}`, W / 2, 700);
+  // 選手
+  g.fillStyle = id === 'SSR' ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.28)'; g.beginPath(); g.roundRect(110, 770, W - 220, 150, 34); g.fill();
+  g.fillStyle = ink; g.font = `800 48px ${M}`;
+  let line = `${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${SL.POS[sm.pos].name}）`; while (g.measureText(line).width > W - 280) { line = line.slice(0, -2) + '…'; }
+  g.fillText(line, W / 2, 835);
+  g.font = `800 40px ${N}`; g.fillText(`${sm.retireAge}歳で引退・生涯ランク ${sm.letter}・${sm.score.toLocaleString()}pt`, W / 2, 893);
+  // 下
+  g.font = `48px ${G}`; g.fillText('サッカー人生', W / 2, 1000);
+  g.font = `800 26px ${M}`; g.globalAlpha = .85; g.fillText(SITE, W / 2, 1042);
+  return c;
 }
 
 // ===== 新聞（号外） =====

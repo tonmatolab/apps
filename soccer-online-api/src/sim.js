@@ -8,12 +8,17 @@ const { train, decay, newWorld, lambda, poisson, gauss, ri, chance, pick, clamp,
 const { POS, GROW, LEAGUES, SEASON_WEEKS, mainStats, ovr, startChance } = SL;
 
 // 休眠：これだけ来ていないプレイヤーは、オフの終わりにクラブの枠を空けて休眠にする（戻ってきたら空いているクラブを選び直す）
-export const DORMANT_MS = 14 * 24 * 3600000;
+// オンラインの1日は、ゲームの中では1.6年ほど。来ないまま何年も試合に出つづけて枠をふさがないように、3日にする
+export const DORMANT_MS = 3 * 24 * 3600000;
+// 休眠のまま、これだけ来なかった人は引退にする（戻ってきたときに引退の記録を作り、次の世代から始める）
+export const RETIRE_IDLE_MS = 30 * 24 * 3600000;
+// 休眠・引退のまま、これだけ来ていない人は「しまっておく」（起動のたびに読み込まない。来たときに読み込む）
+export const ARCHIVE_MS = 3 * 24 * 3600000;
 // 登録したままクラブを選ばない人は、これだけたつと休眠にして定員の枠を空ける（毎節たしかめる）
 export const DRAFT_IDLE_MS = 24 * 3600000;
 export const OFF_TICKS = 12; // オフシーズンの長さ（節の何回分か。30分ごとなら6時間）。この間に契約を選ぶ。選ばなかった人は移籍方針で自動で決まる
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
-export const CLUB_CAP = 10, GK_CAP = 3, FW_CAP = 4; // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
+export const CLUB_CAP = 12, GK_CAP = 3, FW_CAP = 4; // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
 export const POS_CAP = { GK: GK_CAP, FW: FW_CAP };
 const XI = { GK: 1, DF: 4, MF: 4, FW: 2 }; // 先発の枠（4-4-2）
 export const POP_BONUS = 6; // 「狙い目」のポジションで始めたときの才能のボーナス
@@ -518,10 +523,12 @@ function autoDecide(m, w, members, npcs) {
 export function finishOffseason(w, members, now = Date.now(), npcs = null) {
   for (const m of members) if (m.status === 'off') autoDecide(m, w, members, npcs);
   // 長く来ていないプレイヤーは休眠：クラブの枠を空ける。本人の時間も止まる（年をとらない・試合に出ない）
+  const slept = [];
   for (const m of members) if (m.status === 'decided' && now - (m.seenAt || now) > DORMANT_MS) {
-    m.status = 'dormant'; m.prevClub = m.pl.club; m.pl.club = null; m.dormantSince = w.year;
-    addNews(w, `💤 ${m.pl.name}が休眠に入った（戻ってきたら、空いているクラブから選び直せる）`);
+    m.status = 'dormant'; m.prevClub = m.pl.club; m.pl.club = null; m.dormantSince = w.year; slept.push(m.pl.name);
   }
+  if (slept.length === 1) addNews(w, `💤 ${slept[0]}が休眠に入った（戻ってきたら、空いているクラブから選び直せる）`);
+  else if (slept.length) addNews(w, `💤 3日以上来ていない${slept.length}人が休眠に入り、クラブの枠が空いた（戻ってきたら選び直せる）`);
   startSeason(w);
   for (const m of members) if (m.status === 'decided') {
     m.status = 'active'; m.season = emptySeason(); m.cupSeason = emptySeason(); m.last = null; m.lastCup = null;
@@ -546,6 +553,14 @@ export function retire(m, w) {
   for (const h of m.history) { const x = per.get(h.clubId) || { apps: 0, goals: 0 }; x.apps += h.apps; x.goals += h.goals; per.set(h.clubId, x); }
   for (const [cid, x] of per) if (x.apps >= 10) pushTop(clubRec(w, cid).legends, { name: sm.name, apps: x.apps, goals: x.goals, v: x.apps });
   return m.summary;
+}
+// しまっておいた人が戻ってきたとき：休眠のまま長く来なかった人は、ここで引退にする（引退の記録を作る）
+export function returnFromIdle(m, w, now = Date.now()) {
+  if (m.status !== 'dormant' || now - (m.seenAt || now) <= RETIRE_IDLE_MS) return false;
+  if (m.prevClub != null && m.pl.club == null) m.pl.club = m.prevClub; // 引退の記録（最後のクラブ）用。すぐ外す
+  retire(m, w);
+  m.idleRetired = true; // 画面で「長く来なかったので引退した」と出す
+  return true;
 }
 export function nextGeneration(old, id, name, pos, w, members = [], appeal = null, extraBonus = 0) {
   const sm = old.summary;

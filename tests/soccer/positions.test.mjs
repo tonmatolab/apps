@@ -17,8 +17,8 @@ const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '�
   check(G.clubFull(ms, dom[0].id, 'FW') && !G.clubFull(ms, dom[0].id, 'DF'), 'FWが4人いるクラブには、FWは入れないがDFは入れる');
   for (let i = 0; i < 3; i++) add(ms, 'GK', dom[1].id);
   check(G.clubFull(ms, dom[1].id, 'GK') && !G.clubFull(ms, dom[1].id, 'MF'), 'GKは3人まで（今までどおり）');
-  for (let i = 0; i < 10; i++) add(ms, 'MF', dom[2].id);
-  check(G.clubFull(ms, dom[2].id, 'DF'), '1クラブ10人で満員（今までどおり）');
+  for (let i = 0; i < G.CLUB_CAP; i++) add(ms, 'MF', dom[2].id);
+  check(G.clubFull(ms, dom[2].id, 'DF'), `1クラブ${G.CLUB_CAP}人で満員`);
   const pre = add(ms, 'FW', dom[3].id); // 前からいる人（上限を超えていても、残留はできる＝clubFull の except）
   for (let i = 0; i < 4; i++) add(ms, 'FW', dom[3].id);
   check(G.clubFull(ms, dom[3].id, 'FW', pre), '上限を超えているクラブ（FW5人）は、ほかのFWからは満員');
@@ -31,7 +31,7 @@ const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '�
   for (const c of dom) for (let i = 0; i < 4; i++) add(ms, 'FW', c.id);
   const P = G.positionInfo(w, ms);
   check(P.FW.open === 0 && P.FW.label === '満員', `FWが全部埋まると満員（空き${P.FW.open}・${P.FW.label}）`);
-  check(P.DF.open === dom.length * 6 && P.DF.label === '狙い目' && P.DF.bonus === G.POP_BONUS, `DFは空き${P.DF.open}・${P.DF.label}・ボーナス${P.DF.bonus}`);
+  check(P.DF.open === dom.length * (G.CLUB_CAP - G.FW_CAP) && P.DF.label === '狙い目' && P.DF.bonus === G.POP_BONUS, `DFは空き${P.DF.open}・${P.DF.label}・ボーナス${P.DF.bonus}`);
   check(P.GK.open === dom.length * 3, `GKの空きはGKの上限まで（${P.GK.open}）`);
   // 満員のポジションでは入団先の候補が出ない。空いているポジションは出る
   const fw = G.newMember('x1', 'x1', 'あたらしいFW', 'FW'), df = G.newMember('x2', 'x2', 'あたらしいDF', 'DF');
@@ -43,7 +43,7 @@ const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '�
 {
   const ms = [];
   // 1部の10クラブを満員に（2部は空き）
-  for (const c of dom.filter((c) => c.lg === 1)) for (let i = 0; i < 10; i++) add(ms, i < 3 ? 'GK' : 'MF', c.id);
+  for (const c of dom.filter((c) => c.lg === 1)) for (let i = 0; i < G.CLUB_CAP; i++) add(ms, i < 3 ? 'GK' : 'MF', c.id);
   let ok = true;
   for (let i = 0; i < 30; i++) {
     const m = G.newMember('y' + i, 'y' + i, '候補' + i, 'MF');
@@ -52,7 +52,7 @@ const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '�
   }
   check(ok, '1部が満員なら、空いている2部〜4部のクラブが候補になる（30人とも候補がある）');
   // 1部・2部とも満員 → 候補なし
-  for (const c of dom.filter((c) => c.lg >= 2)) for (let i = 0; i < 10; i++) add(ms, i < 3 ? 'GK' : 'MF', c.id);
+  for (const c of dom.filter((c) => c.lg >= 2)) for (let i = 0; i < G.CLUB_CAP; i++) add(ms, i < 3 ? 'GK' : 'MF', c.id);
   check(G.draftOffers(G.newMember('z', 'z', '満員', 'DF'), w, ms).length === 0 && G.positionInfo(w, ms).DF.open === 0, '国内がすべて満員なら候補なし・空き0');
 }
 

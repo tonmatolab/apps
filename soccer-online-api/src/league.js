@@ -6,7 +6,7 @@ import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（全国ランキングと共通）
 
-const MAX_PLAYERS = G.CLUB_CAP * G.SL._.CLUB_SEED.length; // 登録の上限（1クラブ10人 × 50クラブ ＝ 500人。これ以上は入れるクラブがない）
+const MAX_PLAYERS = G.CLUB_CAP * G.SL._.CLUB_SEED.length; // 登録の上限（1クラブ12人 × 50クラブ ＝ 600人。これ以上は入れるクラブがない）
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -47,6 +47,15 @@ export class League extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS rosters (club INTEGER PRIMARY KEY, data TEXT)');
     // NPCの今季の成績（1行。節ごとに書く）
     this.sql.exec('CREATE TABLE IF NOT EXISTS npcstats (k TEXT PRIMARY KEY, v TEXT)');
+    // 読み込みの節約：起動のたびに読むのは players だけ。長く来ていない休眠・引退の人（idle）と前の世代（past）は別の表にしまう
+    // （SQLは条件に合わない行も読んだ数に入るので、同じ表に置いたままだと減らない）
+    this.sql.exec('CREATE TABLE IF NOT EXISTS idle (account TEXT PRIMARY KEY, id TEXT, data TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS past (id TEXT PRIMARY KEY, account TEXT, data TEXT)');
+    // 前の世代（active = 0）は past へ移す（一度だけ）
+    if (this.sql.exec('SELECT COUNT(*) AS n FROM players WHERE active = 0').one().n) this.ctx.storage.transactionSync(() => {
+      this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) SELECT id, account, data FROM players WHERE active = 0');
+      this.sql.exec('DELETE FROM players WHERE active = 0');
+    });
     this.reqAuth = new WeakMap(); // リクエストごとの引き継ぎコード（本文で送られてきたとき）
     const fresh = this.loadState();
     this.ensureSchedule(fresh);
@@ -78,8 +87,7 @@ export class League extends DurableObject {
     else if (G.SL.extendNpcs(this.npcs, this.w.clubs, G.NPC_SEED, (this.w.records && this.w.records.npcLegends) || []).length) this.rostersDirty = true; // 国内3部・4部ができたとき
     const ns = this.sql.exec("SELECT v FROM npcstats WHERE k = 'season'").toArray()[0];
     this.npcSeason = ns ? JSON.parse(ns.v) : { season: this.w.season, stats: {} };
-    this.accounts = new Map(); // hash -> account id
-    for (const r of this.sql.exec('SELECT id, hash FROM accounts')) this.accounts.set(r.hash, r.id);
+    this.accounts = new Map(); // hash -> account id（来た人の分だけ。起動のたびに全員分を読まない）
     this.members = new Map(); // player id -> member
     this.byAccount = new Map(); // account -> player id（現役中または引退直後の1人）
     for (const r of this.sql.exec('SELECT id, account, data FROM players WHERE active = 1')) {
@@ -114,7 +122,33 @@ export class League extends DurableObject {
     for (const [club, list] of by) this.sql.exec('INSERT OR REPLACE INTO rosters (club, data) VALUES (?, ?)', club, JSON.stringify(list));
   }
   isAdmin(req) { const key = this.env.ADMIN_KEY || ''; return key.length >= 16 && req.headers.get('X-Admin-Key') === key; }
-  saveMember(m, active = 1) { this.sql.exec('INSERT OR REPLACE INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', m.id, m.account, active, JSON.stringify(m)); }
+  saveMember(m, active = 1) {
+    if (!active) { this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) VALUES (?, ?, ?)', m.id, m.account, JSON.stringify(m)); this.sql.exec('DELETE FROM players WHERE id = ?', m.id); return; }
+    this.sql.exec('INSERT OR REPLACE INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', m.id, m.account, active, JSON.stringify(m));
+  }
+  // 休眠・引退のまま長く来ていない人をしまう（メモリと players から外して idle へ）。しまった人数を返す
+  archiveIdle(now = Date.now()) {
+    const out = [...this.members.values()].filter((m) => (m.status === 'dormant' || m.status === 'retired') && !m.rlBet && now - (m.seenAt || now) > G.ARCHIVE_MS);
+    for (const m of out) {
+      this.sql.exec('INSERT OR REPLACE INTO idle (account, id, data) VALUES (?, ?, ?)', m.account, m.id, JSON.stringify(m));
+      this.sql.exec('DELETE FROM players WHERE id = ?', m.id);
+      this.members.delete(m.id); this.byAccount.delete(m.account);
+    }
+    return out.length;
+  }
+  // しまっておいた人が来たら読み込む（長く休眠していた人は、ここで引退にする）
+  restoreIdle(acc) {
+    const r = this.sql.exec('SELECT id, data FROM idle WHERE account = ?', acc).toArray()[0];
+    if (!r) return null;
+    const m = G.migrateMember(JSON.parse(r.data), this.w);
+    this.atomic(() => {
+      if (G.returnFromIdle(m, this.w)) this.saveWorld();
+      this.saveMember(m);
+      this.sql.exec('DELETE FROM idle WHERE account = ?', acc);
+    });
+    this.members.set(m.id, m); this.byAccount.set(acc, m.id);
+    return m;
+  }
 
   async alarm() {
     const now = Date.now();
@@ -176,6 +210,7 @@ export class League extends DurableObject {
   tick() {
     const w = this.w, all = [...this.members.values()];
     for (const m of G.sweepIdleDrafts(w, all)) this.saveMember(m); // クラブを選ばないまま24時間たった人は休眠（定員の枠を空ける）
+    this.archiveIdle(); // 休眠・引退のまま3日来ていない人は、しまっておく（起動のたびに読まない）
     if (w.phase === 'season') {
       this.npcSeason = G.playMatchday(w, all, this.npcs, this.npcSeason);
       this.sql.exec("INSERT OR REPLACE INTO npcstats (k, v) VALUES ('season', ?)", JSON.stringify(this.npcSeason));
@@ -184,7 +219,7 @@ export class League extends DurableObject {
       if (this.failNext) { this.failNext = false; throw new Error('テスト用の失敗（途中まで保存したところで止める）'); }
     } else {
       w.offLeft--;
-      if (w.offLeft <= 0) { G.finishOffseason(w, all, Date.now(), this.npcs); for (const m of all) this.saveMember(m); }
+      if (w.offLeft <= 0) { G.finishOffseason(w, all, Date.now(), this.npcs); for (const m of all) if (this.members.has(m.id)) this.saveMember(m); }
     }
     this.saveWorld();
   }
@@ -193,10 +228,19 @@ export class League extends DurableObject {
   async me(req) {
     const code = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '') || this.reqAuth.get(req) || '';
     if (!code) return null;
-    const acc = this.accounts.get(await sha(code));
-    if (!acc) return null;
-    const m = this.members.get(this.byAccount.get(acc)) || null;
-    if (m) m.seenAt = Date.now();
+    const hash = await sha(code);
+    let acc = this.accounts.get(hash);
+    if (!acc) {
+      const r = this.sql.exec('SELECT id FROM accounts WHERE hash = ?', hash).toArray()[0]; // 1行だけ（hash は UNIQUE）
+      if (!r) return null;
+      acc = r.id; this.accounts.set(hash, acc);
+    }
+    const m = this.members.get(this.byAccount.get(acc)) || this.restoreIdle(acc);
+    if (!m) return null;
+    m.seenAt = Date.now();
+    // 来た日数（日本時間で1日1回だけ数えて保存する＝最後に来た時刻も残る）
+    const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    if (m.visitDay !== today) { m.visitDay = today; m.visitDays = (m.visitDays || 0) + 1; this.saveMember(m); }
     return m;
   }
 
@@ -245,15 +289,31 @@ export class League extends DurableObject {
         if (this.env.DEV !== '1') return err('not_found', 404);
         if (!body || !Array.isArray(body.accounts) || !Array.isArray(body.players) || !body.world) return err('bad_dump');
         this.atomic(() => {
-          this.sql.exec('DELETE FROM accounts'); this.sql.exec('DELETE FROM players'); this.sql.exec('DELETE FROM world'); this.sql.exec('DELETE FROM rosters'); this.sql.exec('DELETE FROM npcstats');
+          this.sql.exec('DELETE FROM accounts'); this.sql.exec('DELETE FROM players'); this.sql.exec('DELETE FROM world'); this.sql.exec('DELETE FROM rosters'); this.sql.exec('DELETE FROM npcstats'); this.sql.exec('DELETE FROM idle'); this.sql.exec('DELETE FROM past');
           for (const r of body.npcstats || []) this.sql.exec('INSERT INTO npcstats (k, v) VALUES (?, ?)', r.k, r.v);
           for (const r of body.rosters || []) this.sql.exec('INSERT INTO rosters (club, data) VALUES (?, ?)', r.club, r.data);
           for (const a of body.accounts) this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', a.id, a.hash, a.created);
-          for (const p of body.players) this.sql.exec('INSERT INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', p.id, p.account, p.active, p.data);
+          for (const p of body.players) {
+            if (p.active === 2) this.sql.exec('INSERT OR REPLACE INTO idle (account, id, data) VALUES (?, ?, ?)', p.account, p.id, p.data);
+            else if (!p.active) this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) VALUES (?, ?, ?)', p.id, p.account, p.data);
+            else this.sql.exec('INSERT INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', p.id, p.account, p.active, p.data);
+          }
           this.sql.exec("INSERT INTO world (k, v) VALUES ('w', ?)", body.world);
         });
         this.loadState(); this.ensureSchedule(); await this.armAlarm();
         return json({ ok: true, players: this.members.size, npcs: this.npcs.length, world: this.worldView() });
+      }
+      // 管理用：来ている人の様子（人数だけ）。最後に来た時刻・来た日数・状態
+      if (method === 'GET' && path === '/admin/activity') {
+        if (!this.isAdmin(req)) return err('not_found', 404);
+        const now = Date.now(), st = {}, seen = { '1日以内': 0, '3日以内': 0, '7日以内': 0, 'それ以上': 0 }, days = {};
+        for (const m of this.members.values()) {
+          st[m.status] = (st[m.status] || 0) + 1;
+          const d = (now - (m.seenAt || 0)) / 864e5; seen[d <= 1 ? '1日以内' : d <= 3 ? '3日以内' : d <= 7 ? '7日以内' : 'それ以上']++;
+          const v = m.visitDays || 0, k = v >= 7 ? '7日以上' : v + '日'; days[k] = (days[k] || 0) + 1;
+        }
+        const idle = this.sql.exec('SELECT COUNT(*) AS n FROM idle').one().n, past = this.sql.exec('SELECT COUNT(*) AS n FROM past').one().n;
+        return json({ loaded: this.members.size, players: this.activeCount(), max: MAX_PLAYERS, status: st, lastSeen: seen, visitDays: days, idle, past });
       }
       // 管理用：使えない言葉を含む名前の一覧（言葉を増やしたあと、前からいる人を探す）
       if (method === 'GET' && path === '/admin/ng') {
@@ -290,7 +350,8 @@ export class League extends DurableObject {
         const dump = {
           app: 'soccer-online', exportedAt: new Date().toISOString(), worldVersion: G.WORLD_VERSION, memberVersion: G.MEMBER_VERSION,
           accounts: this.sql.exec('SELECT id, hash, created FROM accounts').toArray(),
-          players: this.sql.exec('SELECT id, account, active, data FROM players').toArray(),
+          players: this.sql.exec('SELECT id, account, active, data FROM players').toArray()
+            .concat(this.sql.exec('SELECT id, account, 0 AS active, data FROM past').toArray(), this.sql.exec('SELECT id, account, 2 AS active, data FROM idle').toArray()),
           world: (this.sql.exec("SELECT v FROM world WHERE k = 'w'").toArray()[0] || {}).v || null,
           rosters: this.sql.exec('SELECT club, data FROM rosters ORDER BY club').toArray(),
           npcstats: this.sql.exec('SELECT k, v FROM npcstats').toArray(),
@@ -311,7 +372,8 @@ export class League extends DurableObject {
           if (!(m.draft || []).some((o) => !G.clubFull(all, o.club, m.pl.pos, m))) { m.draft = G.draftOffers(m, this.w, all); this.saveMember(m); }
         }
         const bonus = this.loginBonus(m);
-        return json({ ...this.stateView(m), bonus });
+        const idleRetired = !!m.idleRetired; if (idleRetired) { delete m.idleRetired; this.saveMember(m); }
+        return json({ ...this.stateView(m), bonus, idleRetired });
       }
       // PKチャレンジは終了（試合中のPKに変わった）。古い画面から呼ばれたとき用
       if (req.method === 'POST' && (path === '/pk/start' || path === '/pk/kick')) return err('pk_ended', 410);
@@ -402,8 +464,8 @@ export class League extends DurableObject {
   }
 
   // ----- 画面に返す形 -----
-  // 参加人数（休眠の人は数えない）。定員の判定にも使う
-  activeCount() { let n = 0; for (const x of this.members.values()) if (x.status !== 'dormant') n++; return n; }
+  // 参加人数（休眠・引退の人は数えない）。定員の判定にも使う
+  activeCount() { let n = 0; for (const x of this.members.values()) if (x.status !== 'dormant' && x.status !== 'retired') n++; return n; }
   worldView() {
     const w = this.w;
     return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, now: Date.now(), tickMin: this.tickMs() / 60000, players: this.activeCount() };

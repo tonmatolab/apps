@@ -34,7 +34,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ10人・GKは3人・FWは4人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員（300人）に達しています。空きが出るまでお待ちください', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（1クラブ12人・GKは3人・FWは4人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', full: 'オンラインリーグは定員に達しています。空きが出るまでお待ちください（3日来ていない人は休眠になり、枠が空きます）', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
 
@@ -434,6 +434,7 @@
     if (j.error) { toast(errMsg(j.error)); return ST ? route() : renderStart(); }
     setState(j); route();
     if (j.bonus) toast(`🎁 ログインボーナス +${j.bonus.amount}万円`);
+    if (j.idleRetired) toast('💤 30日以上来なかったので、休眠のまま引退しました。次の世代から始められます');
   }
 
   // 自動では何度も取りに行かない（無料枠を守る）。節が進んだ直後に1回だけ取り直す

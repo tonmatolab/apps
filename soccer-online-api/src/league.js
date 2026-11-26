@@ -51,10 +51,11 @@ export class League extends DurableObject {
     // （SQLは条件に合わない行も読んだ数に入るので、同じ表に置いたままだと減らない）
     this.sql.exec('CREATE TABLE IF NOT EXISTS idle (account TEXT PRIMARY KEY, id TEXT, data TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS past (id TEXT PRIMARY KEY, account TEXT, data TEXT)');
-    // 前の世代（active = 0）は past へ移す（一度だけ）
-    if (this.sql.exec('SELECT COUNT(*) AS n FROM players WHERE active = 0').one().n) this.ctx.storage.transactionSync(() => {
+    // 前の世代（active = 0）は past へ移す（一度だけ。済んだ印を1行で持つ。毎回 players を数えると、そのたびに全員分を読んでしまう）
+    if (!this.sql.exec("SELECT k FROM npcstats WHERE k = 'pastMoved'").toArray().length) this.ctx.storage.transactionSync(() => {
       this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) SELECT id, account, data FROM players WHERE active = 0');
       this.sql.exec('DELETE FROM players WHERE active = 0');
+      this.sql.exec("INSERT OR REPLACE INTO npcstats (k, v) VALUES ('pastMoved', '1')");
     });
     this.reqAuth = new WeakMap(); // リクエストごとの引き継ぎコード（本文で送られてきたとき）
     const fresh = this.loadState();
@@ -115,16 +116,17 @@ export class League extends DurableObject {
     if (now < T.nextAt || this.betCount()) return;
     T.nextAt += Math.floor((now - T.nextAt) / ms + 1) * ms;
   }
-  saveWorld() { this.sql.exec("INSERT OR REPLACE INTO world (k, v) VALUES ('w', ?)", JSON.stringify(this.w)); }
+  // 保存は「なければ足す・あれば書きかえる」（INSERT OR REPLACE は、いったん消してから足すので2行の書き込みに数えられる。これは1行）
+  saveWorld() { this.sql.exec("INSERT INTO world (k, v) VALUES ('w', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", JSON.stringify(this.w)); }
   saveRosters() {
     const by = new Map(this.w.clubs.map((c) => [c.id, []]));
     for (const p of this.npcs) if (by.has(p.club)) by.get(p.club).push(p);
-    for (const [club, list] of by) this.sql.exec('INSERT OR REPLACE INTO rosters (club, data) VALUES (?, ?)', club, JSON.stringify(list));
+    for (const [club, list] of by) this.sql.exec('INSERT INTO rosters (club, data) VALUES (?, ?) ON CONFLICT(club) DO UPDATE SET data = excluded.data', club, JSON.stringify(list));
   }
   isAdmin(req) { const key = this.env.ADMIN_KEY || ''; return key.length >= 16 && req.headers.get('X-Admin-Key') === key; }
   saveMember(m, active = 1) {
     if (!active) { this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) VALUES (?, ?, ?)', m.id, m.account, JSON.stringify(m)); this.sql.exec('DELETE FROM players WHERE id = ?', m.id); return; }
-    this.sql.exec('INSERT OR REPLACE INTO players (id, account, active, data) VALUES (?, ?, ?, ?)', m.id, m.account, active, JSON.stringify(m));
+    this.sql.exec('INSERT INTO players (id, account, active, data) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET account = excluded.account, active = excluded.active, data = excluded.data', m.id, m.account, active, JSON.stringify(m));
   }
   // 休眠・引退のまま長く来ていない人をしまう（メモリと players から外して idle へ）。しまった人数を返す
   archiveIdle(now = Date.now()) {
@@ -213,7 +215,7 @@ export class League extends DurableObject {
     this.archiveIdle(); // 休眠・引退のまま3日来ていない人は、しまっておく（起動のたびに読まない）
     if (w.phase === 'season') {
       this.npcSeason = G.playMatchday(w, all, this.npcs, this.npcSeason);
-      this.sql.exec("INSERT OR REPLACE INTO npcstats (k, v) VALUES ('season', ?)", JSON.stringify(this.npcSeason));
+      this.sql.exec("INSERT INTO npcstats (k, v) VALUES ('season', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", JSON.stringify(this.npcSeason));
       if (w.week >= G.SEASON_WEEKS) { G.endSeason(w, all, this.npcs, this.npcSeason); this.saveRosters(); } // NPCの受賞を名簿に残す（シーズンに1回・30行）
       for (const m of all) if (m.status === 'active' || m.status === 'off') this.saveMember(m);
       if (this.failNext) { this.failNext = false; throw new Error('テスト用の失敗（途中まで保存したところで止める）'); }

@@ -63,6 +63,13 @@ try {
   const bd = (await call('/board?game=soccer2')).j;
   check(bd.total === 2 && bd.top.map((r) => r.name).join() === '新人,先輩', `名無しの記録はランキングに出ない（${bd.top.map((r) => r.name).join()}）`);
   check((await call('/score', { game: 'soccer2', ms: 100, name: '下位' })).j.rank === 3, '名無しの記録は順位にも数えない');
+  // 名前の横の印（いちばんレアな称号のID）。英数字の短いIDだけ残す・ほかのゲームには付かない
+  const tg = (await call('/score', { game: 'soccer2', ms: 4800, name: '印あり', tag: 'wcw' })).j;
+  check(tg.top.find((r) => r.name === '印あり')?.tag === 'wcw', '印が送った直後のランキングに出る');
+  check((await call('/board?game=soccer2')).j.top.find((r) => r.name === '印あり')?.tag === 'wcw', '印がランキングに出る');
+  const badTag = (await call('/score', { game: 'soccer2', ms: 4700, name: '変な印', tag: '<b>x</b>' })).j;
+  check(!badTag.top.find((r) => r.name === '変な印')?.tag, '英数字でない印は捨てる');
+  check(!(await call('/score', { game: 'onigiri', ms: 777, tag: 'wcw' })).j.top.some((r) => r.tag), '印のないゲームには付かない');
   // 順位は帯（hist）を使って数える：全部数えたときの順位と同じになる（大きいほど上位・小さいほど上位・同点・帯の境目）
   {
     const brute = (rows, ms, id, desc) => rows.filter((r) => (desc ? r.ms > ms : r.ms < ms) || (r.ms === ms && r.id < id)).length + 1;

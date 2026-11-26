@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS scores (
   ms INTEGER NOT NULL,
   name TEXT,
   token TEXT NOT NULL,
-  created INTEGER NOT NULL
+  created INTEGER NOT NULL,
+  tag TEXT -- 名前の横に出す印（サッカー人生：いちばんレアな称号のID）。本番は ALTER TABLE scores ADD COLUMN tag TEXT で足した
 );
 CREATE INDEX IF NOT EXISTS idx_scores_game_ms ON scores (game, ms, id);
 

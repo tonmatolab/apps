@@ -15,7 +15,7 @@
     const rv = s.rival;
     return {
       pos: s.p.pos, T, seasons: h.length, age: s.p.age, caps: s.caps, natGoals: s.natGoals,
-      wc: s.wc.length, wcBest: Math.max(-1, ...s.wc.map((w) => WC_ORDER.indexOf(w.reached))), wcGoals: s.wc.reduce((a, w) => a + w.goals, 0),
+      wc: s.wc.length, wcWins: s.wc.filter((w) => w.reached === '優勝').length, wcBest: Math.max(-1, ...s.wc.map((w) => WC_ORDER.indexOf(w.reached))), wcGoals: s.wc.reduce((a, w) => a + w.goals, 0),
       lgTitle: cnt('リーグ優勝'), scorer: aw.filter((a) => a.includes('得点王') && !a.includes('ワールドカップ')).length, wcScorer: cnt('ワールドカップ得点王'),
       assistK: cnt('アシスト王'), mvp: cnt('MVP'), b11: cnt('ベストイレブン'), rookie: cnt('新人王'), world: cnt('世界年間'), promo: cnt('昇格'), euTitle: cnt('欧州リーグ優勝'),
       cup: cnt('カップ優勝'), cupL2: cnt('カップ優勝（2部から）'),
@@ -84,10 +84,10 @@
     ['eu6', '欧州の戦士', '本場で長く戦い抜いた。', '欧州で6シーズン', (c) => c.eu >= 6],
     ['eut', '欧州制覇', '本場の頂点に立った。', '欧州リーグ優勝', (c) => c.euTitle >= 1],
     ['l2', '2部の星', '地元の人たちに愛された。', '2部だけで8シーズン以上', (c) => c.only2 && c.seasons >= 8],
-    ['promo', '昇格請負人', 'チームを上のリーグへ導いた。', '1部昇格を2回経験', (c) => c.promo >= 2],
+    ['promo', '昇格請負人', 'チームを上のリーグへ導いた。', '昇格を2回経験', (c) => c.promo >= 2],
     ['one', '一筋', 'ひとつのクラブに人生を捧げた。', '1クラブだけで10シーズン以上', (c) => c.clubs === 1 && c.seasons >= 10],
     ['nomad', '渡り鳥', 'いくつものユニフォームを着た。', '6クラブ以上でプレー', (c) => c.clubs >= 6],
-    ['lg3', '3リーグで得点', '欧州・1部・2部、どこでも決めた。', '3つのリーグすべてで得点', (c) => c.leaguesScored >= 3],
+    ['lg3', '3リーグで得点', 'どのリーグでも決めた。', '3つ以上のリーグで得点', (c) => c.leaguesScored >= 3],
     ['old', '40歳の現役', '40歳まで走り続けた。', '40歳まで現役', (c) => c.age >= 40],
     ['short', '太く短く', '短くても、濃い時間だった。', '30歳以下で引退し、ランクB以上', (c) => c.age <= 30 && c.score >= 2800],
     ['late', '遅咲き', '待った分だけ、大きく咲いた。', '晩成型で総合力80以上', (c) => c.grow === 'late' && c.peakOvr >= 80],
@@ -149,12 +149,164 @@
     ['patient', 'じっくり派', '一週一週を大切に生きた。', 'じっくりモードで15シーズン以上', (c) => c.mode === 'normal' && c.seasons >= 15],
     ['ace', 'エースナンバー', 'チームの顔の背番号を背負った。', 'エースの背番号（FW9・MF10・DF4・GK1）を着ける', (c) => c.nums.has(ACE[c.pos])],
     ['nums', '背番号コレクター', 'いろんな番号を背負った。', '5種類以上の背番号を着ける', (c) => c.nums.size >= 5],
+    // ----- LR（神話）：1万人に1人くらい。自動で4900人の人生を送って、どれも0〜1人だった条件 -----
+    ['god', 'サッカーの神', '手にできるものは、すべて手にした。', 'W杯優勝・欧州リーグ優勝・世界年間最優秀選手・リーグ優勝・カップ優勝・MVP・新人王をすべて獲る', (c) => c.wcWins >= 1 && c.euTitle >= 1 && c.world >= 1 && c.lgTitle >= 1 && c.cup >= 1 && c.mvp >= 1 && c.rookie >= 1],
+    ['g500', 'ゴールの化身', '500。もはや人の数字ではない。', '通算500得点', (c) => c.T.goals >= 500],
+    ['ruler', '世界を統べる者', '二度世界を制し、世界一の選手になった。', 'W杯優勝2回＋世界年間最優秀選手', (c) => c.wcWins >= 2 && c.world >= 1],
+    ['st33', '不滅の連撃', '33試合、ゴールを決め続けた。', '33試合連続ゴール', (c) => c.R.bestGoalStreak >= 33],
+    ['wall', '世界最高の壁', '世界一のチームの、世界一の守護神。', 'GKでW杯優勝・世界年間最優秀選手・通算150試合無失点', (c) => c.pos === 'GK' && c.wcWins >= 1 && c.world >= 1 && c.T.cs >= 150],
   ];
+  // ===== レア度 =====
+  // RATE：引退した選手のうち、その称号を持っている人の割合（％・目安）。自動で人生を送った600人分から数えた。
+  // 自動では出ないもの（2代目以降・縛り・引退試合など）は目安
+  const RATE = {
+    p50: 100,
+    p100: 100,
+    cap1: 100,
+    wc1: 99.8,
+    cap20: 99.5,
+    rC: 99.2,
+    wed: 98.7,
+    cm: 98.7,
+    p200: 96.5,
+    ace: 96,
+    edu: 95.2,
+    cap50: 92.5,
+    wc16: 92.5,
+    house: 91.7,
+    sns: 85,
+    eu1: 82.5,
+    rB: 81,
+    god: 0.01, g500: 0.01, ruler: 0.01, st33: 0.01, wall: 0.01,
+    kids3: 79.5,
+    rvg: 79,
+    t1: 78.2,
+    eu6: 75.2,
+    rich: 73,
+    g1: 70.8,
+    patient: 66.7,
+    nums: 62,
+    wcg: 60.8,
+    wc8: 60.3,
+    rk: 60.2,
+    cap80: 52.7,
+    b5: 52.7,
+    m1: 52.5,
+    p300: 52.2,
+    cs30: 49.8,
+    pot: 44.7,
+    h1: 38.7,
+    g50: 38.5,
+    lg3: 38.3,
+    cs60: 36.3,
+    rA: 34,
+    nomad: 33.3,
+    inj: 32.7,
+    ovr85: 32,
+    wc4: 30.5,
+    st5: 29,
+    g100: 27.3,
+    s1: 25.8,
+    ng20: 25.5,
+    b10: 24.2,
+    max4: 24.2,
+    a30: 24,
+    h5: 23.3,
+    promo: 23.2,
+    m3: 22.3,
+    rvw: 22.2,
+    cup: 22.2,
+    rvl: 19.5,
+    t3: 18.8,
+    eut: 18.8,
+    ply100: 17.7,
+    cst5: 17.5,
+    rv: 15.8,
+    g150: 15.7,
+    one: 15.3,
+    noinj: 15.2,
+    wcgk: 13.5,
+    h10: 13.5,
+    st8: 13.2,
+    s3: 13,
+    wc2: 12.3,
+    late: 12,
+    mfb: 11.2,
+    as1: 11,
+    rS: 10.2,
+    g200: 9.3,
+    a60: 9,
+    st10: 7.7,
+    s5: 6.8,
+    early: 6.3,
+    cap100: 6.2,
+    cs100: 6,
+    g250: 5.3,
+    wcw: 5.1,
+    t5: 4,
+    jt: 3.3,
+    quickS: 2.5,
+    g300: 2.2,
+    cup3: 2,
+    wb: 1.7,
+    cupL2: 1,
+    rSS: 1.2,
+    a100: 0.4,
+    cs150: 0.06,
+    cb: 0.2,
+    a150: 0.05,
+    p400: 0.3,
+    p500: 0.05,
+    wb3: 0.1,
+    l2: 0.3,
+    old: 0.4,
+    short: 1.5,
+    donor: 5,
+    cb3: 0.1,
+    gen2: 30,
+    fam3: 8,
+    fam5: 1.5,
+    fam7: 0.3,
+    lm: 50,
+    lmf: 40,
+    pot90: 3,
+    gkg: 0.3,
+    dfg: 1.5,
+    fwa: 1,
+    ch_loyal: 3,
+    ch_domestic: 3,
+    ch_weak: 1,
+    ch_lowpot: 1,
+    ch_norest: 2,
+    ch_keeper: 1,
+  };
+  // 割合の低いものほど上。[id, 名前, この割合より低ければ]
+  const RARITY = [
+    { id: 'LR', name: '神話', below: 0.05, rank: 5 },
+    { id: 'UR', name: '伝説', below: 0.5, rank: 4 },
+    { id: 'SSR', name: '激レア', below: 2, rank: 3 },
+    { id: 'SR', name: 'スーパーレア', below: 8, rank: 2 },
+    { id: 'R', name: 'レア', below: 25, rank: 1 },
+    { id: 'N', name: 'ノーマル', below: Infinity, rank: 0 },
+  ];
+  const rateOf = (id) => (RATE[id] != null ? RATE[id] : 10);
+  const rarityOf = (id) => { const r = rateOf(id); return RARITY.find((x) => r < x.below); };
+  // いちばんレアな称号（割合がいちばん低いもの。同じなら図鑑で後ろのもの）
+  function topTitle(ids) {
+    let best = null;
+    for (const id of ids || []) {
+      if (!TITLES.some((t) => t[0] === id)) continue;
+      if (!best || rateOf(id) < rateOf(best) || (rateOf(id) === rateOf(best) && TITLES.findIndex((t) => t[0] === id) > TITLES.findIndex((t) => t[0] === best))) best = id;
+    }
+    return best;
+  }
+  // レアな順に並べる
+  const byRarity = (ids) => (ids || []).slice().sort((a, b) => rateOf(a) - rateOf(b));
   function earnedTitles(s, sum) {
     const c = titleContext(s, sum);
     return TITLES.filter((t) => { try { return t[4](c); } catch { return false; } }).map((t) => t[0]);
   }
-  const titleInfo = (id) => { const t = TITLES.find((x) => x[0] === id); return t ? { id: t[0], name: t[1], desc: t[2], hint: t[3] } : null; };
+  const titleInfo = (id) => { const t = TITLES.find((x) => x[0] === id); return t ? { id: t[0], name: t[1], desc: t[2], hint: t[3], rarity: rarityOf(id), rate: rateOf(id) } : null; };
 
   // ===== 実績（端末に残る、すべての人生を通しての目標） =====
   // [id, 名前, 説明, (コレクション) => [いま, 目標]]
@@ -232,5 +384,5 @@
     return { col, newTitles: newT, newAch: newA };
   }
 
-  Object.assign(SL, { TITLES, titleInfo, earnedTitles, ACHIEVEMENTS, newCollection, addToCollection });
+  Object.assign(SL, { TITLES, RARITY, rarityOf, rateOf, topTitle, byRarity, titleInfo, earnedTitles, ACHIEVEMENTS, newCollection, addToCollection });
 })(typeof SL !== 'undefined' ? SL : require('./core.js'));

@@ -401,6 +401,41 @@
   .tcard span { display: block; font-size: .66rem; color: var(--sub); }
   .tcard.locked { background: var(--chip); border-color: var(--line); }
   .tcard.locked b { color: var(--sub); letter-spacing: .1em; }
+  /* レア度：N（灰）・R（青）・SR（紫）・SSR（金）・UR（虹） */
+  .rb { display: inline-block; font-family: var(--num); font-weight: 900; font-size: .62rem; line-height: 1; padding: 3px 6px 2px; border-radius: 6px; color: #fff; letter-spacing: .02em; vertical-align: 1px; white-space: nowrap; }
+  .rb.N { background: #9aa39d; } .rb.R { background: #2c6fd6; } .rb.SR { background: #8a3ff0; }
+  .rb.SSR { background: linear-gradient(135deg, #ffd34d, #e09400); color: #3a2600; }
+  .rb.UR { background: linear-gradient(90deg, #ff4d6d, #ffb300, #3ccf7a, #2c9bff, #a64dff, #ff4d6d); background-size: 300% 100%; animation: urFlow 3s linear infinite; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+  @keyframes urFlow { to { background-position: 300% 0; } }
+  /* LR（神話）：黒地に金の文字・虹の縁 */
+  .rb.LR { background: #111; color: #ffd76a; box-shadow: inset 0 0 0 1.5px #ffd76a; text-shadow: 0 0 6px rgba(255,215,106,.8); }
+  .tcard .rb.LR { color: #ffd76a; }
+  .tcard.LR { border-color: transparent; background: linear-gradient(#1a1626, #1a1626) padding-box, linear-gradient(90deg, #ff4d6d, #ffb300, #3ccf7a, #2c9bff, #a64dff) border-box; color: #ffe9a8; }
+  .tcard.LR span { color: #d9cfa8; }
+  .toptitle.LR { background: radial-gradient(circle at 50% 0%, #3a2d6b 0%, #120c24 70%); color: #ffe9a8; box-shadow: 0 0 0 2px #ffd76a, 0 0 24px rgba(255,215,106,.45); }
+  .toptitle.LR .nmx { background: linear-gradient(180deg, #fff6cf, #ffd34d 55%, #c98a00); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .toptitle.LR::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.35) 50%, transparent 65%); transform: translateX(-100%); animation: shine 2.2s .6s ease-in-out infinite; pointer-events: none; }
+  .tcard.SR { border-color: #8a3ff0; } .tcard.SSR { border-color: #e0a100; box-shadow: 0 0 0 2px rgba(242,179,0,.25); }
+  .tcard.UR { border-color: transparent; background: linear-gradient(var(--card, #fff7e0), var(--card, #fff7e0)) padding-box, linear-gradient(90deg, #ff4d6d, #ffb300, #3ccf7a, #2c9bff, #a64dff) border-box; }
+  .tcard.R { border-color: #2c6fd6; } .tcard.N { border-color: var(--line); background: var(--chip); }
+  .tcard .rb { display: inline-block; margin-right: 4px; font-size: .62rem; color: #fff; } .tcard .rb.SSR { color: #3a2600; }
+  /* 引退画面：いちばんレアな称号 */
+  .toptitle { position: relative; margin: 14px auto 0; max-width: 340px; border-radius: 18px; padding: 12px 14px 12px; color: #fff; overflow: hidden; text-align: center; }
+  .toptitle .lb { font-size: .68rem; font-weight: 800; letter-spacing: .14em; opacity: .9; }
+  .toptitle .nmx { font-family: var(--head); font-size: 1.5rem; line-height: 1.25; margin: 4px 0 2px; }
+  .toptitle .ds { font-size: .78rem; font-weight: 700; opacity: .92; }
+  .toptitle .rt { font-size: .72rem; font-weight: 800; margin-top: 6px; opacity: .95; }
+  .toptitle .rb { font-size: .8rem; padding: 4px 9px 3px; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .toptitle.N { background: linear-gradient(135deg, #7d877f, #5b645d); }
+  .toptitle.R { background: linear-gradient(135deg, #3c7fe6, #1d4fa8); }
+  .toptitle.SR { background: linear-gradient(135deg, #9b55ff, #5d1fc2); }
+  .toptitle.SSR { background: linear-gradient(135deg, #ffcc33, #d98a00); color: #3a2600; }
+  .toptitle.UR { background: linear-gradient(120deg, #ff4d6d, #ffb300, #3ccf7a, #2c9bff, #a64dff, #ff4d6d); background-size: 300% 100%; animation: urFlow 6s linear infinite; text-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .toptitle.SSR::after, .toptitle.UR::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%); transform: translateX(-100%); animation: shine 2.8s 1s ease-in-out infinite; pointer-events: none; }
+  @keyframes shine { 60%, 100% { transform: translateX(100%); } }
+  @media (prefers-reduced-motion: reduce) { .rb.UR, .toptitle.UR, .toptitle::after { animation: none !important; } }
+  /* ランキング：名前の横の称号 */
+  .board .nm .tg { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: .68rem; font-weight: 800; color: var(--sub); vertical-align: 1px; }
   .tcard .new { display: inline-block; font-size: .6rem; background: var(--red); color: #fff; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; letter-spacing: 0; }
   @media (prefers-color-scheme: dark) { .tcard { background: #2c2610; } .tcard.locked { background: var(--chip); } }
   .achrow { padding: 8px 0; border-bottom: 1px dashed var(--line); }
@@ -1017,12 +1052,13 @@ function saveCol(c) { store.set('collection', JSON.stringify(c)); }
 let colTab = 'titles';
 function renderCol() {
   const col = loadCol(), nT = Object.keys(col.titles).length, nA = Object.keys(col.ach).length;
+  const tierCount = SL.RARITY.map((r) => { const all = SL.TITLES.filter((t) => SL.rarityOf(t[0]).id === r.id); return `<span><span class="rb ${r.id}">${r.id}</span> ${all.filter((t) => col.titles[t[0]]).length}/${all.length}</span>`; }).join(' ');
   $('colStats').innerHTML = `<div>称号<b>${nT}/${SL.TITLES.length}</b></div><div>実績<b>${nA}/${SL.ACHIEVEMENTS.length}</b></div><div>引退した選手<b>${col.stats.careers}</b></div><div>最高ランク<b>${col.stats.bestLetter || '-'}</b></div>`;
   document.querySelectorAll('#colTabs button').forEach((b) => b.classList.toggle('on', b.dataset.c === colTab));
   if (colTab === 'titles') {
-    $('colBody').innerHTML = `<p class="sub" style="margin:0 0 8px">手に入れていない称号は「？？？」。下の小さな文字が取り方のヒント</p><div class="tgrid">${SL.TITLES.map(([id, name, desc, hint]) => {
-      const got = col.titles[id];
-      return got ? `<div class="tcard"><b>${esc(name)}</b><span>${esc(desc)}</span><span>🏃 ${esc(got.by)}</span></div>` : `<div class="tcard locked"><b>？？？</b><span>${esc(hint)}</span></div>`;
+    $('colBody').innerHTML = `<p class="sub" style="margin:0 0 6px">手に入れていない称号は「？？？」。下の小さな文字が取り方のヒント</p><p class="sub" style="margin:0 0 8px;display:flex;flex-wrap:wrap;gap:4px 10px">${tierCount}</p><div class="tgrid">${SL.byRarity(SL.TITLES.map((t) => t[0])).map((id) => {
+      const [, name, desc, hint] = SL.TITLES.find((t) => t[0] === id), got = col.titles[id], R = SL.rarityOf(id);
+      return got ? `<div class="tcard ${R.id}"><b><span class="rb ${R.id}">${R.id}</span>${esc(name)}</b><span>${esc(desc)}</span><span>🏃 ${esc(got.by)}</span></div>` : `<div class="tcard locked"><b><span class="rb ${R.id}">${R.id}</span>？？？</b><span>${esc(hint)}</span></div>`;
     }).join('')}</div>`;
   } else {
     $('colBody').innerHTML = SL.ACHIEVEMENTS.map(([id, name, desc, fn]) => {
@@ -1042,11 +1078,21 @@ async function loadBoard(el, mine, mode = 'normal', old = false, limit = mine > 
   if (!j || j.error) { el.innerHTML = '<li class="empty">ランキングを読み込めませんでした</li>'; return; }
   if (!j.top.length) { el.innerHTML = '<li class="empty">まだ誰も引退していません。一番乗りを狙え！</li>'; return; }
   const more = limit < 100 && j.total > limit;
-  el.innerHTML = j.top.map((r) => `<li${mine && r.rank === mine ? ' style="background:var(--chip)"' : ''}><span class="no">${r.rank}</span><span class="nm">${esc(r.name)}</span><span class="sc">${r.ms.toLocaleString()}</span></li>`).join('')
+  el.innerHTML = j.top.map((r) => `<li${mine && r.rank === mine ? ' style="background:var(--chip)"' : ''}><span class="no">${r.rank}</span><span class="nm">${esc(r.name)}${tagHTML(r.tag)}</span><span class="sc">${r.ms.toLocaleString()}</span></li>`).join('')
     + (more ? '<li class="more"><button class="btn small">もっと見る（100位まで）</button></li>' : '');
   if (more) el.querySelector('.more button').onclick = (e) => { e.target.disabled = true; e.target.textContent = '読み込み中…'; loadBoard(el, mine, mode, old, 100); };
 }
 
+// ランキングの名前の横：その人のいちばんレアな称号（レア度の印＋名前）
+function tagHTML(id) { const t = id && SL.titleInfo(id); return t ? `<span class="tg"><span class="rb ${t.rarity.id}">${t.rarity.id}</span>${esc(t.name)}</span>` : ''; }
+// 持っている人の割合の言い方（とてもまれなものは「◯人に1人」）
+const rateText = (r) => (r < 0.05 ? `約${Math.round(100 / r).toLocaleString()}人に1人` : r < 1 ? '1%未満' : `約${Math.round(r)}%`);
+// 引退画面の「いちばんレアな称号」
+function topTitleHTML(sm) {
+  const t = SL.titleInfo(SL.topTitle(sm.titles)); if (!t) return '';
+  const rt = rateText(t.rate);
+  return `<div class="toptitle ${t.rarity.id}"><div class="lb">いちばんレアな称号</div><div class="nmx"><span class="rb ${t.rarity.id}">${t.rarity.id}</span> ${esc(t.name)}</div><div class="ds">${esc(t.desc)}</div><div class="rt">${t.rarity.name}・持っているのは引退した選手の${rt}</div></div>`;
+}
 // タイトルのランキング：いまのルール / 旧ルール（試合の仕組みが変わる前の記録。比べられないので分けた）
 let boardOld = false;
 document.getElementById('boardTabs').addEventListener('click', (e) => {
@@ -1733,6 +1779,13 @@ async function doRetire() {
     saveCol(r.col); S.summary.colAdded = { t: r.newTitles, a: r.newAch };
   }
   save();
+  // いちばんレアな称号が激レア（SSR）以上なら、引退画面の前に演出
+  const top = SL.titleInfo(SL.topTitle(S.summary.titles));
+  if (top && top.rarity.rank >= 3 && !S.summary.rareShown) {
+    S.summary.rareShown = true; save();
+    await celebrate({ tier: top.rarity.rank >= 4 ? 'world' : 'wc', icon: top.rarity.id === 'LR' ? '👑' : top.rarity.id === 'UR' ? '🌈' : '✨', kick: `${top.rarity.id}・${top.rarity.name}の称号`, title: esc(top.name), who: esc(S.summary.name),
+      sub: `${esc(top.desc)}<br>持っているのは、引退した選手の${rateText(top.rate)}` });
+  }
   renderEnd();
   // ランキングには、名前を入れて「登録」したときに送る（名前が必須）
   renderRank();
@@ -1779,6 +1832,7 @@ function renderEnd() {
     <div style="font-weight:800;margin-top:8px">${esc(sm.name)}</div>
     <div class="tt">${esc(sm.title)}</div><div class="dd">${esc(sm.titleDesc)}</div>
     <div class="rank"><span>生涯ランク</span><b>${sm.letter}</b><span class="num">${sm.score.toLocaleString()}pt</span></div>
+    ${topTitleHTML(sm)}
     ${lm ? `<p class="sub" style="margin:10px 0 0;font-weight:700">${lm.hit ? '🎉' : '👏'} 引退試合：${esc(lm.scene)}の場面で、${esc(lm.text)}</p>` : ''}`;
   $('endStats').innerHTML = `<div>シーズン<b>${sm.years}</b></div><div>出場<b>${sm.apps}</b></div><div>ゴール<b>${sm.goals}</b></div><div>アシスト<b>${sm.assists}</b></div>
     <div>${sm.pos === 'GK' || sm.pos === 'DF' ? '無失点' : '平均評価'}<b>${sm.pos === 'GK' || sm.pos === 'DF' ? sm.cs : sm.avg.toFixed(2)}</b></div><div>代表<b>${sm.caps}</b></div><div>代表G<b>${sm.natGoals}</b></div><div>生涯年俸<b style="font-size:.85rem">${man(sm.earned)}</b></div>`;
@@ -1790,9 +1844,9 @@ function renderEnd() {
   $('endCareer').innerHTML = careerTable(S.history);
   // 手に入れた称号（NEW は初めて手に入れたもの）
   const added = sm.colAdded || { t: [], a: [] };
-  const ts = (sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean);
+  const ts = SL.byRarity(sm.titles).map((id) => SL.titleInfo(id)).filter(Boolean);
   $('endTitlesHead').innerHTML = `🎖️ 手に入れた称号 <span class="sub" style="margin-left:auto">${ts.length}個（NEW ${added.t.length}）</span>`;
-  $('endTitles').innerHTML = ts.map((t) => `<div class="tcard"><b>${esc(t.name)}${added.t.includes(t.id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(t.desc)}</span></div>`).join('');
+  $('endTitles').innerHTML = ts.map((t) => `<div class="tcard ${t.rarity.id}"><b><span class="rb ${t.rarity.id}">${t.rarity.id}</span>${esc(t.name)}${added.t.includes(t.id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(t.desc)}</span></div>`).join('');
   const na = added.a.map((id) => SL.ACHIEVEMENTS.find((a) => a[0] === id)).filter(Boolean);
   $('endNewAch').innerHTML = (sm.challenge ? `<p style="font-weight:800;margin:10px 0 0">${SL.CHALLENGES[sm.challenge.id].icon} 縛り「${esc(sm.challenge.name)}」：${sm.challenge.cleared ? '🎉 達成！' : '未達成…'}</p>` : '')
     + (na.length ? `<p style="font-weight:800;margin:10px 0 4px">🏅 実績を解除！</p><ul class="ach">${na.map((a) => `<li class="gold">${esc(a[1])}</li>`).join('')}</ul>` : '');
@@ -1821,7 +1875,7 @@ async function submitName() {
     const name = $('rankName').value.trim();
     if (!name) { $('rankNameMsg').textContent = '名前を入れてください'; return; }
     $('rankNameBtn').disabled = true;
-    const j = await api('/score', 'POST', { game: boardGame(sm.mode), ms: sm.score, name });
+    const j = await api('/score', 'POST', { game: boardGame(sm.mode), ms: sm.score, name, tag: SL.topTitle(sm.titles) || undefined });
     $('rankNameBtn').disabled = false;
     if (!j || j.error) { $('rankNameMsg').textContent = j && j.error === 'bad_name' ? 'その名前は使えません' : '登録できませんでした。通信を確かめてもう一度'; return; }
     sm.sent = true; sm.named = true; sm.rankInfo = j; save();
@@ -1841,7 +1895,8 @@ function share() {
   const posName = SL.POS[sm.pos].name;
   const big = sm.pos === 'GK' || sm.pos === 'DF' ? `無失点${sm.cs}試合` : `${sm.goals}ゴール${sm.assists}アシスト`;
   const extra = [sm.challenge && sm.challenge.cleared ? `縛り「${sm.challenge.name}」達成🎯` : '', sm.titles ? `称号${sm.titles.length}個` : '', sm.wc.some((w) => w.reached === '優勝') ? 'W杯優勝🏆' : '', sm.family.combo ? '親子弾👨‍👧' : '', sm.lastMatch?.hit ? '引退試合で有終の美🎉' : ''].filter(Boolean).join('｜');
-  const text = `⚽ サッカー人生を終えました${sm.mode === 'quick' ? '（60秒モード）' : ''}\n${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${posName}）${sm.retireAge}歳で引退\n称号「${sm.title}」ランク${sm.letter}\n${sm.years}年・${sm.apps}試合・${big}｜代表${sm.caps}試合${extra ? `\n${extra}` : ''}${sm.rankInfo ? `\n全国${sm.rankInfo.rank}位` : ''}\n\nあなたはどんな選手人生を送る？`;
+  const tt = SL.titleInfo(SL.topTitle(sm.titles));
+  const text = `⚽ サッカー人生を終えました${sm.mode === 'quick' ? '（60秒モード）' : ''}\n${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${posName}）${sm.retireAge}歳で引退\n称号「${sm.title}」ランク${sm.letter}\n${tt ? `${tt.rarity.rank >= 3 ? '🌈' : '🎖️'}いちばんレアな称号【${tt.rarity.id}】${tt.name}（引退した選手の${rateText(tt.rate)}）\n` : ''}${sm.years}年・${sm.apps}試合・${big}｜代表${sm.caps}試合${extra ? `\n${extra}` : ''}${sm.rankInfo ? `\n全国${sm.rankInfo.rank}位` : ''}\n\nあなたはどんな選手人生を送る？`;
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);
   u.searchParams.set('url', location.origin + location.pathname);
@@ -2034,7 +2089,7 @@ async function quickLife(policy) {
 async function cardImage() {
   const sm = S.summary;
   const G = '"Dela Gothic One", sans-serif', M = '"M PLUS Rounded 1c", sans-serif', N = '"Outfit", sans-serif';
-  const txt = sm.name + sm.title + SL.POS[sm.pos].name + '代目歳で現役引退出場ゴールアシスト無失点代表タイトルサッカー人生0123456789-｜・pt' + SITE;
+  const txt = sm.name + sm.title + SL.POS[sm.pos].name + '代目歳で現役引退出場ゴールアシスト無失点代表タイトルサッカー人生0123456789-｜・pt【】URSN' + ((SL.titleInfo(SL.topTitle(sm.titles)) || {}).name || '') + SITE;
   await Promise.all([document.fonts.load(`60px ${G}`, txt), document.fonts.load(`800 40px ${M}`, txt), document.fonts.load(`800 40px ${N}`, txt)]);
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
@@ -2051,9 +2106,20 @@ async function cardImage() {
   g.fillText(sm.title, W / 2, 520);
   g.fillStyle = '#e0a100'; g.font = `800 200px ${N}`; g.fillText(sm.letter, W / 2, 740);
   g.fillStyle = '#67786b'; g.font = `800 40px ${N}`; g.fillText(`${sm.score.toLocaleString()} pt`, W / 2, 800);
+  const tt = SL.titleInfo(SL.topTitle(sm.titles));
+  if (tt) { // いちばんレアな称号の帯
+    const BG = { N: ['#7d877f', '#5b645d'], R: ['#3c7fe6', '#1d4fa8'], SR: ['#9b55ff', '#5d1fc2'], SSR: ['#ffcc33', '#d98a00'], LR: ['#2a1f52', '#0e0a1c'] }[tt.rarity.id];
+    const gr = g.createLinearGradient(150, 0, W - 150, 0);
+    if (BG) { gr.addColorStop(0, BG[0]); gr.addColorStop(1, BG[1]); } else ['#ff4d6d', '#ffb300', '#3ccf7a', '#2c9bff', '#a64dff'].forEach((c, i) => gr.addColorStop(i / 4, c));
+    g.fillStyle = gr; g.beginPath(); g.roundRect(150, 830, W - 300, 92, 46); g.fill();
+    const dark = tt.rarity.id === 'SSR' ? '#3a2600' : tt.rarity.id === 'LR' ? '#ffd76a' : '#ffffff';
+    g.fillStyle = dark; let ts = 46; const line = `【${tt.rarity.id}】${tt.name}`; g.font = `${ts}px ${G}`; while (g.measureText(line).width > W - 380) { ts -= 3; g.font = `${ts}px ${G}`; }
+    g.fillText(line, W / 2, 893);
+  }
+  const CY = tt ? 990 : 900; // 称号の帯があるときは、成績の箱を下げる
   const cells = [['出場', sm.apps], ['ゴール', sm.goals], ['アシスト', sm.assists], [sm.pos === 'GK' || sm.pos === 'DF' ? '無失点' : '代表G', sm.pos === 'GK' || sm.pos === 'DF' ? sm.cs : sm.natGoals], ['代表', sm.caps], ['タイトル', sm.trophies.length + sm.awards.length]];
   cells.forEach(([k, v], i) => {
-    const x = 220 + (i % 3) * 320, y = 900 + Math.floor(i / 3) * 170;
+    const x = 220 + (i % 3) * 320, y = CY + Math.floor(i / 3) * (tt ? 150 : 170);
     g.fillStyle = '#f1f7ee'; g.beginPath(); g.roundRect(x - 140, y - 60, 280, 140, 28); g.fill();
     g.fillStyle = '#67786b'; g.font = `800 30px ${M}`; g.fillText(k, x, y - 14);
     g.fillStyle = '#1d2a21'; g.font = `800 64px ${N}`; g.fillText(String(v), x, y + 56);

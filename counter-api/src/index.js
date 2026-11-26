@@ -28,8 +28,9 @@ const GAMES = {
   soccerq: { min: 1, max: 100000, desc: true, anon: '名無しの選手' }, // サッカー人生・60秒モード（おまかせ）は別ランキング
   // 試合の仕組みを新しくした（2026年11月）ので、生涯スコアは新しいランキングに。上の2つは旧ルールの記録として残す
   // needName：名前を付けた記録だけをランキングに出す（記録を送るときに名前が必須。名無しの記録は数えない）
-  soccer2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true },
-  soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true },
+  // tags：名前の横に出す印（サッカー人生は、いちばんレアな称号のID）。中身は画面が決める
+  soccer2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true, tags: true },
+  soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true, tags: true },
   onigiri: { min: 1, max: 100000, desc: true, anon: '名無しの職人' }, // おにぎり握り職人の査定額（円）。大きいほど上位
 };
 const TOP_N = 10;      // ランキングの表示数（省略したとき）
@@ -118,8 +119,9 @@ async function histAdd(env, game, ms) {
 }
 // ランキングの上位 n 件
 async function boardTop(env, game, n) {
-  const rows = await env.DB.prepare(`SELECT name, ms FROM scores WHERE game = ?${namedSql(game)} ORDER BY ms ${gameRule(game).desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, n).all();
-  return rows.results.map((r, i) => ({ rank: i + 1, name: r.name || gameRule(game).anon || DEFAULT_NAME, ms: r.ms }));
+  const g = gameRule(game);
+  const rows = await env.DB.prepare(`SELECT name, ms${g.tags ? ', tag' : ''} FROM scores WHERE game = ?${namedSql(game)} ORDER BY ms ${g.desc ? 'DESC' : 'ASC'}, id ASC LIMIT ?`).bind(game, n).all();
+  return rows.results.map((r, i) => ({ rank: i + 1, name: r.name || g.anon || DEFAULT_NAME, ms: r.ms, ...(r.tag ? { tag: r.tag } : {}) }));
 }
 async function rankOf(env, game, ms, id) {
   // 同タイムは先に出した人が上。desc のゲームは大きいほど上位
@@ -172,8 +174,9 @@ async function handle(req, env) {
       let name = null;
       if (needName(b.game)) { name = cleanName(b.name); if (!name) return json(req, { error: 'bad_name' }, 400); }
       const token = crypto.randomUUID();
-      const row = await env.DB.prepare('INSERT INTO scores (game, ms, token, created, name) VALUES (?, ?, ?, ?, ?) RETURNING id')
-        .bind(b.game, ms, token, Date.now(), name).first();
+      const tag = g.tags && typeof b.tag === 'string' && /^[a-z0-9_]{1,16}$/i.test(b.tag) ? b.tag : null; // 英数字の短いIDだけ（文字は画面が決める）
+      const row = await env.DB.prepare('INSERT INTO scores (game, ms, token, created, name, tag) VALUES (?, ?, ?, ?, ?, ?) RETURNING id')
+        .bind(b.game, ms, token, Date.now(), name, tag).first();
       await histAdd(env, b.game, ms);
       const rank = await rankOf(env, b.game, ms, row.id);
       const total = await bumpTotal(env, b.game);

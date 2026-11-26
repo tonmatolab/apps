@@ -432,6 +432,14 @@ export class League extends DurableObject {
         m.training = body.k; this.saveMember(m); return json({ ok: true });
       }
       // オフに移籍を希望する（1回だけ・人気-1）
+      // 冬の移籍期間のオファー：{ choice: 番号 | 'stay' }
+      if (req.method === 'POST' && path === '/winter') {
+        if (m.status !== 'active' || !m.winter) return err('not_now');
+        if (body.choice === 'stay') { m.winter = null; this.saveMember(m); return json(this.stateView(m)); }
+        const e = G.winterMove(m, this.w, Number(body.choice), [...this.members.values()]); if (e) return err(e);
+        this.atomic(() => { this.saveMember(m); this.saveWorld(); });
+        return json(this.stateView(m));
+      }
       if (req.method === 'POST' && path === '/request') {
         const e = G.requestTransfer(m, this.w, [...this.members.values()]); if (e) return err(e);
         this.saveMember(m); return json(this.stateView(m));
@@ -596,7 +604,7 @@ export class League extends DurableObject {
         grow: p.growKnown ? p.grow : null, gtype: p.growKnown ? p.gtype : null, best: Math.max(p.best || 0, G.ovr(p)), cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
-        caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, lineage: m.lineage, log: m.log.slice(-12),
+        caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, winter: m.winter && m.status === 'active' ? { ...m.winter, closeAt: w.nextAt + Math.max(0, G.SL.WINTER.close - 1 - w.week) * this.tickMs() } : null, lineage: m.lineage, log: m.log.slice(-12),
         potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0,
         perks: { trainer: p.trainMul > 1, clinic: !!p.clinic, camp: !!p.camp, house: !!p.house, edu: p.edu || 0 },
       },

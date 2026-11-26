@@ -345,7 +345,29 @@ export function playMatchday(w, members, npcs = [], npcSeason = null) {
   }
   w.week++;
   w.last = { year: w.year, week: w.week, at: Date.now(), results, cup: cupRes };
+  // 冬の移籍期間：第7節が終わったらオファーが届き、第10節が終わるまで選べる（選ばなければ残留）
+  if (w.week === SL.WINTER.open) {
+    let n = 0;
+    for (const m of active) {
+      const wo = SL.winterOffers(adapter(m, w), { full: (x) => clubFull(members, x.id, m.pl.pos, m) });
+      m.winter = wo ? { ...wo, list: wo.list.map((o) => capSalary(w, o)) } : null;
+      if (wo) n++;
+    }
+    addNews(w, `❄️ 冬の移籍期間が始まった（第${SL.WINTER.close}節まで）。${n}人にシーズン途中のオファーが届いた`);
+  }
+  if (w.week >= SL.WINTER.close) for (const m of members) if (m.winter) m.winter = null;
   return store;
+}
+// 冬のオファーを受ける（i：何番目か）。満員なら 'club_full'
+export function winterMove(m, w, i, members = []) {
+  const o = m.winter && m.winter.list[i];
+  if (!o) return 'bad_choice';
+  if (clubFull(members, o.club, m.pl.pos, m)) return 'club_full';
+  const from = w.clubs[m.pl.club];
+  SL.accept(adapter(m, w), o);
+  addNews(w, `❄️ ${m.pl.name}が冬の移籍で${w.clubs[o.club].name}へ（${from.name}から）`);
+  m.winter = null;
+  return null;
 }
 
 // ----- シーズン終了 -----

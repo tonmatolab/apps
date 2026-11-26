@@ -439,6 +439,9 @@
   .tcard .cond { color: var(--green); font-weight: 800; margin-top: 2px; }
   .tcard.LR .cond { color: #ffd76a; }
   .toptitle .cd { font-size: .78rem; font-weight: 800; margin-top: 4px; }
+  .winterbar { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 12px 14px; border-radius: 18px; background: linear-gradient(135deg, #e8f4ff, #cfe6ff); border: 2px solid #8cc2ff; cursor: pointer; font-weight: 800; color: #12406e; }
+  .winterbar .ic { font-size: 1.6rem; } .winterbar small { display: block; font-weight: 700; opacity: .8; }
+  @media (prefers-color-scheme: dark) { .winterbar { background: linear-gradient(135deg, #12304d, #0d2236); border-color: #2c6fb0; color: #cfe6ff; } }
   .tcard .new { display: inline-block; font-size: .6rem; background: var(--red); color: #fff; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; letter-spacing: 0; }
   @media (prefers-color-scheme: dark) { .tcard { background: #2c2610; } .tcard.locked { background: var(--chip); } }
   .achrow { padding: 8px 0; border-bottom: 1px dashed var(--line); }
@@ -665,6 +668,7 @@
   <!-- ===== ゲーム ===== -->
   <section id="scrGame" class="hidden">
     <div class="card pc" id="pCard"></div>
+    <div id="winterBar"></div>
     <div class="card">
       <h2 id="statHead">📊 能力</h2>
       <div class="statwrap"><div id="radar"></div><ul class="stl" id="statList"></ul></div>
@@ -1247,7 +1251,33 @@ function renderDraft() {
 // ===== メイン画面 =====
 let tab = 'table';
 let lastGrowth = {};
+// 冬の移籍期間（第8〜10節）のオファー。first：届いたとき
+async function winterSheet(first = false) {
+  const W = S.winter; if (!W) return;
+  const c = SL.clubOf(S);
+  W.list.forEach((o, i) => { o._i = i; });
+  const cards = W.list.map((o) => offerCard(o, SL.isEU(S.clubs[o.club].lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('');
+  const why = W.kind === 'bench' ? '出番の少ないあなたに、試合に出られるクラブから声がかかった。' : '前半戦の活躍が、上のクラブの目にとまった。';
+  const ans = await sheet(`<div class="kick">❄️ ${S.year}年・冬の移籍期間（第${SL.WINTER.close}節まで）</div><h3>シーズン途中のオファー</h3>
+    <p class="note">${why}<br>受けると、次の節から新しいクラブで試合に出る。</p>
+    <div class="stack" style="margin-top:12px">${cards}</div><p class="sub" style="text-align:center;margin:8px 0 0">タップで移籍する</p>`,
+    [{ label: `${esc(c.city)}に残る`, cls: 'primary', act: 'stay' }, { label: `あとで決める（第${SL.WINTER.close}節まで）`, cls: 'ghost', act: 'later' }]);
+  if (typeof ans === 'string') {
+    const o = W.list[+ans.slice(1)], to = S.clubs[o.club];
+    SL.acceptWinter(S, +ans.slice(1)); save();
+    toast(`❄️ ${to.name}へ移籍した！`);
+  } else if (ans === 0) { SL.declineWinter(S); save(); toast(`${c.city}に残ることにした`); }
+  renderGame();
+}
+function renderWinterBar() {
+  const el = $('winterBar'); if (!el) return;
+  if (!S.winter || S.phase !== 'season') { el.innerHTML = ''; return; }
+  const left = SL.WINTER.close - S.week;
+  el.innerHTML = `<div class="winterbar" id="winterOpen"><span class="ic">❄️</span><span>冬の移籍のオファーが${S.winter.list.length}件<small>第${SL.WINTER.close}節が終わるまで（あと${left}節）。タップで見る</small></span></div>`;
+  $('winterOpen').onclick = () => { if (!busy) winterSheet(); };
+}
 function renderGame() {
+  renderWinterBar();
   const p = S.p, c = SL.clubOf(S), L = SL.LEAGUES[c.lg], o = SL.ovr(p);
   const dep = SL.depthOf(S.npcs || [], c.id, { pos: p.pos, ovr: o }, S.childPro && S.childPro.club === c.id ? [{ pos: S.childPro.pos, ovr: S.childPro.ovr }] : []);
   const ol = SL.growthOutlook(p);
@@ -1623,6 +1653,8 @@ async function nextWeek() {
     lastGrowth = w.growth;
     await sheet(matchHTML(w), [{ label: '次へ', cls: 'primary' }]);
     if (w.event) await doEvent(w.event);
+    if (w.winter) await winterSheet(true);
+    if (w.winterClosed) toast('❄️ 冬の移籍期間が終わった');
     await showNewPapers();
     renderGame();
     if (S.phase === 'seasonEnd') await offseason();
@@ -1672,6 +1704,7 @@ async function autoSeason() {
     let acc = [];
     while (S.phase === 'season') {
       const w = SL.playWeek(S); acc.push(w);
+      if (w.winter) { save(); await sheet(digestHTML(acc), [{ label: '次へ', cls: 'primary' }]); acc = []; await winterSheet(true); }
       if (w.event) {
         const e = SL.eventById(w.event);
         if (!e.choices) { w.evText = e.text; w.evResult = SL.resolveEvent(S, w.event, 0); }

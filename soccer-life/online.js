@@ -264,9 +264,26 @@
     const me = ST.me, w = ST.world, el = $('statusPanel');
     if (me.status === 'active') {
       const main = SL.mainStats(me.pos);
-      el.innerHTML = `<div class="card"><h2>🏋️ 練習メニュー <span class="sub" style="margin-left:auto">毎節の前に反映</span></h2><div class="trains">${Object.entries(SL.TRAINING).filter(([k, t]) => !t.gkOnly || me.pos === 'GK')
+      // 冬の移籍期間（第8〜10節）のオファー
+      const W = me.winter;
+      const winterCard = W ? `<div class="card panel"><h2>❄️ 冬の移籍のオファー</h2>
+        <p style="margin:0;font-weight:700">${W.kind === 'bench' ? '出番の少ないあなたに、試合に出られるクラブから声がかかった。' : '前半戦の活躍が、上のクラブの目にとまった。'}</p>
+        <p class="sub" style="margin:4px 0 0">⏰ ${new Date(W.closeAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}ごろ（第${SL.WINTER.close}節が終わるまで）。選ばなければ今のクラブに残ります</p>
+        <div class="stack" style="margin-top:10px" id="ol-winterList">${W.list.map((x, i) => offerCard(x, i, SL.isEU(club(x.club).lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('')}</div>
+        <button class="btn" id="ol-winterStay" style="margin-top:8px">${esc(club(me.club).city)}に残る</button></div>` : '';
+      el.innerHTML = winterCard + `<div class="card"><h2>🏋️ 練習メニュー <span class="sub" style="margin-left:auto">毎節の前に反映</span></h2><div class="trains">${Object.entries(SL.TRAINING).filter(([k, t]) => !t.gkOnly || me.pos === 'GK')
         .map(([k, t]) => `<button class="tr${me.training === k ? ' on' : ''}" data-k="${k}"><i>${t.icon}</i>${t.name}${t.stats && t.stats.length === 1 && main.includes(t.stats[0]) ? '<br><span class="sub" style="font-size:.6rem">得意</span>' : ''}</button>`).join('')}</div>
         <p class="sub" style="margin:8px 0 0">${me.injury ? '🚑 ケガの間はリハビリになります' : SL.TRAINING[me.training].desc || ''}</p></div>`;
+      if (W) {
+        const go = async (choice) => {
+          if (choice !== 'stay' && !confirm(`${club(W.list[choice].club).name}へ移籍しますか？`)) return;
+          const j = await api('/winter', { choice });
+          if (j.error) return toast(errMsg(j.error));
+          setState(j); renderHome(); toast(choice === 'stay' ? '今のクラブに残ることにした' : '❄️ 移籍した！次の節から新しいクラブで出場');
+        };
+        el.querySelectorAll('#ol-winterList .offer').forEach((b) => b.onclick = () => go(+b.dataset.i));
+        $('winterStay').onclick = () => go('stay');
+      }
       el.querySelectorAll('.tr').forEach((b) => b.onclick = async () => {
         const k = b.dataset.k; const j = await api('/training', { k });
         if (j.error) return toast(errMsg(j.error));

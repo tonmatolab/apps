@@ -682,6 +682,9 @@ const SL = (() => {
     out.ovrDiff = ovr(p) - o0;
 
     s.week++;
+    // --- 冬の移籍期間（第8〜10節）---
+    if (s.week === WINTER.open && s.winterDone !== s.year) { s.winterDone = s.year; const wo = winterOffers(s); if (wo) { s.winter = wo; out.winter = true; } }
+    if (s.week >= WINTER.close && s.winter) { s.winter = null; out.winterClosed = true; }
     // --- 出来事 ---
     out.event = rollEvent(s);
     if (s.week >= SEASON_WEEKS) s.phase = 'seasonEnd';
@@ -1171,6 +1174,54 @@ const SL = (() => {
     }
   }
 
+  // ===== 冬の移籍期間 =====
+  // 第7節が終わったところでオファーが届き、第8〜10節のあいだ（第10節が終わるまで）受けられる。1シーズンに1回、条件に合う人にだけ
+  //   控えで出番が少ない人 → 試合に出られるクラブから / 前半戦で活躍した人 → 上のリーグ・欧州から
+  const WINTER = { open: 7, close: 10 };
+  function winterOffers(s, opt = {}) {
+    if (s.challenge === 'loyal' || (s.challenge === 'weak' && !s.challengeDone)) return null;
+    const p = s.p, S = s.season, c = clubOf(s), o = ovr(p), r = avg(S.ratings || []);
+    const bench = S.starts <= 2 && p.age <= 33;
+    const star = S.apps >= 5 && (r >= 7.2 || S.goals >= 6 || (p.pos !== 'FW' && S.goals + S.assists >= 6));
+    if (!bench && !star) return null;
+    if (!opt.always && !chance(bench ? .6 : .5)) return null;
+    const lv = (x) => LG_LEVEL[x.lg];
+    let fits = s.clubs.filter((x) => {
+      if (x.id === c.id || (opt.full && opt.full(x))) return false;
+      if (s.challenge === 'domestic' && isEU(x.lg)) return false;
+      if (bench) return x.str <= c.str && startChance(p, x) >= .5 && (lv(x) >= lv(c) - 1); // 試合に出られて、下がりすぎないクラブ
+      if (x.lg === 0 && !(o >= x.str - 10 && p.fame >= 25 && p.age <= 31)) return false;
+      if (x.lg === 5 && !(o >= x.str - 8 && p.fame >= 15 && p.age <= 31)) return false;
+      if (x.lg === 6 && !(o >= x.str - 7 && p.fame >= 8 && p.age <= 32)) return false;
+      return (lv(x) > lv(c) || x.str >= c.str + 4) && o >= x.str - 8;
+    }).sort(() => rnd() - .5);
+    if (star) fits.sort((a, b) => lv(b) - lv(a));
+    fits = fits.slice(0, ri(1, 2));
+    if (!fits.length) return null;
+    const list = fits.map((x) => ({ club: x.id, salary: Math.round(wageFor(x, o, p.fame) * (.95 + rnd() * .2) / 10) * 10, years: p.age >= 32 ? 1 : ri(2, 3), fee: transferFee(p, c, p.contract), winter: true }));
+    return { year: s.year, kind: bench ? 'bench' : 'star', list };
+  }
+  // 冬のオファーを受ける（i：何番目か）。受けたら移籍して、オファーは消える
+  function acceptWinter(s, i) {
+    const o = s.winter && s.winter.list[i];
+    if (!o) return false;
+    const from = clubOf(s);
+    accept(s, o);
+    addLog(s, 'winter', `${s.year}年の冬、シーズンの途中で${from.name}から${s.clubs[o.club].name}へ移籍。`);
+    s.winter = null;
+    return true;
+  }
+  const declineWinter = (s) => { s.winter = null; };
+  // 自動で進めるときの冬の移籍：方針に合って、今より明らかに良ければ受ける
+  function autoWinter(s, policy) {
+    if (!s.winter) return null;
+    const c = clubOf(s), best = pickOffer(s, s.winter.list, policy);
+    const x = best && s.clubs[best.club];
+    const better = x && (policy === 'challenge' ? x.str >= c.str + 3 && startChance(s.p, x) >= .3 : policy === 'money' ? best.salary >= s.p.salary * 1.3 : startChance(s.p, x) >= startChance(s.p, c) + .25);
+    if (better) { acceptWinter(s, s.winter.list.indexOf(best)); return best; }
+    declineWinter(s); return null;
+  }
+
   const mustRetire = (s, off) => s.p.age >= 40 || (off.released && !off.transfers.length);
   const canRetire = (s) => s.p.age >= 30;
 
@@ -1329,6 +1380,7 @@ const SL = (() => {
     while (s.phase === 'season') {
       s.training = autoTrain(s);
       const w = playWeek(s);
+      if (w.winter) { const t = autoWinter(s, policy); if (t) out.events.push(`❄️ 冬の移籍：${s.clubs[t.club].name}へ`); }
       if (w.event) {
         const e = eventById(w.event);
         const ci = e.choices ? (e.id === 'cm' && policy === 'money' ? 0 : e.id === 'date' || e.id === 'marry' ? 0 : chance(.6) ? 0 : 1) : 0;
@@ -1362,7 +1414,7 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, MOVES, tableOrder, startChanceOvr, chanceLabel, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, isEU, LEAGUE_ORDER, LG_LEVEL, LEAGUE_CHAINS, upperLg, lowerLg, isEuShort, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, MOVES, tableOrder, startChanceOvr, chanceLabel, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, WINTER, winterOffers, acceptWinter, declineWinter, autoWinter, LEAGUES, isEU, LEAGUE_ORDER, LG_LEVEL, LEAGUE_CHAINS, upperLg, lowerLg, isEuShort, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, prepareWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, requestTransfer, transferFee, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,

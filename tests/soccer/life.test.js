@@ -24,7 +24,7 @@ while (seasons < 32) {
 }
 const n = s.npcs;
 check(seasons >= 30, `${seasons}シーズン回した（世代をまたいで同じ世界）`);
-check(n.length === 1100, `NPCは1100人のまま（${n.length}）`);
+check(n.length === 1540, `NPCは1540人のまま（${n.length}）`);
 check(new Set(n.map((p) => p.id)).size === n.length && new Set(n.map((p) => p.name)).size === n.length, 'IDと名前が重複しない');
 let quotaOk = true, numOk = true, strOk = true;
 const gaps = [];

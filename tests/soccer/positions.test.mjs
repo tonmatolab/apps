@@ -6,7 +6,7 @@ let failures = 0;
 const check = (c, m) => { if (!c) { failures++; console.log('  ✗ ' + m); } else if (process.env.VERBOSE) console.log('  ✓ ' + m); };
 
 const w = G.newWorldState();
-const dom = w.clubs.filter((c) => c.lg > 0);
+const dom = w.clubs.filter((c) => !G.SL.isEU(c.lg)); // 新人が入れる国内のクラブ
 let n = 0;
 const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '選手' + n++, pos); m.pl.club = club; m.status = 'active'; members.push(m); return m; };
 

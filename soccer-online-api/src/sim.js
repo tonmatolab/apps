@@ -45,12 +45,12 @@ export const OFF_TICKS = 6; // オフシーズンの長さ（節の何回分か�
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
 // 国内のクラブは14人まで（国内の枠が足りなくなったので12人から増やした）。欧州は12人のまま
 export const CLUB_CAP = 14, CLUB_CAP_EU = 12, GK_CAP = 3, FW_CAP = 4;
-export const capOf = (clubId) => ((CLUB_SEED[clubId] || {}).lg === 0 ? CLUB_CAP_EU : CLUB_CAP); // 欧州のクラブは入れかわらない（昇格・降格なし）ので、最初のリーグで決まる // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
+export const capOf = (clubId) => (SL.isEU((CLUB_SEED[clubId] || {}).lg) ? CLUB_CAP_EU : CLUB_CAP); // 欧州と国内のあいだは入れかわらない（昇格・降格は欧州の中・国内の中だけ）ので、最初のリーグで決まる // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
 export const POS_CAP = { GK: GK_CAP, FW: FW_CAP };
 const XI = { GK: 1, DF: 4, MF: 4, FW: 2 }; // 先発の枠（4-4-2）
 export const POP_BONUS = 6; // 「狙い目」のポジションで始めたときの才能のボーナス
 // 年俸の上限（万円）。リーグごと
-export const SALARY_CAP = { 0: 30000, 1: 8000, 2: 2000, 3: 1000, 4: 600 };
+export const SALARY_CAP = { 0: 30000, 1: 8000, 2: 2000, 3: 1000, 4: 600, 5: 15000, 6: 9000 };
 // ルーレットの台：全員共通で一定時間ごとに1回まわる（間隔は wrangler.toml の RL_MINUTES）
 export function newTable(now, ms) { return { round: 0, nextAt: now + ms, hist: [], last: null }; }
 
@@ -81,7 +81,7 @@ export function addNews(w, t) {
 // ----- データの版管理 -----
 // データの形を変えるときは VERSION を上げて、MIGRATIONS[古い版] に「1つ新しい版へ直す」関数を足す。
 // 移行は起動のたびに読み込んだデータに対して行い、次に保存するときに新しい形で書かれる。
-export const WORLD_VERSION = 3;
+export const WORLD_VERSION = 4;
 const WORLD_MIGRATIONS = {
   // v1→v2：クラブ名・略称・特徴を ID ごとに付け直す（今の所属リーグと強さはそのまま。経歴のクラブ名は当時のまま）
   1: (w) => { SL._.applyClubData(w.clubs); },
@@ -89,6 +89,11 @@ const WORLD_MIGRATIONS = {
   2: (w) => {
     const added = SL.extendClubs(w);
     if (added.length) addNews(w, `🆕 国内3部・4部ができた！ ${added.length}クラブが加わり、新しい選手が入れるようになった`);
+  },
+  // v3→v4：欧州2部・3部（20クラブ）を足す。シーズン中なら、今の節から残りの日程を戦う（このシーズンは昇格・降格なし）
+  3: (w) => {
+    const added = SL.extendClubs(w);
+    if (added.length) addNews(w, `🆕 欧州2部・3部ができた！ ${added.length}クラブが加わり、欧州へ挑戦しやすくなった`);
   },
 };
 // NPC選手を作るときのシード（オンラインの世界は1つなので固定）。名簿は rosters 表にクラブごとに保存する
@@ -130,7 +135,7 @@ export function clubFull(members, clubId, pos, except = null) {
 // ポジションごとの空きと混み具合（新人が入れる国内のクラブで数える）
 //   open：あと何人入れるか / crowd：本物のプレイヤーの数 ÷ 先発の枠の数 / label：激戦・ふつう・狙い目 / bonus：狙い目なら才能のボーナス
 export function positionInfo(w, members) {
-  const dom = w.clubs.filter((c) => c.lg > 0), out = {};
+  const dom = w.clubs.filter((c) => !SL.isEU(c.lg)), out = {};
   for (const pos of ['GK', 'DF', 'MF', 'FW']) {
     let open = 0, humans = 0;
     for (const c of dom) {
@@ -194,7 +199,7 @@ export function draftOffers(m, w, members = []) {
   }).filter(Boolean);
   if (!out.length) { // オファーのリーグがどれも満員：空きのある国内のクラブから2つまで
     const o = SL.ovr(m.pl);
-    for (const c of w.clubs.filter((x) => x.lg > 0 && !clubFull(members, x.id, m.pl.pos)).sort((a, b) => a.str - b.str).slice(0, 2)) { // 弱いクラブから
+    for (const c of w.clubs.filter((x) => !SL.isEU(x.lg) && !clubFull(members, x.id, m.pl.pos)).sort((a, b) => a.str - b.str).slice(0, 2)) { // 弱いクラブから
       out.push(capSalary(w, { club: c.id, salary: SL._.wageFor(c, o, m.pl.fame), years: 3, rookie: true }));
     }
   }
@@ -271,7 +276,7 @@ function clubMatch(w, h, a, byClub, npcs, npcSeason, cup = false) {
         S.ratings.push(r.rating);
         if (r.role === 'start') p.fatigue = clamp(p.fatigue + 10, 0, 100);
         if (chance(.012 + (p.fatigue > 70 ? .03 : 0))) { p.injury = Math.max(p.injury, ri(1, 5)); m.note = '試合中に接触プレーで負傷'; }
-        p.fame = clamp(p.fame + r.goals * .6 + r.assists * .3 + (r.rating >= 8 ? 1 : 0) + (side.c.lg === 0 ? .2 : 0), 0, 100);
+        p.fame = clamp(p.fame + r.goals * .6 + r.assists * .3 + (r.rating >= 8 ? 1 : 0) + (side.c.lg === 0 ? .2 : SL.isEU(side.c.lg) ? .1 : 0), 0, 100);
         if (!cup) r.pay = SL.matchPay(p, r.mins, r.goals);
         if (!cup && r.goals >= 2) addNews(w, `⚽ ${p.name}が${other.city}戦で${r.goals >= 3 ? 'ハットトリック！' : '2ゴール'}（${side.c.name}）`);
         if (!cup && m.totals.apps + S.apps === 1) m.log.push({ y: w.year, age: p.age, k: 'debut', t: `${w.year}年、第${w.week + 1}節の${other.name}戦でプロデビュー。` });
@@ -404,7 +409,7 @@ export function endSeason(w, members, npcs = [], npcSeason = null) {
 
   // 代表（W杯は全員で同じ大会にしたいので、最小構成ではまだやらない）
   for (const m of active) {
-    const o = ovr(m.pl), line = 70 - (w.clubs[m.pl.club].lg === 0 ? 3 : 0);
+    const lgN = w.clubs[m.pl.club].lg, o = ovr(m.pl), line = 70 - (lgN === 0 ? 3 : SL.isEU(lgN) ? 2 : 0);
     if (o >= line || (o >= line - 3 && chance(.4))) {
       if (!m.caps) m.log.push({ y: w.year, age: m.pl.age, k: 'nat', t: `${w.year}年、${m.pl.age}歳で日本代表に初選出。` });
       const n = ri(4, 7); m.caps += n; m.natCalled = n;
@@ -448,8 +453,9 @@ export function decide(m, w, choice, members = []) {
     const offer = offerList(m)[Number(choice)];
     if (!offer) return 'bad_choice';
     if (!offer.stay && clubFull(members, offer.club, m.pl.pos, m)) return 'club_full';
+    const fromEU = m.pl.club != null && SL.isEU(w.clubs[m.pl.club].lg);
     SL.accept(adapter(m, w), offer);
-    if (!offer.stay) addNews(w, `✈️ ${m.pl.name}が${w.clubs[offer.club].name}へ移籍${w.clubs[offer.club].lg === 0 ? '（欧州挑戦！）' : ''}`);
+    if (!offer.stay) addNews(w, `✈️ ${m.pl.name}が${w.clubs[offer.club].name}へ移籍${SL.isEU(w.clubs[offer.club].lg) && !fromEU ? '（欧州挑戦！）' : ''}`);
   }
   m.status = 'decided'; m.offer = null; trimLog(m);
   return null;
@@ -492,7 +498,7 @@ export const POLICY = {
 };
 // 契約が残っていても、方針に合うオファーがあれば移るか
 export const MOVE_SWITCH = { bench: '控えのときだけ', always: 'する', never: 'しない' };
-const LG_RANK = { 0: 5, 1: 4, 2: 3, 3: 2, 4: 1 };
+const LG_RANK = { 0: 7, 5: 6, 6: 5, 1: 4, 2: 3, 3: 2, 4: 1 };
 // そのクラブでの立ち位置（先発に入れるか・何番手か）。npcs がなければ総合力とクラブの強さから
 function seatAt(m, w, clubId, members, npcs) {
   const o = ovr(m.pl);

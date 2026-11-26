@@ -64,8 +64,8 @@
   }
   function rookie(npcs, club, pos, year, nextId, used) {
     const r = SL._.worldRng(SL._.hashStr(`rookie:${year}:${nextId}:${club.id}`));
-    const home = club.nat || (club.lg === 0 ? 'イングランド' : '日本');
-    const nat = r() < (club.lg === 0 ? .45 : .86) ? home : r.pick(club.lg === 0 ? SL._.ABROAD.EU : SL._.ABROAD.JP);
+    const home = club.nat || (SL.isEU(club.lg) ? 'イングランド' : '日本');
+    const nat = r() < (SL.isEU(club.lg) ? .45 : .86) ? home : r.pick(SL.isEU(club.lg) ? SL._.ABROAD.EU : SL._.ABROAD.JP);
     let name = SL._.npcName(nat, r);
     for (let t = 0; (used.has(name) || SL._.awkwardName(name)) && t < 60; t++) name = SL._.npcName(nat, r);
     if (used.has(name)) name = `${name}${year % 100}`;

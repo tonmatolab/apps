@@ -91,12 +91,12 @@
         A.xi.push(...xs); xs.forEach((e) => give(e, `${L.short}ベストイレブン`));
       }
       // 新人王（国内リーグ）：本物のプレイヤーは1年目、NPCは19歳以下
-      if (L.id !== 0) {
+      if (!SL.isEU(L.id)) {
         A.rookie = E.filter((e) => e.apps >= 8 && (e.type === 'user' ? e.rookie : e.age <= 19)).sort(rateOrder)[0] || null;
         give(A.rookie, '新人王');
       }
       // 世界年間最優秀選手の候補：各リーグのMVP（欧州が有利）
-      if (A.mvp) { const ws = mvpScore(A.mvp) + ({ 0: .35, 1: 0, 2: -.45 }[L.id]); if (ws > worldScore) { worldScore = ws; world = A.mvp; } }
+      if (A.mvp) { const ws = mvpScore(A.mvp) + ({ 0: .35, 5: .1, 6: -.15, 1: 0, 2: -.45 }[L.id]); if (ws > worldScore) { worldScore = ws; world = A.mvp; } }
       byLg[L.id] = A;
     }
     give(world, '世界年間最優秀選手');

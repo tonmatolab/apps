@@ -108,7 +108,7 @@
   .offer .mt { font-size: .74rem; color: var(--sub); line-height: 1.5; }
   .offer .pt { flex: none; text-align: center; font-size: .66rem; color: var(--sub); line-height: 1.2; }
   .offer .pt b { display: block; font-size: 1.3rem; color: var(--ink); }
-  .lg-0 { color: #b8860b; } .lg-1 { color: var(--green); } .lg-2 { color: var(--sub); } .lg-3, .lg-4 { color: #8a7a66; }
+  .lg-0 { color: #b8860b; } .lg-5 { color: #c08a2a; } .lg-6 { color: #b08a4a; } .lg-1 { color: var(--green); } .lg-2 { color: var(--sub); } .lg-3, .lg-4 { color: #8a7a66; }
   .badge { display: inline-block; font-size: .66rem; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: var(--chip); margin-right: 4px; vertical-align: 1px; }
   .badge.eu { background: #fff1c4; color: #8a6300; } .badge.stay { background: #dff3e6; color: #0d6b36; }
   @media (prefers-color-scheme: dark) { .badge.eu { background: #4a3c10; color: #ffd76a; } .badge.stay { background: #173b25; color: #7be3a5; } }
@@ -761,7 +761,7 @@
     </div>
     <div class="card">
       <ul class="feats">
-        <li>🌍 全員が同じ50クラブ（欧州・国内1〜4部）の世界に所属。同じクラブになった人とは一緒に試合に出る</li>
+        <li>🌍 全員が同じ70クラブ（欧州1〜3部・国内1〜4部）の世界に所属。同じクラブになった人とは一緒に試合に出る</li>
         <li>⏰ <b id="ol-tickTxt">30分</b>に1節、試合は自動で進む。あなたが決めるのは練習と契約だけ</li>
         <li>📅 18節でシーズン終了。オフに移籍・残留・引退を選ぶ（1日で2シーズン）</li>
         <li>🕔 日程は毎日同じ（日本時間）：試合は <b>5〜14時・17〜深夜2時</b>、オフは <b>2〜5時・14〜17時</b>。夜は必ず試合中</li>
@@ -1314,9 +1314,10 @@ function renderTab() {
   const c = SL.clubOf(S);
   if (tab === 'table') {
     const tb = SL.standings(S, c.lg);
-    const lower = S.clubs.some((x) => x.lg === c.lg + 1), upper = c.lg >= 2; // 下のリーグがある＝降格あり、2部より下＝昇格あり
-    const zone = (i) => c.lg > 0 && upper && i < SL.MOVES ? 'up' : c.lg > 0 && lower && i >= tb.length - SL.MOVES ? 'dn' : '';
-    const rule = c.lg === 0 ? '' : `（${[upper ? `${SL.MOVES === 1 ? '1位' : `上位${SL.MOVES}チーム`}が${SL.LEAGUES[c.lg - 1].short}へ昇格` : '', lower ? `${SL.MOVES === 1 ? '最下位' : `下位${SL.MOVES}チーム`}は${SL.LEAGUES[c.lg + 1].short}へ降格` : ''].filter(Boolean).join('・')}）`;
+    const upLg = SL.upperLg(c.lg), dnLg = SL.lowerLg(c.lg); // 昇格先・降格先（欧州の中・国内の中）
+    const lower = dnLg != null && S.clubs.some((x) => x.lg === dnLg), upper = upLg != null;
+    const zone = (i) => upper && i < SL.MOVES ? 'up' : lower && i >= tb.length - SL.MOVES ? 'dn' : '';
+    const rule = !upper && !lower ? '' : `（${[upper ? `${SL.MOVES === 1 ? '1位' : `上位${SL.MOVES}チーム`}が${SL.LEAGUES[upLg].short}へ昇格` : '', lower ? `${SL.MOVES === 1 ? '最下位' : `下位${SL.MOVES}チーム`}は${SL.LEAGUES[dnLg].short}へ降格` : ''].filter(Boolean).join('・')}）`;
     $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${rule}</div>
     <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>試</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
     ${tb.map((x, i) => `<tr class="${x.c.id === c.id ? 'me' : ''} ${zone(i)}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${x.c.color}"></span>${esc(x.c.name)}</td><td>${x.t.w + x.t.d + x.t.l}</td><td>${x.t.w}</td><td>${x.t.d}</td><td>${x.t.l}</td><td>${x.t.gf - x.t.ga > 0 ? '+' : ''}${x.t.gf - x.t.ga}</td><td><b>${x.t.p}</b></td></tr>`).join('')}</table></div>`;
@@ -1424,7 +1425,7 @@ function rankingHTML(view, data, opt = {}) {
   const C = SL.RANK_CATS[view.cat];
   const fmt = (v) => (C.dec ? v.toFixed(C.dec) : v);
   const row = (r) => `<li class="${r.me ? 'me' : ''}"><span class="no">${r.rank}</span><span class="nm">${r.type === 'user' ? '👤 ' : ''}${esc(r.name)} <span class="tag t-${r.pos}" style="font-size:.6rem">${r.pos}</span> <span class="sub">${esc(r.club)}・${r.apps}試</span></span><span class="v">${fmt(r.v)}</span></li>`;
-  return `<div class="tabs rk" data-row="lg">${SL.LEAGUES.map((L) => chip('lg', String(L.id), L.short)).join('')}</div>
+  return `<div class="tabs rk" data-row="lg">${SL.LEAGUE_ORDER.map((i) => SL.LEAGUES[i]).map((L) => chip('lg', String(L.id), L.short)).join('')}</div>
     <div class="tabs rk" data-row="cat">${cats.map(([k, c]) => chip('cat', k, c.icon + c.name)).join('')}</div>
     <div class="tabs rk" data-row="who">${chip('who', 'all', '全員')}${chip('who', 'npc', 'NPC')}${chip('who', 'user', opt.userLabel || '本物のプレイヤー')}</div>
     <p class="sub" style="margin:4px 0">${C.note ? esc(C.note) + '。' : ''}${view.cat === 'rating' ? `出場${SL.MIN_RATE_APPS}試合以上。` : ''}${data.total}人</p>
@@ -1492,7 +1493,7 @@ function cupHTML(cu) {
 
 function careerTable(h) {
   return `<table class="tb"><tr><th>年</th><th>歳</th><th style="text-align:left">クラブ</th><th>試</th><th>G</th><th>A</th><th>評価</th></tr>
-  ${h.map((r) => `<tr><td>${String(r.year).slice(2)}</td><td>${r.age}</td><td class="l"><span class="lg-${['欧州', '1部', '2部', '3部', '4部'].indexOf(r.lg)}" style="font-size:.66rem">${r.lg}</span> ${esc(r.club)}${r.awards.length ? ' 🏅'.repeat(Math.min(3, r.awards.length)) : ''}</td><td>${r.apps}</td><td>${r.goals}</td><td>${r.assists}</td><td>${r.rating ? r.rating.toFixed(2) : '-'}</td></tr>`).join('')}</table>`;
+  ${h.map((r) => `<tr><td>${String(r.year).slice(2)}</td><td>${r.age}</td><td class="l"><span class="lg-${['欧州', '1部', '2部', '3部', '4部', '欧州2部', '欧州3部'].indexOf(r.lg)}" style="font-size:.66rem">${r.lg}</span> ${esc(r.club)}${r.awards.length ? ' 🏅'.repeat(Math.min(3, r.awards.length)) : ''}</td><td>${r.apps}</td><td>${r.goals}</td><td>${r.assists}</td><td>${r.rating ? r.rating.toFixed(2) : '-'}</td></tr>`).join('')}</table>`;
 }
 
 // ===== 試合の流れ（一人用・オンライン共通） =====
@@ -1758,7 +1759,7 @@ async function contractStep() {
   else if (off.expiring) msg = `${esc(c.name)} との契約が切れた。`;
   else msg = `${esc(c.name)} との契約はあと${p.contract}年。${opts.length ? '他のクラブからオファーが届いた！' : ''}`;
   const notes = O.notes.map((n) => `<p class="note sub">${esc(n)}</p>`).join('');
-  const cards = opts.map((o) => offerCard(o, o.stay ? '<span class="badge stay">残留</span>' : S.clubs[o.club].lg === 0 ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('');
+  const cards = opts.map((o) => offerCard(o, o.stay ? '<span class="badge stay">残留</span>' : SL.isEU(S.clubs[o.club].lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('');
   const btns = [];
   if (!forced && !off.expiring && !off.released) btns.push({ label: `${esc(c.city)}に残る（契約あと${p.contract}年）`, cls: 'primary', act: 'keep' });
   if (!forced && !O.requested && S.challenge !== 'loyal' && !(S.challenge === 'weak' && !S.challengeDone)) btns.push({ label: '📣 移籍を希望する（オファーが増える・人気-1）', cls: '', act: 'request' });

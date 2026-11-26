@@ -38,7 +38,7 @@ for (const L of SL.LEAGUES) {
   check(A.mvp && A.best.FW && A.best.MF && A.best.DF && A.best.GK, `${L.short}：MVPとポジション別最優秀`);
   const xp = {}; A.xi.forEach((x) => { xp[x.pos] = (xp[x.pos] || 0) + 1; });
   check(A.xi.length === 11 && xp.GK === 1 && xp.DF === 4 && xp.MF === 4 && xp.FW === 2, `${L.short}：ベストイレブンは4-4-2`);
-  check(L.id === 0 ? !A.rookie : !!A.rookie, `${L.short}：新人王は国内リーグだけ`);
+  check(SL.isEU(L.id) ? !A.rookie : !!A.rookie, `${L.short}：新人王は国内リーグだけ`);
 }
 check(rec.world && rec.world.name, '世界年間最優秀選手がいる');
 // 自分の賞と、歴代の記録が食い違わない

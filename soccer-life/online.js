@@ -280,7 +280,7 @@
         ${o.awards && o.awards.length ? `<ul class="ach" style="margin-bottom:8px">${o.awards.map((a) => `<li>🏅 ${esc(a)}</li>`).join('')}</ul>` : ''}
         ${o.nat ? `<p class="sub" style="margin:0 0 6px">🇯🇵 日本代表に選ばれた（${o.nat}試合）</p>` : ''}
         <p style="font-weight:800;margin:0">${head}</p>${o.notes.map((n) => `<p class="sub" style="margin:2px 0">${esc(n)}</p>`).join('')}
-        <div class="stack" style="margin-top:10px" id="ol-offerList">${o.forced ? '' : o.list.map((x, i) => offerCard(x, i, x.stay ? '<span class="badge stay">残留</span>' : club(x.club).lg === 0 ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('')}</div>
+        <div class="stack" style="margin-top:10px" id="ol-offerList">${o.forced ? '' : o.list.map((x, i) => offerCard(x, i, x.stay ? '<span class="badge stay">残留</span>' : SL.isEU(club(x.club).lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('')}</div>
         <div class="stack" style="margin-top:10px">
           ${!o.forced && !o.expiring && !o.released ? `<button class="btn primary" data-c="stay">${esc(c.city)}に残る（契約あと${me.contract}年）</button>` : ''}
           ${!o.forced && !o.requested ? '<button class="btn" id="ol-requestBtn">📣 移籍を希望する（オファーが増える・人気-1）</button>' : ''}
@@ -381,7 +381,7 @@
     document.querySelectorAll('#ol-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
     const me = ST.me, lg = me.club != null ? club(me.club).lg : 1, body = $('tabBody');
     if (tab === 'table') {
-      body.innerHTML = SL.LEAGUES.map((L) => `<div class="sub" style="margin:${L.id === 0 ? 0 : 12}px 0 4px;font-weight:800">${L.name}</div>
+      body.innerHTML = SL.LEAGUE_ORDER.map((i) => SL.LEAGUES[i]).filter((L) => ST.tables[L.id] && ST.tables[L.id].length).map((L, k) => `<div class="sub" style="margin:${k === 0 ? 0 : 12}px 0 4px;font-weight:800">${L.name}</div>
         <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
         ${ST.tables[L.id].map((t, i) => { const c = club(t.id); return `<tr class="${t.id === me.club ? 'me' : ''}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}${c.humans ? `<span class="hum">👤${c.humans}</span>` : ''}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf - t.ga > 0 ? '+' : ''}${t.gf - t.ga}</td><td><b>${t.p}</b></td></tr>`; }).join('')}</table></div>`).join('');
     } else if (tab === 'rank') {
@@ -417,7 +417,7 @@
         const h = club(r.h), a = club(r.a);
         const g = r.goals.filter((x) => x.who || x.assist).map((x) => `${x.min}' ${esc(x.who || '')}${x.assist ? `（A ${esc(x.assist)}）` : ''}`).join('、');
         return `<li style="display:block"><span class="dot" style="background:${h.color}"></span>${esc(h.city)} <b class="num">${r.gh} - ${r.ga}</b> ${esc(a.city)} <span class="dot" style="background:${a.color};margin-left:4px"></span><span class="sub">${SL.LEAGUES[r.lg].short}</span>${g ? `<div class="sub">⚽ ${g}</div>` : ''}</li>`;
-      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">${x.champions.map((nm, i) => `${SL.LEAGUES[i].short} ${esc(nm)}`).join('／')}</span></li>`).join('')}</ul>` : ''}${ST.seasonHistory.some((x) => x.awards) ? `<h2 style="margin-top:12px">🏅 歴代の受賞者（${SL.LEAGUES[lg].name}）</h2>${awardHistoryHTML(ST.seasonHistory.map((x) => x.awards).filter(Boolean), String(lg))}` : ''}<h2 style="margin-top:12px">🌟 NPCレジェンド</h2>${legendsHTML(ST.records && ST.records.npcLegends)}${cupResultsHTML()}`;
+      }).join('')}</ul>${ST.seasonHistory.length ? `<h2 style="margin-top:12px">🏆 過去の優勝</h2><ul class="list">${ST.seasonHistory.map((x) => `<li style="display:block"><b>${x.year}年</b> <span class="sub">${SL.LEAGUE_ORDER.filter((i) => x.champions[i]).map((i) => `${SL.LEAGUES[i].short} ${esc(x.champions[i])}`).join('／')}</span></li>`).join('')}</ul>` : ''}${ST.seasonHistory.some((x) => x.awards) ? `<h2 style="margin-top:12px">🏅 歴代の受賞者（${SL.LEAGUES[lg].name}）</h2>${awardHistoryHTML(ST.seasonHistory.map((x) => x.awards).filter(Boolean), String(lg))}` : ''}<h2 style="margin-top:12px">🌟 NPCレジェンド</h2>${legendsHTML(ST.records && ST.records.npcLegends)}${cupResultsHTML()}`;
     } else {
       const aw = me.trophies.map((t) => `<li>🏆 ${esc(t)}</li>`).concat(me.awards.map((t) => `<li>🏅 ${esc(t)}</li>`));
       body.innerHTML = `<div class="bigstat"><div>通算出場<b>${me.totals.apps}</b></div><div>通算G<b>${me.totals.goals}</b></div><div>通算A<b>${me.totals.assists}</b></div><div>代表<b>${me.caps}</b></div></div>

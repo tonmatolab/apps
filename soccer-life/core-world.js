@@ -196,7 +196,7 @@
   // クラブ1つの22人の枠を埋める（有名選手が先に入っていれば、その分を除いて）
   function fillClub(c, { R, used, nextId, byClub, count, add }) {
     {
-      const home = c.nat || (c.lg === 0 ? 'イングランド' : '日本');
+      const home = c.nat || (SL.isEU(c.lg) ? 'イングランド' : '日本');
       // 有名選手が強さを押し上げた分だけ、ほかの先発クラスを少し下げる（先発11人の平均がクラブの強さ str に近くなるように）
       const fam = byClub.get(c.id);
       const extra = fam.reduce((a, p) => a + Math.max(0, ovr(p) - c.str), 0);
@@ -211,7 +211,7 @@
           const starter = k < STARTERS[pos];
           const target = clamp(Math.round(c.str + (starter ? starterAdj : youth ? -12 : -5) + R.gauss() * (starter ? 2.5 : 3)), 40, 92);
           const age = youth ? R.ri(18, 21) : starter ? R.ri(23, 32) : R.ri(20, 34);
-          const nat = R() < (c.lg === 0 ? .45 : .86) ? home : R.pick(c.lg === 0 ? ABROAD_EU : ABROAD_JP);
+          const nat = R() < (SL.isEU(c.lg) ? .45 : .86) ? home : R.pick(SL.isEU(c.lg) ? ABROAD_EU : ABROAD_JP);
           let name = fullName(nat, R);
           for (let t = 0; (used.has(name) || awkward(name)) && t < 50; t++) name = fullName(nat, R);
           if (used.has(name)) name = `${name}${count(c.id, pos) + 2}`; // ここまで来ることはほぼない
@@ -234,7 +234,7 @@
     }
   }
 
-  // ----- あとから増えたクラブ（国内3部・4部）を、今の世界に足す -----
+  // ----- あとから増えたクラブ（国内3部・4部、欧州2部・3部）を、今の世界に足す -----
   // state：{ clubs, table?, schedule?, phase? }（一人用のセーブデータ・オンラインの世界のどちらも）。足したクラブを返す
   // シーズン中なら、増えたリーグの日程と順位表も作る（残りの節だけ戦う）
   function extendClubs(state) {

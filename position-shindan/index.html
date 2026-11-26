@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>適正ポジション診断｜16問であなたのポジションとプレースタイルがわかる</title>
+<meta name="description" content="性格だけでサッカーの適正ポジションを診断。CF・ウィング・ボランチ・偽SB…12ポジション×プレースタイルの全52タイプ。足の速さは聞きません。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="適正ポジション診断⚽ あなたはピッチのどこにいる？">
+<meta property="og:description" content="16問・全52タイプ。性格だけでポジションとプレースタイルを判定">
+<meta property="og:url" content="https://tonmatolab.github.io/apps/position-shindan/">
+<meta property="og:image" content="https://tonmatolab.github.io/apps/position-shindan/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e6f2e4; --bg2: #c9e6c4; --card: #fbfff8; --ink: #17301e; --sub: #5d7563; --accent: #1f9d55; --accent-d: #12693a;
+    --line: #d3e6cf; --chip: #ebf5e8; --tc: #1f9d55; --turf: #2f9a4f; --turf2: #2a8c47;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0e1a12; --bg2: #16301d; --card: #15241a; --ink: #e6f5e8; --sub: #9cb8a2; --accent: #37c172; --accent-d: #1c7a44; --line: #24402c; --chip: #1b3022; --turf: #237a3d; --turf2: #1f6f37; }
+  }
+  :root[data-theme="dark"] { --bg: #0e1a12; --bg2: #16301d; --card: #15241a; --ink: #e6f5e8; --sub: #9cb8a2; --accent: #37c172; --accent-d: #1c7a44; --line: #24402c; --chip: #1b3022; --turf: #237a3d; --turf2: #1f6f37; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); font-family: "M PLUS Rounded 1c", system-ui, sans-serif; line-height: 1.7;
+    background: radial-gradient(circle at 80% -10%, var(--bg2), var(--bg) 55%) fixed, var(--bg); -webkit-tap-highlight-color: transparent; }
+  main { max-width: 500px; margin: 0 auto; padding: 16px 16px 40px; }
+  .hidden { display: none !important; }
+  .card { background: var(--card); border-radius: 26px; box-shadow: 0 6px 0 var(--line), 0 20px 40px -24px rgba(10,60,20,.45); overflow: hidden; animation: rise .4s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .pad { padding: 18px 20px 22px; }
+  button { display: block; width: 100%; font: inherit; font-weight: 800; font-size: 1.05rem; border: none; border-radius: 16px; padding: 15px 16px; margin-top: 12px; cursor: pointer; transition: transform .06s, box-shadow .06s; }
+  .primary { background: var(--accent); color: #fff; box-shadow: 0 5px 0 var(--accent-d); font-size: 1.15rem; }
+  .primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--accent-d); }
+  .ghost { background: var(--card); color: var(--ink); border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); }
+  .ghost:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .x { background: #111; color: #fff; box-shadow: 0 5px 0 #000; }
+
+  /* スタート */
+  .hero { background: linear-gradient(170deg, #49b86a, #2a8c47 70%, #1d6b35); padding: 14px 0 0; text-align: center; position: relative; overflow: hidden; }
+  .hero svg { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; }
+  .kicker { display: inline-block; background: var(--accent); color: #fff; font-weight: 800; font-size: .8rem; padding: 1px 12px; border-radius: 99px; }
+  h1 { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 2.1rem; line-height: 1.2; margin: 8px 0 0; }
+  h1 span { color: var(--accent); }
+  .lead { color: var(--sub); margin: 10px 0 0; font-size: .95rem; }
+  .poslist { display: flex; flex-wrap: wrap; gap: 5px; margin: 14px 0 0; }
+  .poslist span { font-family: "Dela Gothic One"; font-size: .78rem; padding: 2px 9px; border-radius: 8px; color: #fff; }
+  .count { text-align: center; color: var(--sub); font-size: .85rem; font-weight: 700; margin: 10px 0 0; min-height: 1.4em; }
+
+  /* 質問 */
+  .qtop { display: flex; align-items: center; gap: 10px; }
+  .qnum { font-family: "Dela Gothic One"; color: var(--accent); font-size: 1.05rem; min-width: 4.2em; }
+  .bar { flex: 1; height: 14px; background: var(--chip); border-radius: 8px; position: relative; }
+  .bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--turf) 0 14px, var(--turf2) 14px 28px); border-radius: 8px; transition: width .35s; }
+  .bar b { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; font-size: 18px; line-height: 22px; text-align: center; transition: left .35s; }
+  .qicon { font-size: 3.2rem; text-align: center; margin: 14px 0 0; line-height: 1.1; animation: pop .4s ease both; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .q { font-size: 1.28rem; font-weight: 800; text-align: center; margin: 8px 0 14px; line-height: 1.45; }
+  .opt { display: flex; align-items: center; gap: 12px; background: var(--card); color: var(--ink); border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); text-align: left; font-weight: 700; padding: 13px 14px; }
+  .opt:hover { border-color: var(--accent); }
+  .opt:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+  .opt b { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-family: "Dela Gothic One"; font-weight: 400; }
+  #opts .opt:nth-child(1) b { background: #e8432f; } #opts .opt:nth-child(2) b { background: #1f9d55; } #opts .opt:nth-child(3) b { background: #2f6fd6; } #opts .opt:nth-child(4) b { background: #e0a100; }
+  .back { width: auto; margin: 10px auto 0; padding: 6px 14px; font-size: .85rem; background: transparent; color: var(--sub); box-shadow: none; }
+
+  /* 判定中 */
+  .var { text-align: center; padding: 40px 20px 46px; }
+  .var .scr { display: inline-block; font-family: "Dela Gothic One"; font-size: 2.2rem; color: #fff; background: #111; padding: 6px 22px; border-radius: 12px; letter-spacing: .1em; animation: blink 1s steps(2) infinite; }
+  .var p { font-weight: 800; margin: 14px 0 0; }
+  .var small { color: var(--sub); }
+  @keyframes blink { 50% { opacity: .55; } }
+
+  /* 結果 */
+  .rhead { background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--tc) 55%, #fff), var(--tc) 75%); padding: 16px 16px 18px; text-align: center; color: #fff; }
+  .rhead .lbl { font-weight: 800; font-size: .9rem; opacity: .95; }
+  .badge { display: inline-flex; align-items: baseline; gap: 8px; margin: 6px 0 0; }
+  .badge b { font-family: "Dela Gothic One"; font-weight: 400; font-size: 3.4rem; line-height: 1; text-shadow: 0 3px 0 rgba(0,0,0,.2); }
+  .badge span { font-weight: 800; font-size: 1.05rem; }
+  .rstyle { font-weight: 800; font-size: .95rem; margin: 4px 0 0; background: rgba(0,0,0,.18); display: inline-block; padding: 1px 12px; border-radius: 99px; }
+  .rname { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 1.55rem; text-align: center; line-height: 1.35; margin: 4px 0 0; color: var(--tc); }
+  .pitchbox { margin: 12px auto 0; max-width: 300px; }
+  .pitchbox svg { width: 100%; height: auto; display: block; }
+  .here { animation: here 1.2s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes here { 50% { transform: scale(1.25); } }
+  .rdesc { margin: 12px 0 0; }
+  h3 { margin: 18px 0 6px; font-size: 1rem; }
+  .aru { margin: 0; padding: 0; list-style: none; }
+  .aru li { background: var(--chip); border-radius: 12px; padding: 7px 12px 7px 34px; margin-top: 6px; font-weight: 700; font-size: .92rem; position: relative; line-height: 1.5; }
+  .aru li::before { content: "✔"; position: absolute; left: 12px; color: var(--tc); }
+  .radar { max-width: 280px; margin: 0 auto; }
+  .radar svg { width: 100%; height: auto; display: block; }
+  .info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 0; }
+  .info div { background: var(--chip); border-radius: 14px; padding: 9px 10px; font-size: .82rem; line-height: 1.45; }
+  .info b { display: block; font-size: .72rem; color: var(--sub); }
+  .info em { font-style: normal; font-weight: 800; }
+  .kime { margin: 12px 0 0; background: #fff4c2; color: #5a4300; border-radius: 14px; padding: 9px 12px; font-weight: 800; font-size: .88rem; text-align: center; }
+  .pct { text-align: center; color: var(--sub); font-size: .85rem; font-weight: 700; margin: 12px 0 0; min-height: 1.2em; }
+  .cta { display: block; margin: 18px 0 0; padding: 14px 16px; border-radius: 18px; text-decoration: none; color: #fff; background: linear-gradient(135deg, #1d6b35, #2f9a4f); box-shadow: 0 5px 0 #124a24; }
+  .cta:active { transform: translateY(3px); box-shadow: 0 2px 0 #124a24; }
+  .cta small { display: block; font-size: .78rem; opacity: .9; font-weight: 700; }
+  .cta strong { display: block; font-size: 1.08rem; line-height: 1.4; }
+  .zukan { margin: 16px 0 0; text-align: center; font-size: .85rem; font-weight: 800; color: var(--sub); }
+  .zukan .dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 6px; }
+  .zukan .dots i { width: 10px; height: 10px; border-radius: 3px; background: var(--line); }
+  .zukan .dots i.on { background: var(--accent); }
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 80; background: rgba(15,35,20,.95); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: .85rem; font-weight: 700; opacity: 0; transition: .25s; pointer-events: none; width: max-content; max-width: 90vw; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+  footer { text-align: center; color: var(--sub); font-size: .8rem; margin-top: 24px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <!-- スタート -->
+  <section id="start" class="card">
+    <div class="hero" id="heroArt"></div>
+    <div class="pad">
+      <span class="kicker">⚽ 16問・約2分</span>
+      <h1>あなたの<br><span>適正ポジション</span>診断</h1>
+      <p class="lead">性格だけで決めます。足の速さは聞きません。12ポジション×プレースタイルの<b>全52タイプ</b>から、あなたの居場所を判定します。</p>
+      <div class="poslist" id="posList"></div>
+      <button class="primary" id="startBtn">キックオフ</button>
+      <p class="count" id="playCount"></p>
+    </div>
+  </section>
+
+  <!-- 質問 -->
+  <section id="quiz" class="card hidden">
+    <div class="pad">
+      <div class="qtop"><span class="qnum" id="qnum"></span><div class="bar"><i id="bar"></i><b id="ball">⚽</b></div></div>
+      <div class="qicon" id="qicon"></div>
+      <div class="q" id="qtext"></div>
+      <div id="opts"></div>
+      <button class="back" id="backBtn">← ひとつ前に戻る</button>
+    </div>
+  </section>
+
+  <!-- 判定中 -->
+  <section id="judge" class="card hidden">
+    <div class="var"><div class="scr">VAR</div><p>審判団が映像を確認しています…</p><small id="judgeMsg">ポジションをチェック中</small></div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="result" class="card hidden">
+    <div class="rhead">
+      <div class="lbl">あなたの適正ポジションは…</div>
+      <div class="badge"><b id="rPos"></b><span id="rPosName"></span></div>
+      <div><span class="rstyle" id="rStyle"></span></div>
+    </div>
+    <div class="pad">
+      <h2 class="rname" id="rName"></h2>
+      <div class="pitchbox" id="rPitch"></div>
+      <p class="rdesc" id="rDesc"></p>
+      <h3>🗣 あるある</h3>
+      <ul class="aru" id="rAru"></ul>
+      <h3>📊 あなたの能力</h3>
+      <div class="radar" id="rRadar"></div>
+      <div class="info">
+        <div><b>いちばん輝くフォーメーション</b><em id="rForm"></em></div>
+        <div><b>相性のいい相棒</b><em id="rBuddy"></em></div>
+      </div>
+      <p class="kime hidden" id="rKime">🔢 実は「好きな数字」の質問が決め手でした</p>
+      <p class="pct" id="rPct"></p>
+      <button class="x" id="shareX">𝕏 画像付きでシェア</button>
+      <button class="ghost" id="saveImg">結果画像を保存（インスタ用）</button>
+      <a class="cta" href="../soccer-life/" id="toSoccer"><small>⚽ この才能、本当に通用する？</small><strong id="ctaText">サッカー人生でプロを目指してみる →</strong></a>
+      <div class="zukan" id="zukan"></div>
+      <button class="ghost" id="retry">もう一度診断する</button>
+    </div>
+  </section>
+
+  <div class="tonmato-next" data-current="position"></div>
+  <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
+</main>
+
+<script>
+// ===== DATA START（ここから下はブラウザの画面を使わない。og.html とテストからも読み込む） =====
+const APP_TITLE = '適正ポジション診断';
+const HASHTAGS = ['適正ポジション診断'];
+
+// 能力（サッカー人生と同じ7つ）と性格（スタイル決めにだけ使う）
+const STATS = { spd: 'スピード', sht: 'シュート', pas: 'パス', drb: 'ドリブル', def: '守備', phy: 'フィジカル', gk: 'セービング' };
+const TRAITS = { voice: '声', ego: '我', devo: '献身', whim: '気まぐれ' };
+
+// ポジション。v：前(+1)〜後ろ(-1)、h：サイド(+1)〜中央(-1)。bias：同じくらいの位置のときに能力で決める
+const GROUP = { GK: '#e0a100', DF: '#2f6fd6', MF: '#1f9d55', FW: '#e8432f' };
+const POS = {
+  GK:  { name: 'ゴールキーパー', g: 'GK', v: -1.2, h: -1, form: '4-4-2（どこでも最後尾）', sl: 'GK' },
+  CB:  { name: 'センターバック', g: 'DF', v: -0.75, h: -0.75, bias: { def: 1, phy: .6 }, form: '4-4-2のCB', sl: 'DF' },
+  SB:  { name: 'サイドバック', g: 'DF', v: -0.75, h: 0.8, bias: { def: .5, spd: .5 }, form: '4-3-3のSB', sl: 'DF' },
+  WB:  { name: 'ウィングバック', g: 'DF', v: -0.15, h: 0.75, bias: { spd: .5, devo: .5 }, form: '3-4-2-1のWB', sl: 'DF' },
+  DMF: { name: 'ボランチ', g: 'MF', v: -0.5, h: 0.05, bias: { def: .6, devo: .5 }, form: '4-2-3-1のダブルボランチ', sl: 'MF' },
+  CMF: { name: 'セントラルMF', g: 'MF', v: -0.05, h: -0.7, bias: { pas: .7, devo: .3 }, form: '4-3-3のインサイドハーフ', sl: 'MF' },
+  OMF: { name: 'トップ下', g: 'MF', v: 0.35, h: -0.75, bias: { pas: .5, drb: .5, ego: .3 }, form: '4-2-3-1のトップ下', sl: 'MF' },
+  SH:  { name: 'サイドハーフ', g: 'MF', v: 0.35, h: 0.8, bias: { spd: .4, pas: .4, devo: .2 }, form: '4-4-2のサイドハーフ', sl: 'MF' },
+  WG:  { name: 'ウィング', g: 'FW', v: 0.8, h: 0.8, bias: { spd: .5, drb: .6 }, form: '4-3-3のウィング', sl: 'FW' },
+  SS:  { name: 'セカンドトップ', g: 'FW', v: 0.35, h: 0.05, bias: { drb: .4, whim: .6 }, form: '4-4-2の2トップの片方', sl: 'FW' },
+  CF:  { name: 'センターフォワード', g: 'FW', v: 0.8, h: -0.75, bias: { phy: .8, sht: .2 }, form: '4-3-3の1トップ', sl: 'FW' },
+  ST:  { name: 'ストライカー', g: 'FW', v: 0.8, h: 0.05, bias: { sht: .8, spd: .2, ego: .2 }, form: '4-4-2の2トップ', sl: 'FW' },
+};
+
+// タイプ。w：スタイルを決める重み（能力・性格）。side：ピッチの図で左右どちらに置くか
+const TYPES = {
+  'gk-stop':   { pos: 'GK', style: 'シュートストッパー', name: '最後の砦（自称）', w: { phy: 1, gk: .2 }, buddy: 'cb-stop',
+    desc: '飛んできたものは全部止める。本人は守護神のつもりで、実際わりと守護神です。',
+    aru: ['ファインセーブのあと、しばらく倒れたまま', '止めたあと、味方より先に自分で自分を褒める', '練習でもシュートを決められると本気で悔しがる'] },
+  'gk-sweep':  { pos: 'GK', style: 'スイーパーキーパー', name: 'ゴールを空けがちな人', w: { spd: 1.1, pas: .9 }, buddy: 'cb-build',
+    desc: 'GKなのに足元がうまく、守備範囲がやたら広い。ゴールにいる時間は意外と短め。',
+    aru: ['前に出すぎて、無人のゴールに決められたことがある', 'バックパスが来ると嬉しそう', '「戻れ！」と言われる回数がFWより多い'] },
+  'gk-pk':     { pos: 'GK', style: 'PKストッパー', name: 'PKだけ異常に強い人', w: { whim: 1.4, gk: .3 }, buddy: 'st-joker',
+    desc: '普段は普通。でもPK戦になると、なぜか全部読めてしまう勝負師です。',
+    aru: ['普段は普通なのに、PK戦になると目が変わる', 'キッカーの目を見てニヤッとする', 'じゃんけんも妙に強い'] },
+  'gk-coach':  { pos: 'GK', style: 'コーチング型', name: '味方に一番キレてる人', w: { voice: 1.5 }, buddy: 'dmf-regista',
+    desc: '後ろから全部見えているので、全部言う。守備陣はこの人の声で動いています。',
+    aru: ['試合が終わると声が枯れている', 'ゴールを決められたら、まず味方の方を振り返る', '客席からも声が聞こえる'] },
+  'gk-attack': { pos: 'GK', style: '攻撃参加型', name: '終了間際にヘディングしに行く人', w: { sht: 1.3, ego: 1 }, buddy: 'cb-set',
+    desc: 'GKなのに点を取りたい気持ちが抑えられない。一番目立つ場面を知っている人です。',
+    aru: ['負けている試合のCKで、なぜか相手ゴール前にいる', 'PKを蹴りたがる', '練習の最後はシュート練習に混ざっている'] },
+
+  'cb-stop':   { pos: 'CB', style: 'ストッパー', name: '人間ブロック塀', w: { def: .6, phy: .6 }, buddy: 'gk-stop',
+    desc: '相手のエースの前に立ちはだかる壁。強い・高い・倒れないの三拍子です。',
+    aru: ['顔面でシュートを止めたことがある', '相手FWが試合後に握手を避ける', '「ナイスブロック」と言われるのが一番嬉しい'] },
+  'cb-build':  { pos: 'CB', style: 'ビルドアップ型', name: 'CBなのにドリブルで運ぶ人', w: { pas: 1, drb: 1 }, buddy: 'gk-sweep',
+    desc: '最後尾から試合を組み立てる現代型CB。うまいけど、ときどきヒヤッとさせます。',
+    aru: ['監督に「上がるな」と言われ続けている', '自陣でのルーレットを練習している', 'ロングパスが通るとガッツポーズ'] },
+  'cb-cover':  { pos: 'CB', style: 'カバーリング型', name: '後ろで全部拾う人', w: { spd: 1, devo: .6, def: .4 }, buddy: 'cb-stop',
+    desc: '味方が抜かれた瞬間に、なぜかそこにいる。目立たない最強の保険です。',
+    aru: ['目立たないけど、いないとチームが崩れる', '味方のミスを無言で消す', '褒められると照れて話をそらす'] },
+  'cb-set':    { pos: 'CB', style: 'セットプレー職人', name: 'DFなのにチーム得点王', w: { sht: 1.3, phy: .3, ego: .6 }, buddy: 'omf-chance',
+    desc: 'CKとFKのときだけFWより怖い。点を取ったら守備のことはいったん忘れます。',
+    aru: ['CKのときだけ足が速い', 'ゴールパフォーマンスを準備している', '得点ランキングを毎週チェックしている'] },
+  'cb-clear':  { pos: 'CB', style: 'クリア専門', name: 'とりあえず大きく蹴る係', w: { phy: .7, whim: .9 }, buddy: 'cf-air',
+    desc: '危ないと思ったら迷わずタッチラインの外へ。考えるより先に蹴る、潔い守備です。',
+    aru: ['「蹴れ！」と言われる前に、もう蹴っている', 'ボールが場外に出る回数がチーム1位', 'つないだ方がいい場面でも蹴る'] },
+
+  'sb-fake':   { pos: 'SB', style: '偽SB', name: 'いつの間にか中盤にいる人', w: { pas: 1.2, voice: .6 }, buddy: 'wg-drib',
+    desc: 'サイドバックの位置から中に入って、試合を組み立てる戦術家。地図は頭に入っています。',
+    aru: ['自分のポジションが分からなくなる', '戦術の動画を見るのが好き', '気づくとボランチの隣にいる'] },
+  'sb-solid':  { pos: 'SB', style: '堅実型', name: '上がらないことに誇りを持つ人', w: { def: .8, devo: .2 }, buddy: 'wg-vert',
+    desc: '攻撃はウィングに任せて、自分は守る。チームにひとりはいてほしい安心感です。',
+    aru: ['ハーフラインを越えると落ち着かない', 'クロスより、クリアのほうが得意', '「行け！」と言われても、まず周りを見る'] },
+  'sb-over':   { pos: 'SB', style: 'オーバーラップ型', name: '追い越してクロスだけ上げる人', w: { spd: 1.1, sht: .4, ego: .3 }, buddy: 'cf-air',
+    desc: 'ウィングの外を全力で追い越す。上げたあとのことは、上げてから考えます。',
+    aru: ['戻るのが間に合わない', 'ウィングより前にいる時間が長い', '「ナイス上がり！」が好物'] },
+  'sb-mark':   { pos: 'SB', style: '対人型', name: '相手のエースを消す人', w: { phy: 1, def: .5 }, buddy: 'dmf-crush',
+    desc: '1対1で負けない番人。相手のエースを90分間しつこく追い回します。',
+    aru: ['試合のあと、相手のエースと仲良くなっている', '相手の利き足をすぐ見抜く', 'ユニフォームをよく引っぱっている'] },
+
+  'wb-att':    { pos: 'WB', style: '攻撃型', name: 'DFなのにずっと前にいる人', w: { drb: 1, sht: .7 }, buddy: 'cb-cover',
+    desc: '書類上はDF。実際はほぼウィング。守備はCBがなんとかしてくれると信じています。',
+    aru: ['守備の記憶がない', 'DFなのにシュート数がチーム上位', '後ろのCBにいつも謝っている'] },
+  'wb-def':    { pos: 'WB', style: '守備型', name: '5バックの一員', w: { def: 1.1 }, buddy: 'cb-stop',
+    desc: '守るときは最終ラインに戻って5人目のDFに。チームのために形を変えられる人です。',
+    aru: ['「今日は5バックで」と言われると嬉しい', '戻るスピードが一番速い', 'リードしている試合で一番輝く'] },
+  'wb-engine': { pos: 'WB', style: '無尽蔵型', name: '往復切符しか持っていない人', w: { devo: 1, phy: .6, spd: .3 }, buddy: 'cmf-b2b',
+    desc: '攻めて、戻って、また攻める。サイドの端から端まで90分走り続けるエンジンです。',
+    aru: ['ハーフタイムに一人だけ息が上がっていない', 'タッチライン際の芝だけはげている', '交代を告げられると本気で驚く'] },
+
+  'dmf-crush': { pos: 'DMF', style: '潰し屋', name: 'イエローカードを集める人', w: { phy: 1, ego: .6 }, buddy: 'omf-king',
+    desc: '中盤で相手の攻撃の芽を摘む。やや激しめなのは、愛ゆえです。',
+    aru: ['主審に名前を覚えられている', 'スライディングの音が一番大きい', '累積警告の計算がすぐできる'] },
+  'dmf-anchor':{ pos: 'DMF', style: 'アンカー', name: '真ん中から動かない人', w: { def: 1 }, buddy: 'cmf-b2b',
+    desc: 'DFラインの前でどっしり構える錨（いかり）。動かないことで守っています。',
+    aru: ['ボール回しのときに地蔵になる', '「そこにいてくれ」が最高の褒め言葉', 'ヒートマップが真ん中に1点だけ'] },
+  'dmf-regista':{ pos: 'DMF', style: 'レジスタ', name: '後ろから全部見てる人', w: { pas: 1, voice: 1 }, buddy: 'st-run',
+    desc: '一番後ろの中盤から、ゲームの全部を操る指揮者。視野の広さは監督級です。',
+    aru: ['試合中ずっと首を振っている', '縦パス1本でスタジアムをざわつかせる', '味方の走り出しが遅いと小さく舌打ちする'] },
+  'dmf-sweat': { pos: 'DMF', style: '汗かき型', name: '誰にも褒められない功労者', w: { devo: 1.2 }, buddy: 'omf-fanta',
+    desc: '味方のためにひたすら走って、拾って、つなぐ。チームメイトだけは知っている影のMVPです。',
+    aru: ['走行距離のときだけ名前が出る', 'セカンドボールを拾う確率が異常に高い', '監督に一番信頼されているのに、取材は来ない'] },
+
+  'cmf-b2b':   { pos: 'CMF', style: 'ボックストゥボックス', name: '90分走る人', w: { spd: .9, devo: .7, phy: .4 }, buddy: 'dmf-anchor',
+    desc: '自陣ゴール前から相手ゴール前まで、全部に顔を出す。体力の配分は考えていません。',
+    aru: ['ゴールもタックルもするけど、記憶に残らない', '試合後の体重が一番減っている', '「どこにでもいたね」と言われる'] },
+  'cmf-dist':  { pos: 'CMF', style: '配球型', name: '横パスで試合を支配する人', w: { pas: 1.2 }, buddy: 'wg-vert',
+    desc: 'ボールを失わないことにかけてはプロ。リズムを作るのはこの人です。',
+    aru: ['パス成功率だけ異常に高い', '「縦に入れろ！」と言われても横に出す', 'ボールを持つと、時間がゆっくり流れる'] },
+  'cmf-mid':   { pos: 'CMF', style: 'ミドル砲', name: '遠くからしか打たない人', w: { sht: 1.2, whim: .5 }, buddy: 'cf-post',
+    desc: 'ペナルティエリアの外が自分の射程。入れば今年のベストゴール候補です。',
+    aru: ['10本打って1本入れば満足', 'ゴール前まで行くと逆に打たない', 'ボールがこぼれてくると目が輝く'] },
+  'cmf-kind':  { pos: 'CMF', style: '気配り型', name: '味方を一番褒める人', w: { devo: .7, voice: .9 }, buddy: 'st-ego',
+    desc: 'チームの雰囲気を作るムードメーカー兼つなぎ役。この人がいると全員が少しうまくなります。',
+    aru: ['「ナイス！」が口ぐせ', 'ミスした味方に一番に駆け寄る', 'ハーフタイムの円陣で真ん中にいる'] },
+
+  'omf-fanta': { pos: 'OMF', style: 'ファンタジスタ', name: 'ヒールパスが多い人', w: { drb: 1.2, whim: .5 }, buddy: 'dmf-sweat',
+    desc: '誰も想像しないプレーで観客をわかせる芸術家。普通のプレーには少し飽きています。',
+    aru: ['普通のパスでいい場面でも、普通には出さない', 'ノールックパスの練習をしている', '成功すると一番うまく、失敗すると一番怒られる'] },
+  'omf-score': { pos: 'OMF', style: '点取り10番', name: '10番なのに一番シュートを打つ人', w: { sht: 1, ego: .5 }, buddy: 'cf-post',
+    desc: 'パスもうまいけど、結局自分で決めたい。2列目から飛び出すゴールハンターです。',
+    aru: ['パスを出すふりだけはうまい', 'FWより先にゴール前にいる', '「アシストもしたかった」と言うが本心ではない'] },
+  'omf-chance':{ pos: 'OMF', style: 'チャンスメーカー', name: 'キラーパスしか狙わない人', w: { pas: 1.2 }, buddy: 'st-run',
+    desc: '一撃で試合を決めるスルーパスの名手。成功率より、通ったときの気持ちよさを選びます。',
+    aru: ['通ればスーパー、通らなければ戦犯', 'FWの走り出しにだけは厳しい', 'アシスト数を自分で数えている'] },
+  'omf-king':  { pos: 'OMF', style: '王様', name: '守備しない10番', w: { ego: 1.3 }, buddy: 'dmf-crush',
+    desc: 'チームの中心は自分。守備は家来たちに任せて、攻撃の全権を握ります。',
+    aru: ['「俺のところに出せ」が口ぐせ', '守備の時間は歩いている', 'でも大事な試合では必ず何かする'] },
+
+  'sh-updown': { pos: 'SH', style: '上下動型', name: 'サイドを往復するだけの人', w: { devo: 1, spd: .5 }, buddy: 'sb-solid',
+    desc: '攻撃にも守備にも全力で付き合う、まじめなサイドの働き者です。',
+    aru: ['タッチラインの芝だけはげている', '試合が終わると一番ぐったりしている', '地味だけど、監督の評価は高い'] },
+  'sh-cross':  { pos: 'SH', style: 'クロス職人', name: 'とりあえず上げる人', w: { pas: 1.2 }, buddy: 'cf-air',
+    desc: 'サイドからのクロスにすべてをかける職人。ゴール前の味方は見ているようで見ていません。',
+    aru: ['中に誰もいなくても上げる', 'クロスの軌道にこだわりがある', '「合わせろよ！」とつい言ってしまう'] },
+  'sh-inside': { pos: 'SH', style: '中に入る型', name: 'サイドにいない人', w: { drb: 1, ego: .3 }, buddy: 'sb-over',
+    desc: 'サイドから中へ中へと入っていく。気づけばトップ下と仕事を取り合っています。',
+    aru: ['気づくと真ん中にいる', 'サイドバックに「外を空けてくれ」と頼まれる', 'タッチラインを踏んだ記憶がない'] },
+
+  'wg-vert':   { pos: 'WG', style: '縦突破型', name: 'とりあえず縦に行く人', w: { spd: 1.2 }, buddy: 'cmf-dist',
+    desc: 'ボールを持ったら迷わず縦へ。駆け引きよりスピード、それがすべてです。',
+    aru: ['切り返しという技を知らない', '前が空いていると体が勝手に走り出す', '止まったら負けだと思っている'] },
+  'wg-cutin':  { pos: 'WG', style: 'カットイン型', name: '右足でしか打たない左ウィング', w: { sht: 1, drb: .4 }, buddy: 'sb-over', side: -1,
+    desc: '左サイドから中へ切れ込んで、得意な足でズドン。バレていても止められない一発屋です。',
+    aru: ['相手にバレているのに決める', '縦に行くふりだけは上手', '逆の足でボールを触ると落ち着かない'] },
+  'wg-speed':  { pos: 'WG', style: 'スピードスター', name: '速いけど止まれない人', w: { spd: .9, whim: .9 }, buddy: 'omf-chance',
+    desc: 'チーム最速。ただしブレーキは付いていません。走り出したら誰にも止められない（自分にも）。',
+    aru: ['ボールだけゴールラインを割る', '50m走の記録をすぐに言える', 'ドリブルより、蹴って走るほうが速い'] },
+  'wg-drib':   { pos: 'WG', style: '職人ドリブラー', name: '抜いたあと、もう一回抜く人', w: { drb: 1.3 }, buddy: 'sb-fake',
+    desc: '1対1が生きがい。抜くこと自体が楽しくて、ゴールより先に相手を探しています。',
+    aru: ['戻ってきた相手もついでに抜く', 'パスの選択肢が頭にない', '抜いたあとに振り返って確認する'] },
+  'wg-far':    { pos: 'WG', style: '逆サイド待機型', name: 'ファーで待ってるだけの人', w: { whim: .6, sht: .7 }, buddy: 'sh-cross', side: -1,
+    desc: 'ボールの反対側でひっそり待ち、最後に押し込む。省エネなのに結果は出す人です。',
+    aru: ['ボールに触った回数は少ないのに2得点', '守備のときはだいたい休んでいる', '「いつからそこに？」と言われる'] },
+
+  'ss-ghost':  { pos: 'SS', style: '消える型', name: '気づいたらいる人', w: { whim: 1.1 }, buddy: 'cf-post',
+    desc: '相手のマークからふっと消えて、決定的な場面にだけ現れる。神出鬼没のアタッカーです。',
+    aru: ['試合中ずっと存在を忘れられている', '気づいたらゴールを決めている', '交代で下がるときに「いたんだ」と言われる'] },
+  'ss-util':   { pos: 'SS', style: '何でも屋', name: 'FWなのに守備に戻る人', w: { devo: 1.2 }, buddy: 'st-ego',
+    desc: '点も取るし、守備もするし、つなぎもする。いないと困る、監督の右腕です。',
+    aru: ['監督からの信頼が一番厚い', '全ポジションの練習をしたことがある', 'エースのために走り、エースより評価が低い'] },
+  'ss-f9':     { pos: 'SS', style: '偽9番', name: 'FWなのに下がってくる人', w: { pas: 1, drb: .5 }, buddy: 'wg-cutin',
+    desc: 'FWの位置から中盤に下りてきて、相手のDFを混乱させる頭脳派ストライカーです。',
+    aru: ['相手のCBが毎回困っている', 'シュートよりパスの数が多い', 'センターに誰もいない時間がある'] },
+
+  'cf-post':   { pos: 'CF', style: 'ポストプレー型', name: '背中で語る人', w: { pas: .9, phy: .5 }, buddy: 'omf-score',
+    desc: '前線でボールを収めて、味方の上がりを待つ。チームの攻撃はこの背中から始まります。',
+    aru: ['背負っているときが一番生き生きしている', '自分のゴールより、落としたボールが決まったときに喜ぶ', 'DFに押されても一歩も動かない'] },
+  'cf-air':    { pos: 'CF', style: '空中戦型', name: '頭でしか点を取らない人', w: { phy: 1.4 }, buddy: 'sh-cross',
+    desc: '高いボールは全部自分のもの。クロスが上がった瞬間、スタジアムの視線を集めます。',
+    aru: ['足元にボールが来ると焦る', 'ゴールの半分以上が頭', 'ジャンプの前に一度だけ相手を押す'] },
+  'cf-gori':   { pos: 'CF', style: 'ゴリゴリ型', name: '全部体で解決する人', w: { phy: .4, ego: .8 }, buddy: 'cmf-kind',
+    desc: '技術？戦術？とりあえず体を当てれば道は開ける。迫力だけで点を取ります。',
+    aru: ['相手DFが試合後に湿布を貼っている', 'ファウルをもらう回数がチーム1位', '「とにかく俺に当てろ」と言う'] },
+  'cf-press':  { pos: 'CF', style: '前プレ型', name: '守備で一番貢献するFW', w: { devo: 1.2 }, buddy: 'omf-king',
+    desc: '最前線からボールを追い回す、チームの最初のディフェンダー。点が取れなくても使われ続けます。',
+    aru: ['ゴールは少ないけど、監督にはずっと使われる', 'GKにまでプレスをかけに行く', 'ハーフタイムにはもう汗だく'] },
+
+  'st-run':    { pos: 'ST', style: '裏抜け型', name: 'オフサイドと友達', w: { spd: 1.2 }, buddy: 'dmf-regista',
+    desc: 'DFラインの裏へ一瞬で抜け出すスピードスター。旗が上がっても、また走ります。',
+    aru: ['副審と目が合う回数が一番多い', '「今の出てない！」と毎試合言っている', 'スルーパスが来ないと拗ねる'] },
+  'st-poach':  { pos: 'ST', style: 'ごっつぁん型', name: 'こぼれ球の達人', w: { sht: .8, devo: .3 }, buddy: 'cmf-mid',
+    desc: 'ボールが来る場所が、なぜかわかる。美しくはないけど、得点ランキングには載ります。',
+    aru: ['「いるべき所にいた」とだけ言われる', 'ゴールまでの距離の平均が3m', 'ミドルシュートのこぼれ球を毎回待っている'] },
+  'st-ego':    { pos: 'ST', style: 'エゴイスト', name: 'パスという選択肢がない人', w: { ego: 1.3 }, buddy: 'ss-util',
+    desc: 'ストライカーはわがままでいい。自分が決めればチームが勝つ、と本気で信じています。',
+    aru: ['フリーの味方を見ないふりをする', '外したあと、天を仰ぐのがうまい', 'でも決めたら全部許される'] },
+  'st-joker':  { pos: 'ST', style: 'ジョーカー', name: '後半80分から本気を出す人', w: { whim: 1.3, sht: .2 }, buddy: 'gk-pk',
+    desc: '途中出場の切り札。試合の終わりが近づくほど強くなる、ちょっと困った勝負師です。',
+    aru: ['スタメンだと調子が出ない', 'アップの時間が一番長い', '劇的なゴールのときだけ映像に残る'] },
+
+  // 隠しタイプ（条件で決まる）
+  'x-bench':   { pos: null, hidden: true, label: 'BENCH', posName: 'ベンチ', style: '隠しタイプ', name: 'ベンチの盛り上げ役', color: '#7a5ac0', buddy: 'cmf-kind',
+    desc: '答えがあちこちに散らばりすぎて、ピッチのどこにも収まりませんでした。でもチームに一番必要な人かもしれません。',
+    aru: ['出番がなくても一番声が出ている', 'ゴールのとき、ベンチから一番に飛び出す', 'アップ中に観客と仲良くなる'] },
+  'x-coach':   { pos: null, hidden: true, label: 'BOSS', posName: '監督', style: '隠しタイプ', name: 'ピッチの外の人', color: '#333d4a', buddy: 'dmf-regista',
+    desc: 'どの答えもバランスがよく、しかも仕切りたがり。どこでもできるので、外から指示する側に回りましょう。',
+    aru: ['テレビの試合にもつい指示を出す', '「俺ならここで交代する」が口ぐせ', 'フォーメーションの話になると止まらない'] },
+  'x-supporter':{ pos: null, hidden: true, label: 'FAN', posName: 'サポーター', style: '隠しタイプ', name: '観客席の12番目の選手', color: '#c2410c', buddy: 'st-ego',
+    desc: 'ボールも痛いのも、ケンカも避けるあなた。あなたの居場所は観客席です。いちばん大事な人です。',
+    aru: ['選手のチャントは全部歌える', '試合の日は朝から緊張している', '負けた日はご飯がのどを通らない'] },
+  'x-hand':    { pos: null, hidden: true, label: 'HAND', posName: 'ハンドの人', style: '隠しタイプ', name: 'つい手が出るフィールドプレーヤー', color: '#b45309', buddy: 'gk-stop',
+    desc: '前に行きたい気持ちと、手で取りたい気持ちがケンカしています。GKに転向すれば全部解決するかもしれません。',
+    aru: ['ボールが飛んでくると反射で手が出る', 'ハンドの判定に一番うるさい', 'GKのグローブを持っている'] },
+};
+
+// 質問。v：前(+)・後ろ(-)、h：サイド(+)・中央(-)、それ以外は能力・性格。avoid：サポーター判定用
+const QUESTIONS = [
+  { icon: '🧳', q: '旅行の計画を立てるなら？', a: [
+    ['行き先だけ決めて、あとは現地で', { v: 2, drb: 1, whim: 1 }],
+    ['移動もお店も全部決める', { h: -1, pas: 2, voice: 1 }],
+    ['雨の日のプランと保険まで調べる', { v: -2, def: 2 }],
+    ['誘われたら行く', { v: 1, whim: 1 }]] },
+  { icon: '🎮', q: 'ゲームで好きな役割は？', a: [
+    ['敵を倒すアタッカー', { v: 2, sht: 2, ego: 1 }],
+    ['回復とサポート', { h: -1, pas: 1, devo: 2 }],
+    ['前に立って攻撃を受けるタンク', { v: -2, phy: 2 }],
+    ['拠点を守る', { v: -2, gk: 2, def: 1 }]] },
+  { icon: '📸', q: '集合写真の立ち位置は？', a: [
+    ['ど真ん中', { h: -2, ego: 1 }],
+    ['端っこ', { h: 2 }],
+    ['後ろの列', { v: -1, phy: 1 }],
+    ['撮る側', { v: -1, gk: 1, voice: 1 }]] },
+  { icon: '🍻', q: '飲み会の席は？', a: [
+    ['真ん中', { h: -2, voice: 1 }],
+    ['端', { h: 2 }],
+    ['出入り口の近く（すぐ動ける）', { h: 1, spd: 1 }],
+    ['幹事席', { h: -1, pas: 1, devo: 1 }]] },
+  { icon: '🚗', q: '道が混んでいたら？', a: [
+    ['裏道を攻める', { v: 1, h: 1, spd: 1 }],
+    ['ナビに従う', { h: -1, pas: 1 }],
+    ['じっと待つ', { v: -1, phy: 1 }],
+    ['遠回りでも空いている道を行く', { h: 2, spd: 1 }]] },
+  { icon: '🍮', q: '冷蔵庫のプリンが消えた', a: [
+    ['犯人を探す', { v: -1, def: 2 }],
+    ['……自分が食べた', { v: 1, sht: 1, ego: 2 }],
+    ['新しいのを買ってくる', { devo: 2, pas: 1 }],
+    ['名前を書かなかった人に説教する', { v: -1, gk: 1, voice: 2 }]] },
+  { icon: '💬', q: 'LINEの返信は？', a: [
+    ['即レス', { spd: 2 }],
+    ['1回の長文で全部返す', { pas: 2 }],
+    ['スタンプだけ', { drb: 1, whim: 1 }],
+    ['既読もつけない', { ego: 1, whim: 1 }]] },
+  { icon: '🎤', q: 'カラオケでは？', a: [
+    ['一番最初に歌う', { v: 2, sht: 1, ego: 1 }],
+    ['タンバリンで盛り上げる', { devo: 1, voice: 1 }],
+    ['次の曲を予約し続ける', { h: -1, pas: 1 }],
+    ['ドリンクを注文する係', { v: -1, def: 1, devo: 1 }]] },
+  { icon: '💢', q: 'ケンカになりそうなときは？', a: [
+    ['言い返す', { phy: 2, ego: 1 }],
+    ['間に入って止める', { v: -1, def: 1, voice: 1 }],
+    ['話題をそらす', { drb: 2 }],
+    ['そっと帰る', { spd: 1, whim: 1, avoid: 1 }]] },
+  { icon: '🍜', q: '行列のできている店', a: [
+    ['並ぶ', { v: -1, phy: 1, devo: 1 }],
+    ['空いている時間を狙って出直す', { v: 1, spd: 1 }],
+    ['隣の店にする', { h: 1, drb: 1 }],
+    ['並んでいる人に味を聞く', { h: -1, pas: 1 }]] },
+  { icon: '📝', q: 'グループの課題では？', a: [
+    ['発表する人', { v: 1, sht: 1, ego: 1 }],
+    ['まとめ役', { h: -1, pas: 1, voice: 1 }],
+    ['ミスがないか確認する人', { v: -2, def: 1 }],
+    ['最後にいいところだけ持っていく人', { v: 2, sht: 1, whim: 1 }]] },
+  { icon: '🥤', q: '自販機で何を買う？', a: [
+    ['いつもの', { v: -1, def: 1 }],
+    ['新商品', { v: 1, drb: 1 }],
+    ['当たり付きの台を選ぶ', { whim: 2 }],
+    ['人の分も買う', { devo: 2, pas: 1 }]] },
+  { icon: '⚽', q: 'ボールが飛んできた！（直感で）', a: [
+    ['蹴る', { v: 2, sht: 1 }],
+    ['手で取る', { gk: 3 }],
+    ['胸で止める', { phy: 1, drb: 1 }],
+    ['よける', { spd: 1, avoid: 1 }]] },
+  { icon: '⏰', q: '朝起きたら？', a: [
+    ['すぐ動ける', { spd: 2 }],
+    ['二度寝して、昼から本気を出す', { whim: 2 }],
+    ['決まったルーティンをこなす', { v: -1, def: 1 }],
+    ['起きた瞬間からしゃべっている', { voice: 2 }]] },
+  { icon: '🩹', q: '痛いのは平気？', a: [
+    ['全然平気', { v: -1, phy: 2 }],
+    ['痛いけど我慢する', { devo: 2 }],
+    ['大げさに痛がる', { drb: 1, whim: 1 }],
+    ['痛い目にあわないように避ける', { spd: 1, avoid: 1 }]] },
+  { icon: '🔢', q: '好きな数字は？', number: true, a: [
+    ['1', { gk: 2 }],
+    ['4', { def: 2 }],
+    ['7', { h: 1, spd: 1 }],
+    ['10', { pas: 1, ego: 1 }]] },
+];
+
+// 能力ごとの満点・平均・ばらつき（4択を適当に選んだ人を「ふつうの人」として比べる）
+const KEYS = [...Object.keys(STATS), ...Object.keys(TRAITS), 'v', 'h'];
+const MAX = {}, MEAN = {}, SD = {};
+for (const k of KEYS) {
+  let mx = 0, m = 0, vr = 0;
+  for (const q of QUESTIONS) {
+    const xs = q.a.map(([, e]) => e[k] || 0), mu = xs.reduce((a, b) => a + b, 0) / xs.length;
+    mx += Math.max(0, ...xs); m += mu; vr += xs.reduce((a, b) => a + (b - mu) ** 2, 0) / xs.length;
+  }
+  MAX[k] = mx; MEAN[k] = m; SD[k] = Math.sqrt(vr) || 1;
+}
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const z = (s, k) => (s[k] - MEAN[k]) / SD[k];
+// 正規分布の累積で「ふつうの人の中でどのあたりか」を -1〜1 に
+function phi(x) { const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2); const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x / 2); return x >= 0 ? (1 + y) / 2 : (1 - y) / 2; }
+const rank = (s, k) => phi(z(s, k)) * 2 - 1;
+const GK_LINE = 0.7, DIST_W = 6, BIAS_W = 0.25;
+
+function sumAnswers(answers) {
+  const s = { v: 0, h: 0, vp: 0, vn: 0, avoid: 0 };
+  for (const k of [...Object.keys(STATS), ...Object.keys(TRAITS)]) s[k] = 0;
+  answers.forEach((ai, qi) => {
+    if (ai == null) return;
+    const e = QUESTIONS[qi].a[ai][1];
+    for (const [k, x] of Object.entries(e)) s[k] = (s[k] || 0) + x;
+    if (e.v > 0) s.vp += e.v; if (e.v < 0) s.vn -= e.v;
+  });
+  return s;
+}
+// ふつうの人と比べてどれだけ多いか（標準化した値）で重みづけ
+const dot = (s, w) => Object.entries(w || {}).reduce((t, [k, x]) => t + x * z(s, k), 0);
+
+function pickPos(s) {
+  const v = rank(s, 'v'), h = rank(s, 'h');
+  if (rank(s, 'gk') >= GK_LINE && v <= 0) return { pos: 'GK', v, h };
+  let best = null, bs = -Infinity;
+  for (const [id, p] of Object.entries(POS)) {
+    if (id === 'GK') continue;
+    const d = (v - p.v) ** 2 + (h - p.h) ** 2;
+    const sc = -d * DIST_W + dot(s, p.bias) * BIAS_W;
+    if (sc > bs) { bs = sc; best = id; }
+  }
+  return { pos: best, v, h };
+}
+function pickStyle(s, pos) {
+  let best = null, bs = -Infinity;
+  for (const [id, t] of Object.entries(TYPES)) {
+    if (t.pos !== pos) continue;
+    const sc = dot(s, t.w);
+    if (sc > bs) { bs = sc; best = id; }
+  }
+  return best;
+}
+function hiddenType(s, base) {
+  if (s.avoid >= 3) return 'x-supporter';
+  if (rank(s, 'gk') >= 0.94 && base.v > 0.3) return 'x-hand';
+  if (s.vp >= 7 && s.vn >= 7 && Math.abs(s.v) <= 1) return 'x-bench';
+  if (Math.abs(base.v) <= 0.2 && Math.abs(base.h) <= 0.3 && z(s, 'voice') >= 1) return 'x-coach';
+  return null;
+}
+// answers：各質問で選んだ番号（0〜3）の配列 → 結果
+function diagnose(answers) {
+  const s = sumAnswers(answers);
+  const base = pickPos(s);
+  const hid = hiddenType(s, base);
+  const type = hid || pickStyle(s, base.pos);
+  // 好きな数字の質問を抜いたら結果が変わる → 決め手
+  const ni = QUESTIONS.findIndex((q) => q.number);
+  let kime = false;
+  if (!hid && answers[ni] != null) {
+    const a2 = answers.slice(); a2[ni] = null;
+    const s2 = sumAnswers(a2), b2 = pickPos(s2);
+    kime = b2.pos !== base.pos;
+  }
+  return { type, pos: base.pos, v: base.v, h: base.h, stats: s, kime };
+}
+// ===== DATA END =====
+
+// ===== 絵 =====
+const $ = (id) => document.getElementById(id);
+const typeColor = (id) => TYPES[id].hidden ? TYPES[id].color : GROUP[POS[TYPES[id].pos].g];
+const posLabel = (id) => TYPES[id].hidden ? TYPES[id].label : TYPES[id].pos;
+const posName = (id) => TYPES[id].hidden ? TYPES[id].posName : POS[TYPES[id].pos].name;
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// 縦向きのピッチ（上が相手ゴール）。300x440
+// ピッチ上の目印の場所（左右に2人いるポジションは [左, 右]）
+const SPOTS = {
+  CF: [[150, 62]], ST: [[108, 84], [192, 84]], WG: [[48, 96], [252, 96]],
+  SS: [[100, 146], [200, 146]], OMF: [[150, 160]], SH: [[44, 196], [256, 196]],
+  CMF: [[110, 232], [190, 232]], WB: [[40, 262], [260, 262]], DMF: [[150, 282]],
+  SB: [[46, 330], [254, 330]], CB: [[112, 352], [188, 352]], GK: [[150, 404]],
+};
+function sideOf(id) {
+  const t = TYPES[id]; if (t.side) return t.side;
+  const same = Object.keys(TYPES).filter((k) => TYPES[k].pos === t.pos);
+  return same.indexOf(id) % 2 ? -1 : 1;
+}
+function pitchSVG(r, opt = {}) {
+  const t = TYPES[r.type];
+  let s = `<rect x="0" y="0" width="300" height="440" rx="18" fill="#2f9a4f"/>`;
+  for (let i = 0; i < 8; i++) s += `<rect x="12" y="${14 + i * 51.5}" width="276" height="25.75" fill="#2a8c47"/>`;
+  const L = 'fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="2.5"';
+  s += `<rect x="12" y="14" width="276" height="412" ${L}/><line x1="12" y1="220" x2="288" y2="220" ${L}/><circle cx="150" cy="220" r="40" ${L}/>`;
+  s += `<rect x="78" y="14" width="144" height="62" ${L}/><rect x="114" y="14" width="72" height="24" ${L}/>`;
+  s += `<rect x="78" y="364" width="144" height="62" ${L}/><rect x="114" y="402" width="72" height="24" ${L}/>`;
+  s += `<rect x="128" y="6" width="44" height="8" fill="#fff" opacity=".8"/><rect x="128" y="426" width="44" height="8" fill="#fff" opacity=".8"/>`;
+  // ポジションの目印（フォーメーションの形で置く）
+  for (const [id, spots] of Object.entries(SPOTS)) {
+    const me = !t.hidden && t.pos === id;
+    for (const [x, y] of spots) s += `<text x="${x}" y="${y + 4}" text-anchor="middle" font-family="Dela Gothic One, sans-serif" font-size="12" fill="#fff" opacity="${me ? 0 : .5}">${id}</text>`;
+  }
+  // あなたの位置：自分のポジションの目印から、答えのずれの分だけ少し動かす
+  let x, y;
+  if (r.type === 'x-bench') { x = 296; y = 220; s += `<rect x="286" y="170" width="14" height="100" rx="4" fill="#8a6a3a" stroke="#fff" stroke-width="2"/>`; }
+  else if (r.type === 'x-coach') { x = 296; y = 300; s += `<rect x="288" y="270" width="12" height="60" rx="3" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="4 3"/>`; }
+  else if (r.type === 'x-supporter') { x = 150; y = 456; }
+  else if (t.pos === 'GK') { x = 150; y = 404; }
+  else {
+    const p = POS[t.pos], spots = SPOTS[t.pos], sd = sideOf(r.type);
+    const [bx, by] = spots.length > 1 ? spots[sd < 0 ? 0 : 1] : spots[0];
+    const dirX = spots.length > 1 ? sd : 1;
+    x = bx + clamp((r.h - p.h) * 40, -16, 16) * dirX; y = by - clamp((r.v - p.v) * 50, -16, 16);
+  }
+  const col = typeColor(r.type);
+  const anim = opt.static ? '' : ' class="here"';
+  s += `<g${anim}><circle cx="${x}" cy="${y}" r="17" fill="${col}" stroke="#fff" stroke-width="4"/>` +
+    `<text x="${x}" y="${y + 5}" text-anchor="middle" font-family="Dela Gothic One, sans-serif" font-size="${posLabel(r.type).length > 3 ? 8 : 12}" fill="#fff">${esc(posLabel(r.type))}</text></g>`;
+  const ly = y < 60 ? y + 34 : y - 26;
+  s += `<g><rect x="${clamp(x - 44, 2, 210)}" y="${ly - 14}" width="88" height="22" rx="11" fill="#fff"/><text x="${clamp(x, 46, 254)}" y="${ly + 2}" text-anchor="middle" font-family="M PLUS Rounded 1c, sans-serif" font-weight="800" font-size="12" fill="#17301e">あなたはここ</text></g>`;
+  const hgt = r.type === 'x-supporter' ? 480 : 440;
+  if (r.type === 'x-supporter') s = `<rect x="0" y="436" width="300" height="44" rx="10" fill="#c2410c" opacity=".85"/><text x="150" y="472" text-anchor="middle" font-size="10" fill="#fff" font-family="sans-serif">観客席</text>` + s;
+  return `<svg viewBox="0 0 300 ${hgt}" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+}
+function radarSVG(st, col) {
+  const keys = Object.keys(STATS), n = keys.length, cx = 140, cy = 128, R = 92;
+  const pt = (i, r) => [cx + Math.sin((i / n) * Math.PI * 2) * r, cy - Math.cos((i / n) * Math.PI * 2) * r];
+  let s = '';
+  for (const f of [1, .66, .33]) s += `<polygon points="${keys.map((_, i) => pt(i, R * f).join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-opacity=".18" stroke-width="1.5"/>`;
+  const val = keys.map((k) => 0.15 + 0.85 * (phi(z(st, k)) ));
+  s += `<polygon points="${val.map((x, i) => pt(i, R * x).join(',')).join(' ')}" fill="${col}" fill-opacity=".35" stroke="${col}" stroke-width="3" stroke-linejoin="round"/>`;
+  keys.forEach((k, i) => { const [x, y] = pt(i, R + 22); s += `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="800" fill="currentColor">${STATS[k]}</text>`; });
+  return `<svg viewBox="0 0 280 250" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+}
+function heroSVG() {
+  let s = `<rect width="420" height="230" fill="none"/>`;
+  for (let i = 0; i < 7; i++) s += `<rect x="${i * 60}" y="0" width="30" height="230" fill="#fff" opacity=".05"/>`;
+  s += `<path d="M20 200 H400 M210 40 V200" stroke="#fff" stroke-opacity=".5" stroke-width="3" fill="none"/><circle cx="210" cy="120" r="44" stroke="#fff" stroke-opacity=".5" stroke-width="3" fill="none"/>`;
+  const dots = [['GK', 210, 196], ['CB', 170, 168], ['CB', 250, 168], ['SB', 96, 152], ['SB', 324, 152], ['DMF', 210, 138], ['CMF', 160, 112], ['OMF', 210, 86], ['WG', 80, 70], ['WG', 340, 70], ['ST', 250, 46], ['CF', 170, 46]];
+  dots.forEach(([id, x, y], i) => {
+    s += `<g><circle cx="${x}" cy="${y}" r="15" fill="${GROUP[POS[id].g]}" stroke="#fff" stroke-width="3"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-family="Dela Gothic One, sans-serif" font-size="${id.length > 2 ? 9 : 11}" fill="#fff">${id}</text></g>`;
+  });
+  s += `<g><circle cx="300" cy="112" r="20" fill="#fff" stroke="#17301e" stroke-width="3"/><text x="300" y="121" text-anchor="middle" font-family="Dela Gothic One, sans-serif" font-size="24" fill="#17301e">?</text></g>`;
+  return `<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+}
+
+// ===== 診断の進行 =====
+let idx = 0, answers = [], result = null;
+function show(id) { ['start', 'quiz', 'judge', 'result'].forEach((s) => $(s).classList.toggle('hidden', s !== id)); window.scrollTo(0, 0); }
+function startQuiz() { idx = 0; answers = []; show('quiz'); renderQ(); }
+function renderQ() {
+  const item = QUESTIONS[idx], pct = (idx / QUESTIONS.length) * 100;
+  $('bar').style.width = `${pct}%`; $('ball').style.left = `${pct}%`;
+  $('qnum').textContent = `Q${idx + 1}/${QUESTIONS.length}`;
+  $('qicon').textContent = item.icon; $('qicon').style.animation = 'none'; void $('qicon').offsetWidth; $('qicon').style.animation = '';
+  $('qtext').textContent = item.q;
+  $('backBtn').classList.toggle('hidden', idx === 0);
+  const box = $('opts'); box.innerHTML = '';
+  item.a.forEach(([label], i) => {
+    const b = document.createElement('button');
+    b.className = 'opt'; b.innerHTML = `<b>${'ABCD'[i]}</b><span></span>`; b.lastChild.textContent = label;
+    b.onclick = () => { answers[idx] = i; idx++; idx < QUESTIONS.length ? renderQ() : judge(); };
+    box.appendChild(b);
+  });
+}
+function judge() {
+  result = diagnose(answers);
+  show('judge');
+  const msgs = ['ポジションをチェック中', 'オフサイドラインを確認中', 'プレースタイルを判定中'];
+  let i = 0; $('judgeMsg').textContent = msgs[0];
+  const tm = setInterval(() => { i++; if (i < msgs.length) $('judgeMsg').textContent = msgs[i]; }, 650);
+  setTimeout(() => {
+    clearInterval(tm);
+    history.replaceState(null, '', `?r=${result.type}&p=${result.v.toFixed(2)},${result.h.toFixed(2)}`);
+    renderResult(); countPlay(); saveZukan(result.type);
+  }, 2000);
+}
+function renderResult() {
+  const id = result.type, t = TYPES[id], col = typeColor(id);
+  document.documentElement.style.setProperty('--tc', col);
+  $('rPos').textContent = posLabel(id);
+  $('rPosName').textContent = posName(id);
+  $('rStyle').textContent = t.style;
+  $('rName').textContent = `「${t.name}」`;
+  $('rPitch').innerHTML = pitchSVG(result);
+  $('rDesc').textContent = t.desc;
+  $('rAru').innerHTML = ''; t.aru.forEach((a) => { const li = document.createElement('li'); li.textContent = a; $('rAru').appendChild(li); });
+  $('rRadar').innerHTML = radarSVG(result.stats, col);
+  const hasStats = Object.keys(STATS).some((k) => result.stats[k] > 0);
+  $('rRadar').classList.toggle('hidden', !hasStats); $('rRadar').previousElementSibling.classList.toggle('hidden', !hasStats);
+  $('rForm').textContent = t.hidden ? 'どのフォーメーションでも（ピッチの外から）' : POS[t.pos].form;
+  const b = TYPES[t.buddy];
+  $('rBuddy').textContent = `${posLabel(t.buddy)}「${b.name}」`;
+  $('rKime').classList.toggle('hidden', !result.kime);
+  const sl = t.hidden ? null : POS[t.pos].sl;
+  $('ctaText').textContent = sl ? `サッカー人生で${sl}としてプロを目指す →` : 'サッカー人生で、ピッチに立ってみる →';
+  $('rPct').textContent = '';
+  renderZukan();
+  show('result');
+  loadPct();
+  imgPromise = null; makeShareImage();
+}
+
+// ===== 図鑑（この端末で出たタイプ） =====
+const ZKEY = 'position_zukan';
+function getZukan() { try { return JSON.parse(localStorage.getItem(ZKEY) || '[]'); } catch { return []; } }
+function saveZukan(id) { try { const z = getZukan(); if (!z.includes(id)) { z.push(id); localStorage.setItem(ZKEY, JSON.stringify(z)); } } catch {} }
+function renderZukan() {
+  const z = getZukan(), all = Object.keys(TYPES);
+  if (!z.length) { $('zukan').innerHTML = ''; return; }
+  $('zukan').innerHTML = `📘 見つけたタイプ ${z.filter((k) => TYPES[k]).length} / ${all.length}<div class="dots">${all.map((k) => `<i class="${z.includes(k) ? 'on' : ''}" title="${z.includes(k) ? esc(TYPES[k].name) : '？'}"></i>`).join('')}</div>`;
+}
+
+// ===== 画像（1080x1350） =====
+let imgPromise = null;
+function svgImg(svg) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }); }
+function wrapText(g, text, maxW) {
+  const out = []; let line = '';
+  for (const ch of text) { if (g.measureText(line + ch).width > maxW && line) { out.push(line); line = ch; } else line += ch; }
+  if (line) out.push(line); return out;
+}
+function makeShareImage() {
+  if (imgPromise) return imgPromise;
+  imgPromise = (async () => {
+    const id = result.type, t = TYPES[id], col = typeColor(id);
+    // Googleフォントは文字ごとに分かれて届くので、描く文字をまとめて読み込んでおく
+    const allText = [posLabel(id), posName(id), t.style, t.name, t.desc, ...t.aru, APP_TITLE, 'わたしの適正ポジションは…「」✔'].join('');
+    await Promise.all([document.fonts.load('40px "Dela Gothic One"', allText), document.fonts.load('800 40px "M PLUS Rounded 1c"', allText)]);
+    const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const g = c.getContext('2d');
+    g.fillStyle = col; g.fillRect(0, 0, 1080, 1350);
+    g.fillStyle = 'rgba(255,255,255,.08)'; for (let i = 0; i < 9; i++) g.fillRect(i * 130, 0, 65, 1350);
+    g.fillStyle = '#fbfff8'; g.beginPath(); g.roundRect(60, 60, 960, 1230, 56); g.fill();
+    const pitch = await svgImg(pitchSVG(result, { static: true }));
+    const pw = 400, ph = pw * pitch.height / pitch.width;
+    g.drawImage(pitch, 600, 130, pw, ph);
+    g.textAlign = 'left'; g.fillStyle = '#5d7563'; g.font = '800 36px "M PLUS Rounded 1c"'; g.fillText('わたしの適正ポジションは…', 110, 170);
+    g.fillStyle = col; g.font = '170px "Dela Gothic One"'; g.fillText(posLabel(id), 100, 360);
+    g.fillStyle = '#17301e'; g.font = '800 44px "M PLUS Rounded 1c"'; g.fillText(posName(id), 110, 430);
+    g.fillStyle = col; g.beginPath(); g.roundRect(110, 460, Math.min(460, g.measureText(t.style).width + 60), 60, 30); g.fill();
+    g.fillStyle = '#fff'; g.font = '800 34px "M PLUS Rounded 1c"'; g.fillText(t.style, 140, 502);
+    g.fillStyle = col; g.font = '58px "Dela Gothic One"';
+    let y = 620; for (const ln of wrapText(g, `「${t.name}」`, 460)) { g.fillText(ln, 105, y); y += 76; }
+    y = Math.max(y + 10, 130 + ph + 70);
+    g.fillStyle = '#17301e'; g.font = '800 36px "M PLUS Rounded 1c"';
+    for (const a of t.aru) { for (const [i, ln] of wrapText(g, a, 820).entries()) { g.fillText((i ? '　 ' : '✔ ') + ln, 110, y); y += 50; } y += 8; }
+    if (y < 1110) { y += 26; g.fillStyle = '#5d7563'; g.font = '800 32px "M PLUS Rounded 1c"'; for (const ln of wrapText(g, t.desc, 860).slice(0, Math.floor((1180 - y) / 46))) { g.fillText(ln, 110, y); y += 46; } }
+    g.textAlign = 'center'; g.fillStyle = '#1f9d55'; g.font = '40px "Dela Gothic One"'; g.fillText('⚽ ' + APP_TITLE, 540, 1235);
+    return await new Promise((r) => c.toBlob((b) => r(b), 'image/png'));
+  })();
+  return imgPromise;
+}
+function toast(text) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); } t.textContent = text; t.className = 'on'; clearTimeout(toast.tm); toast.tm = setTimeout(() => (t.className = ''), 3200); }
+const pageUrl = () => location.origin + location.pathname;
+function shareText() { const t = TYPES[result.type]; return `私の適正ポジションは【${posLabel(result.type)}｜${t.style}】「${t.name}」でした⚽\n\nあなたはピッチのどこ？👇`; }
+function tweet(text) {
+  const u = new URL('https://twitter.com/intent/tweet');
+  u.searchParams.set('text', text); u.searchParams.set('url', pageUrl()); u.searchParams.set('hashtags', HASHTAGS.join(','));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+async function share() {
+  const text = shareText();
+  if (matchMedia('(pointer: coarse)').matches && navigator.canShare) {
+    try {
+      const blob = await makeShareImage();
+      const file = new File([blob], `position-${result.type}.png`, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: `${text}\n${pageUrl()}\n#${HASHTAGS[0]}` }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  tweet(text);
+  const blob = await makeShareImage();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `position-${result.type}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('画像を保存しました。Xの投稿画面に画像を貼り付けてください');
+}
+async function saveImage() {
+  const blob = await makeShareImage();
+  const file = new File([blob], `position-${result.type}.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: APP_TITLE }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ===== 診断した人数・ポジションごとの割合（共通 counter-api。1端末1回だけ数える） =====
+const COUNTER_API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
+const PLAY_KEY = 'position-play';
+const posKey = (p) => `position-p-${p.toLowerCase()}`;
+function countPlay() {
+  try { if (localStorage.getItem('position_played')) return; localStorage.setItem('position_played', '1'); } catch { return; }
+  fetch(`${COUNTER_API}/hit/${PLAY_KEY}`, { method: 'POST' }).catch(() => {});
+  const p = TYPES[result.type].pos;
+  if (p) fetch(`${COUNTER_API}/hit/${posKey(p)}`, { method: 'POST' }).catch(() => {});
+}
+let countsCache = null;
+function fetchCounts() {
+  if (countsCache) return countsCache;
+  const keys = [PLAY_KEY, ...Object.keys(POS).map(posKey)];
+  countsCache = fetch(`${COUNTER_API}/get?keys=${keys.join(',')}`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()).catch(() => { countsCache = null; return null; });
+  return countsCache;
+}
+async function loadCount() {
+  const j = await fetchCounts(); const n = j && j[PLAY_KEY];
+  if (n > 0) $('playCount').textContent = `⚽ これまでに ${n.toLocaleString()}人 が診断しました`;
+}
+async function loadPct() {
+  const p = TYPES[result.type].pos; if (!p) return;
+  const j = await fetchCounts(); if (!j) return;
+  const total = Object.keys(POS).reduce((s, k) => s + (j[posKey(k)] || 0), 0);
+  if (total < 30) return; // 少ないうちは出さない
+  const pct = Math.round(((j[posKey(p)] || 0) / total) * 1000) / 10;
+  $('rPct').textContent = `全国の診断者のうち ${pct}% が ${POS[p].name}（${p}）でした`;
+}
+
+// ===== スタート =====
+function renderStart() {
+  $('heroArt').innerHTML = heroSVG();
+  $('posList').innerHTML = Object.entries(POS).map(([id, p]) => `<span style="background:${GROUP[p.g]}">${id}</span>`).join('');
+}
+$('startBtn').onclick = startQuiz;
+$('backBtn').onclick = () => { if (idx > 0) { idx--; answers.length = idx; renderQ(); } };
+$('retry').onclick = () => { history.replaceState(null, '', pageUrl()); show('start'); };
+$('shareX').onclick = share;
+$('saveImg').onclick = saveImage;
+
+renderStart();
+{
+  const q = new URLSearchParams(location.search), r = q.get('r');
+  if (r && TYPES[r]) {
+    const [pv, ph] = (q.get('p') || '').split(',').map(Number);
+    const t = TYPES[r], p = t.pos && POS[t.pos];
+    const st = {}; for (const k of Object.keys(STATS)) st[k] = MEAN[k] - SD[k] * 0.3;
+    for (const k of Object.keys(t.w || {})) if (STATS[k]) st[k] = MEAN[k] + SD[k] * 1.2;
+    result = { type: r, pos: t.pos, v: Number.isFinite(pv) ? pv : (p ? p.v : 0), h: Number.isFinite(ph) ? ph : (p ? p.h : 0), stats: st, kime: false };
+    renderResult();
+  }
+}
+loadCount();
+</script>
+<script src="../shared/apps.js"></script>
+<script src="../shared/next.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body { background: linear-gradient(160deg, #49b86a, #2a8c47 60%, #1d6b35); font-family: "M PLUS Rounded 1c"; color: #fff; position: relative; }
+  .stripe { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 80px, transparent 80px 160px); }
+  .txt { position: absolute; left: 64px; top: 80px; width: 640px; }
+  .k { display: inline-block; background: #fff; color: #1d6b35; font-size: 32px; padding: 4px 22px; border-radius: 99px; }
+  h1 { font-family: "Dela Gothic One"; font-weight: 400; font-size: 76px; line-height: 1.18; margin: 18px 0 0; text-shadow: 0 5px 0 rgba(0,0,0,.18); }
+  h1 span { color: #ffe14d; }
+  p { font-size: 34px; margin: 18px 0 0; }
+  svg { position: absolute; right: 40px; top: 35px; width: 470px; height: 560px; }
+</style></head><body>
+<div class="stripe"></div>
+<div class="txt"><span class="k">⚽ 16問・全52タイプ</span><h1>あなたの<br><span>適正ポジション</span><br>診断</h1><p>性格だけで決めます。<br>足の速さは聞きません。</p></div>
+<svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg" id="p"></svg>
+<script>
+const C = { GK: '#e0a100', DF: '#2f6fd6', MF: '#1f9d55', FW: '#e8432f' };
+let s = '<rect x="6" y="6" width="288" height="348" rx="18" fill="#2f9a4f" stroke="#fff" stroke-width="4"/>';
+s += '<line x1="6" y1="180" x2="294" y2="180" stroke="#fff" stroke-width="3" opacity=".7"/><circle cx="150" cy="180" r="38" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/>';
+s += '<rect x="80" y="6" width="140" height="56" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/><rect x="80" y="298" width="140" height="56" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/>';
+const d = [['CF', 'FW', 150, 46], ['WG', 'FW', 50, 70], ['WG', 'FW', 250, 70], ['OMF', 'MF', 150, 112], ['SH', 'MF', 60, 150], ['CMF', 'MF', 110, 180], ['DMF', 'MF', 190, 200], ['SB', 'DF', 46, 250], ['CB', 'DF', 115, 270], ['CB', 'DF', 185, 270], ['WB', 'DF', 254, 230], ['GK', 'GK', 150, 326]];
+for (const [id, g, x, y] of d) s += `<circle cx="${x}" cy="${y}" r="21" fill="${C[g]}" stroke="#fff" stroke-width="4"/><text x="${x}" y="${y + 6}" text-anchor="middle" font-family="Dela Gothic One" font-size="${id.length > 2 ? 13 : 16}" fill="#fff">${id}</text>`;
+s += '<circle cx="232" cy="134" r="27" fill="#fff" stroke="#17301e" stroke-width="4"/><text x="232" y="146" text-anchor="middle" font-family="Dela Gothic One" font-size="34" fill="#17301e">?</text>';
+document.getElementById('p').innerHTML = s;
+</script>
+</body></html>

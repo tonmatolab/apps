@@ -1,6 +1,7 @@
 // 全アプリの一覧（一覧ページと「次はこれで遊ぼう」で使う）。新しいアプリはここに1行足す
 // shelf: 一覧ページの棚（friends=みんなと（友達・オンライン） / solo=ひとりで / quiz=診断・クイズ）
 window.TONMATO_APPS = [
+  { id: 'position', path: 'position-shindan/', title: '適正ポジション診断', desc: '性格だけでサッカーのポジションを判定。CF？偽SB？全52タイプ', icon: '⚽', key: 'position-play', added: '2026-11-26', tag: '診断', shelf: 'quiz' },
   { id: 'onigiri', path: 'onigiri/', title: 'おにぎり握り職人', desc: 'ぎゅっ、くるっ、で握って、まっぷたつ。断面を見て査定されるおにぎりゲーム', icon: '🍙', key: 'onigiri-play', added: '2026-11-24', tag: 'バカゲー', shelf: 'solo' },
   { id: 'arukisumaho', path: 'arukisumaho/', title: '歩きスマホ、ダメ絶対', desc: '前を見ない歩きスマホを、スワイプで突き飛ばして注意。何人いける？', icon: '📵', key: 'arukisumaho-play', added: '2026-11-23', tag: 'バカゲー', shelf: 'solo' },
   { id: 'batsu', path: 'batsu/', title: '罰ゲーム決めたげる', desc: '負けた人が決まったら、あとはおまかせ。場面と強さで罰ゲームを判決', icon: '🔨', key: 'batsu-play', added: '2026-11-23', tag: 'パーティー', shelf: 'friends' },

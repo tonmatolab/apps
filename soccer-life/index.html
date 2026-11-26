@@ -593,7 +593,9 @@
     </div>
     <div class="card">
       <h2>🏆 生涯スコア 全国ランキング</h2>
-      <div class="tabs" id="boardTabs" style="margin-bottom:6px"><button data-b="new" class="on">いまのルール</button><button data-b="old">旧ルール（〜2026年11月）</button></div>
+      <div class="tabs" id="boardMode" style="margin-bottom:6px"><button data-m="normal" class="on">じっくり</button><button data-m="quick">⏱ 60秒モード</button></div>
+      <div class="tabs" id="boardPeriod" style="margin-bottom:6px"><button data-p="all" class="on">全期間</button><button data-p="week">今週</button><button data-p="lastweek">先週</button></div>
+      <p class="sub" id="boardNote" style="margin:0 0 6px;text-align:center"></p>
       <ol class="board" id="boardTitle"><li class="empty">読み込み中…</li></ol>
     </div>
     <div class="card hidden" id="lineageCard">
@@ -1072,16 +1074,17 @@ function renderCol() {
 }
 
 // ===== タイトル =====
-// 全国ランキング：試合の仕組みが新しくなった（2026年11月）ので新しいランキング。旧ルールの記録は old で見られる
-const boardGame = (mode, old = false) => (mode === 'quick' ? 'soccerq' : 'soccer') + (old ? '' : '2');
-async function loadBoard(el, mine, mode = 'normal', old = false, limit = mine > 10 && mine <= 100 ? 100 : 10) {
-  const j = await api(`/board?game=${boardGame(mode, old)}&limit=${limit}`);
+// 全国ランキング（じっくり・60秒モード）。period：'all'（全期間）・'week'（今週）・'lastweek'（先週）
+const boardGame = (mode) => (mode === 'quick' ? 'soccerq2' : 'soccer2');
+async function loadBoard(el, mine, mode = 'normal', period = 'all', limit = mine > 10 && mine <= 100 ? 100 : 10) {
+  const j = await api(`/board?game=${boardGame(mode)}&limit=${limit}${period !== 'all' ? `&period=${period}` : ''}`);
   if (!j || j.error) { el.innerHTML = '<li class="empty">ランキングを読み込めませんでした</li>'; return; }
-  if (!j.top.length) { el.innerHTML = '<li class="empty">まだ誰も引退していません。一番乗りを狙え！</li>'; return; }
+  if (!j.top.length) { el.innerHTML = `<li class="empty">${period === 'week' ? '今週はまだ誰も登録していません。一番乗りを狙え！' : period === 'lastweek' ? '先週の記録はありません' : 'まだ誰も引退していません。一番乗りを狙え！'}</li>`; return j; }
   const more = limit < 100 && j.total > limit;
   el.innerHTML = j.top.map((r) => `<li${mine && r.rank === mine ? ' style="background:var(--chip)"' : ''}><span class="no">${r.rank}</span><span class="nm">${esc(r.name)}${tagHTML(r.tag)}</span><span class="sc">${r.ms.toLocaleString()}</span></li>`).join('')
     + (more ? '<li class="more"><button class="btn small">もっと見る（100位まで）</button></li>' : '');
-  if (more) el.querySelector('.more button').onclick = (e) => { e.target.disabled = true; e.target.textContent = '読み込み中…'; loadBoard(el, mine, mode, old, 100); };
+  if (more) el.querySelector('.more button').onclick = (e) => { e.target.disabled = true; e.target.textContent = '読み込み中…'; loadBoard(el, mine, mode, period, 100); };
+  return j;
 }
 
 // ランキングの名前の横：その人のいちばんレアな称号（レア度の印＋名前）
@@ -1094,14 +1097,18 @@ function topTitleHTML(sm) {
   const rt = rateText(t.rate);
   return `<div class="toptitle ${t.rarity.id}"><div class="lb">いちばんレアな称号</div><div class="nmx"><span class="rb ${t.rarity.id}">${t.rarity.id}</span> ${esc(t.name)}</div><div class="ds">${esc(t.desc)}</div><div class="rt">${t.rarity.name}・持っているのは引退した選手の${rt}</div></div>`;
 }
-// タイトルのランキング：いまのルール / 旧ルール（試合の仕組みが変わる前の記録。比べられないので分けた）
-let boardOld = false;
-document.getElementById('boardTabs').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  boardOld = b.dataset.b === 'old';
-  document.querySelectorAll('#boardTabs button').forEach((x) => x.classList.toggle('on', x === b));
-  loadBoard($('boardTitle'), null, 'normal', boardOld);
-});
+// タイトルのランキング：じっくり／60秒モード × 全期間／今週／先週（押したときだけ読み込む）
+const BOARD = { mode: 'normal', period: 'all' };
+const weekLabel = (wk) => { const d = new Date(wk + 'T00:00:00Z'), e = new Date(d.getTime() + 6 * 86400000); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}（月）〜${e.getUTCMonth() + 1}/${e.getUTCDate()}（日）`; };
+async function loadTitleBoard() {
+  document.querySelectorAll('#boardMode button').forEach((x) => x.classList.toggle('on', x.dataset.m === BOARD.mode));
+  document.querySelectorAll('#boardPeriod button').forEach((x) => x.classList.toggle('on', x.dataset.p === BOARD.period));
+  $('boardNote').textContent = BOARD.mode === 'quick' ? '60秒モードで引退した選手の生涯スコア' : 'じっくりモードで引退した選手の生涯スコア';
+  const j = await loadBoard($('boardTitle'), null, BOARD.mode, BOARD.period);
+  if (j && j.week) $('boardNote').textContent = `${weekLabel(j.week)}・${j.total.toLocaleString()}人が登録（${j.keep}位まで）`;
+}
+document.getElementById('boardMode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; BOARD.mode = b.dataset.m; loadTitleBoard(); });
+document.getElementById('boardPeriod').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; BOARD.period = b.dataset.p; loadTitleBoard(); });
 
 // ----- 家系図 -----
 function lineEntry(sm) {
@@ -1147,7 +1154,7 @@ function renderTitle() {
   show('scrTitle');
   { const col = loadCol(); $('colBtn').textContent = `📚 称号図鑑・実績（称号 ${Object.keys(col.titles).length}/${SL.TITLES.length}）`; }
   if (window.OL) OL.entryCard();
-  loadBoard($('boardTitle'), null, 'normal', boardOld);
+  loadTitleBoard();
   api('/get?keys=soccer-play').then((j) => { $('sPlays').textContent = j ? (j['soccer-play'] || 0).toLocaleString() : '-'; });
 }
 
@@ -1866,7 +1873,8 @@ function renderRank() {
     loadBoard($('boardEnd'), null, sm.mode); return;
   }
   if (!r) { $('rankMsg').textContent = 'ランキングに接続できませんでした'; loadBoard($('boardEnd'), null, sm.mode); return; }
-  $('rankMsg').innerHTML = `${sm.mode === 'quick' ? '60秒モード ' : ''}全国 <b class="num" style="font-size:1.4rem;color:var(--green)">${r.rank}</b> 位 <span class="sub">/ ${r.total.toLocaleString()}人中</span>`;
+  $('rankMsg').innerHTML = `${sm.mode === 'quick' ? '60秒モード ' : ''}全国 <b class="num" style="font-size:1.4rem;color:var(--green)">${r.rank}</b> 位 <span class="sub">/ ${r.total.toLocaleString()}人中</span>`
+    + (r.week ? `<br><span style="font-weight:800">📅 今週 ${r.week.rank ? `<b class="num" style="font-size:1.2rem;color:var(--gold)">${r.week.rank}</b> 位` : 'ランク外'}</span> <span class="sub">/ ${r.week.total.toLocaleString()}人中${r.week.rank ? '' : `（${r.week.keep}位まで）`}</span>` : '');
   if ((r.canName ?? r.top10) && !sm.named) { $('nameBox').classList.remove('hidden'); $('rankName').value = sm.name; }
   loadBoard($('boardEnd'), r.rank, sm.mode);
 }
@@ -1897,7 +1905,7 @@ function share() {
   const big = sm.pos === 'GK' || sm.pos === 'DF' ? `無失点${sm.cs}試合` : `${sm.goals}ゴール${sm.assists}アシスト`;
   const extra = [sm.challenge && sm.challenge.cleared ? `縛り「${sm.challenge.name}」達成🎯` : '', sm.titles ? `称号${sm.titles.length}個` : '', sm.wc.some((w) => w.reached === '優勝') ? 'W杯優勝🏆' : '', sm.family.combo ? '親子弾👨‍👧' : '', sm.lastMatch?.hit ? '引退試合で有終の美🎉' : ''].filter(Boolean).join('｜');
   const tt = SL.titleInfo(SL.topTitle(sm.titles));
-  const text = `⚽ サッカー人生を終えました${sm.mode === 'quick' ? '（60秒モード）' : ''}\n${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${posName}）${sm.retireAge}歳で引退\n称号「${sm.title}」ランク${sm.letter}\n${tt ? `${tt.rarity.rank >= 3 ? '🌈' : '🎖️'}いちばんレアな称号【${tt.rarity.id}】${tt.name}（引退した選手の${rateText(tt.rate)}）\n` : ''}${sm.years}年・${sm.apps}試合・${big}｜代表${sm.caps}試合${extra ? `\n${extra}` : ''}${sm.rankInfo ? `\n全国${sm.rankInfo.rank}位` : ''}\n\nあなたはどんな選手人生を送る？`;
+  const text = `⚽ サッカー人生を終えました${sm.mode === 'quick' ? '（60秒モード）' : ''}\n${sm.gen > 1 ? `${sm.gen}代目 ` : ''}${sm.name}（${posName}）${sm.retireAge}歳で引退\n称号「${sm.title}」ランク${sm.letter}\n${tt ? `${tt.rarity.rank >= 3 ? '🌈' : '🎖️'}いちばんレアな称号【${tt.rarity.id}】${tt.name}（引退した選手の${rateText(tt.rate)}）\n` : ''}${sm.years}年・${sm.apps}試合・${big}｜代表${sm.caps}試合${extra ? `\n${extra}` : ''}${sm.rankInfo ? `\n全国${sm.rankInfo.rank}位${sm.rankInfo.week && sm.rankInfo.week.rank ? `・今週${sm.rankInfo.week.rank}位` : ''}` : ''}\n\nあなたはどんな選手人生を送る？`;
   const u = new URL('https://twitter.com/intent/tweet');
   u.searchParams.set('text', text);
   u.searchParams.set('url', location.origin + location.pathname);

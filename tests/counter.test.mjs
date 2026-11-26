@@ -70,6 +70,24 @@ try {
   const badTag = (await call('/score', { game: 'soccer2', ms: 4700, name: '変な印', tag: '<b>x</b>' })).j;
   check(!badTag.top.find((r) => r.name === '変な印')?.tag, '英数字でない印は捨てる');
   check(!(await call('/score', { game: 'onigiri', ms: 777, tag: 'wcw' })).j.top.some((r) => r.tag), '印のないゲームには付かない');
+  // 週間ランキング：送った記録が今週の表に入る・順位・印・ほかのゲームにはない
+  const wq = [];
+  for (const [ms, nm] of [[3000, '週一'], [5000, '週二'], [4000, '週三'], [5000, '週四']]) wq.push((await call('/score', { game: 'soccerq2', ms, name: nm, tag: 'g1' })).j);
+  check(wq.map((x) => x.week && x.week.rank).join() === '1,1,2,2' && wq[3].week.total === 4, `今週の順位（${wq.map((x) => x.week && x.week.rank).join()}）`);
+  const wb = (await call('/board?game=soccerq2&period=week')).j;
+  check(wb.total === 4 && wb.top.map((r) => r.name).join() === '週二,週四,週三,週一' && wb.top[0].tag === 'g1' && /^\d{4}-\d{2}-\d{2}$/.test(wb.week), `今週のランキング（${wb.top.map((r) => r.name).join()}・${wb.week}）`);
+  const lw = (await call('/board?game=soccerq2&period=lastweek')).j;
+  check(lw.total === 0 && lw.top.length === 0, '先週は空');
+  const ow = (await call('/board?game=onigiri&period=week')).j;
+  check(ow.top.length > 0 && !ow.week, '週間のないゲームは今までどおり全期間');
+  // 500件を超えたら下から消える（表は500件のまま）・ランク外は null
+  sql("INSERT INTO weekly (game, wk, o, sid, ms, name) SELECT 'soccerq2', '" + wb.week + "', 9000 * 1000000000 + (999999999 - (100000 + value)), 100000 + value, 9000, 'まとめて' FROM (WITH RECURSIVE c(value) AS (SELECT 1 UNION ALL SELECT value + 1 FROM c WHERE value < 496) SELECT value FROM c)");
+  sql("UPDATE counters SET value = value + 496 WHERE key = 'wk:soccerq2:" + wb.week + "'");
+  const out = (await call('/score', { game: 'soccerq2', ms: 10, name: '下位', tag: 'g1' })).j;
+  check(out.week && out.week.rank === null && out.week.total === 501, `500位より下はランク外（${JSON.stringify(out.week)}）`);
+  const inn = (await call('/score', { game: 'soccerq2', ms: 9500, name: '上位', tag: 'g1' })).j;
+  const cnt = JSON.parse(sql("SELECT COUNT(*) AS n FROM weekly WHERE game = 'soccerq2'"))[0].results[0].n;
+  check(inn.week.rank === 1 && cnt === 500, `500件のときに上位が入ると、いちばん下が消える（${inn.week.rank}位・${cnt}件）`);
   // 順位は帯（hist）を使って数える：全部数えたときの順位と同じになる（大きいほど上位・小さいほど上位・同点・帯の境目）
   {
     const brute = (rows, ms, id, desc) => rows.filter((r) => (desc ? r.ms > ms : r.ms < ms) || (r.ms === ms && r.id < id)).length + 1;

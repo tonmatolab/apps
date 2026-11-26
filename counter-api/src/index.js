@@ -29,8 +29,9 @@ const GAMES = {
   // 試合の仕組みを新しくした（2026年11月）ので、生涯スコアは新しいランキングに。上の2つは旧ルールの記録として残す
   // needName：名前を付けた記録だけをランキングに出す（記録を送るときに名前が必須。名無しの記録は数えない）
   // tags：名前の横に出す印（サッカー人生は、いちばんレアな称号のID）。中身は画面が決める
-  soccer2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true, tags: true },
-  soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true, tags: true },
+  // weekly：週間ランキングも持つ（週ごとに上位500件だけ）
+  soccer2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true, tags: true, weekly: true },
+  soccerq2: { min: 1, max: 100000, desc: true, anon: '名無しの選手', needName: true, tags: true, weekly: true },
   onigiri: { min: 1, max: 100000, desc: true, anon: '名無しの職人' }, // おにぎり握り職人の査定額（円）。大きいほど上位
 };
 const TOP_N = 10;      // ランキングの表示数（省略したとき）
@@ -117,6 +118,33 @@ async function histAdd(env, game, ms) {
   if (!(await histReady(env, game))) return;
   await env.DB.prepare(`INSERT INTO hist (game, b, n) VALUES (?, ${BUCKET}, 1) ON CONFLICT(game, b) DO UPDATE SET n = n + 1`).bind(game, ms).run();
 }
+// ===== 週間ランキング =====
+// 週は日本時間の月曜0時から。週ごとに上位 WEEK_KEEP 件だけを weekly 表に持つ（それより下は「ランク外」）。
+// 表示で読むのは上位 n 件だけ・順位は自分より上の件数（500件まで）だけを数えるので、記録が増えても重くならない
+const WEEK_KEEP = 500;
+function weekOf(t) { const j = t + 9 * 3600000, dow = (new Date(j).getUTCDay() + 6) % 7; return new Date(j - dow * 86400000).toISOString().slice(0, 10); } // その週の月曜の日付
+const prevWeek = (wk) => new Date(Date.parse(wk) - 7 * 86400000).toISOString().slice(0, 10);
+const weekKey = (game, wk) => 'wk:' + game + ':' + wk; // その週に登録された件数（ランク外も含む）
+const ordOf = (ms, id) => ms * 1000000000 + (999999999 - id); // 並べる順：点数が高い順、同じ点数なら先に出した人が上
+// 記録が1件入ったとき。{ rank（ランク外なら null）, total（今週の登録数）, keep } を返す
+async function weeklyAdd(env, game, ms, id, name, tag, now = Date.now()) {
+  const wk = weekOf(now), o = ordOf(ms, id);
+  const up = (await env.DB.prepare('SELECT COUNT(*) AS n FROM weekly WHERE game = ? AND wk = ? AND o > ?').bind(game, wk, o).first()).n;
+  const total = (await env.DB.prepare('INSERT INTO counters (key, value) VALUES (?, 1) ON CONFLICT(key) DO UPDATE SET value = value + 1 RETURNING value').bind(weekKey(game, wk)).first()).value;
+  if (up >= WEEK_KEEP) return { rank: null, total, keep: WEEK_KEEP };
+  const q = [env.DB.prepare('INSERT INTO weekly (game, wk, o, sid, ms, name, tag) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(game, wk, o, id, ms, name, tag)];
+  // 表がいっぱい（前の時点で WEEK_KEEP 件）なら、いちばん下を1件消す。表は「その週の登録数」と「WEEK_KEEP」の小さいほうの件数になっている
+  if (total - 1 >= WEEK_KEEP) q.push(env.DB.prepare('DELETE FROM weekly WHERE game = ? AND wk = ? AND o = (SELECT o FROM weekly WHERE game = ? AND wk = ? ORDER BY o ASC LIMIT 1)').bind(game, wk, game, wk));
+  q.push(env.DB.prepare('DELETE FROM weekly WHERE game = ? AND wk < ?').bind(game, prevWeek(wk))); // 先週より前は消す（ふだんは0件）
+  await env.DB.batch(q);
+  return { rank: up + 1, total, keep: WEEK_KEEP };
+}
+async function weeklyBoard(env, game, period, n, now = Date.now()) {
+  const wk = period === 'lastweek' ? prevWeek(weekOf(now)) : weekOf(now);
+  const rows = await env.DB.prepare('SELECT name, ms, tag FROM weekly WHERE game = ? AND wk = ? ORDER BY o DESC LIMIT ?').bind(game, wk, n).all();
+  const t = await env.DB.prepare('SELECT value FROM counters WHERE key = ?').bind(weekKey(game, wk)).first();
+  return { total: t ? t.value : 0, week: wk, keep: WEEK_KEEP, top: rows.results.map((r, i) => ({ rank: i + 1, name: r.name, ms: r.ms, ...(r.tag ? { tag: r.tag } : {}) })) };
+}
 // ランキングの上位 n 件
 async function boardTop(env, game, n) {
   const g = gameRule(game);
@@ -180,8 +208,9 @@ async function handle(req, env) {
       await histAdd(env, b.game, ms);
       const rank = await rankOf(env, b.game, ms, row.id);
       const total = await bumpTotal(env, b.game);
+      const week = g.weekly && name ? await weeklyAdd(env, b.game, ms, row.id, name, tag) : undefined; // 週間ランキング（名前のある記録だけ）
       // top：送ったあとのランキング上位10件（画面がすぐに /board を取り直さなくて済むように）
-      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: !name && rank <= MAX_N, name, top: await boardTop(env, b.game, TOP_N) });
+      return json(req, { id: row.id, token, rank, total, top10: rank <= TOP_N, canName: !name && rank <= MAX_N, name, top: await boardTop(env, b.game, TOP_N), ...(week ? { week } : {}) });
     }
 
     if (req.method === 'POST' && url.pathname === '/name') {
@@ -203,6 +232,8 @@ async function handle(req, env) {
       const game = url.searchParams.get('game');
       if (!gameRule(game)) return json(req, { error: 'invalid' }, 400);
       const n = Math.max(1, Math.min(MAX_N, Math.floor(Number(url.searchParams.get('limit'))) || TOP_N));
+      const period = url.searchParams.get('period');
+      if ((period === 'week' || period === 'lastweek') && gameRule(game).weekly) return json(req, await weeklyBoard(env, game, period, n));
       return json(req, { total: await totalOf(env, game), top: await boardTop(env, game, n) });
     }
 

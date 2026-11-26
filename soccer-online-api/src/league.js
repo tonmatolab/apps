@@ -6,7 +6,7 @@ import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（全国ランキングと共通）
 
-const MAX_PLAYERS = G.CLUB_CAP * G.SL._.CLUB_SEED.length; // 登録の上限（1クラブ12人 × 50クラブ ＝ 600人。これ以上は入れるクラブがない）
+const MAX_PLAYERS = G.SL._.CLUB_SEED.reduce((a, c, id) => a + G.capOf(id), 0); // 登録の上限（国内14人×40クラブ＋欧州12人×10クラブ＝680人）
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限（1時間。メモリだけなので、サーバーが休むと消える）
 const SIGNUP_PER_DAY = 3;      // 同じIPからの新規登録の上限（日本時間の1日。保存するので消えない）
@@ -512,7 +512,7 @@ export class League extends DurableObject {
   clubsView() {
     const count = new Map();
     for (const m of this.members.values()) if (m.pl.club != null && m.status !== 'retired') count.set(m.pl.club, (count.get(m.pl.club) || 0) + 1);
-    return this.w.clubs.map((c) => ({ id: c.id, name: c.name, city: c.city, short: c.short, mark: c.mark, lg: c.lg, str: c.str, atk: c.atk, dfn: c.dfn, depth: c.depth, youth: c.youth, money: c.money, pop: c.pop, recruit: c.recruit, color: c.color, humans: count.get(c.id) || 0, cap: G.CLUB_CAP }));
+    return this.w.clubs.map((c) => ({ id: c.id, name: c.name, city: c.city, short: c.short, mark: c.mark, lg: c.lg, str: c.str, atk: c.atk, dfn: c.dfn, depth: c.depth, youth: c.youth, money: c.money, pop: c.pop, recruit: c.recruit, color: c.color, humans: count.get(c.id) || 0, cap: G.capOf(c.id) }));
   }
   ranking(lg, key) {
     return [...this.members.values()].filter((m) => m.status !== 'retired' && m.status !== 'draft' && m.pl.club != null && (lg == null || this.w.clubs[m.pl.club].lg === lg) && m.season[key] > 0)

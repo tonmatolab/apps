@@ -114,19 +114,21 @@ check(JSON.stringify(SL.newNpcWorld(clubs, 99)) !== JSON.stringify(npcs), 'シ�
   check(st.clubs.slice(30).every((c) => st.npcs.filter((p) => p.club === c.id).length === 22), '足したクラブも22人');
   check(st.schedule[3] && st.schedule[4] && st.schedule[3].length === 18 && st.table[45] && Array.isArray(st.table[45].form) && st.table[0].p === 5, 'シーズン中なら3部・4部の日程と順位表ができる（前からの順位表はそのまま）');
   check(SL.extendClubs(st).length === 0 && SL.extendNpcs(st.npcs, st.clubs, 3).length === 0, 'もう一度移行しても何も足さない');
-  // 昇格・降格：4つの国内リーグのあいだで2クラブずつ。どのリーグも10クラブのまま
+  // 昇格・降格：4つの国内リーグのあいだで1クラブずつ。どのリーグも10クラブのまま
   const clubs = SL._.newWorld();
   const order = (lg) => clubs.filter((c) => c.lg === lg).sort((a, b) => b.str - a.str);
-  const top4 = order(4).slice(0, 2), bot1 = order(1).slice(-2);
+  check(SL.MOVES === 1, '入れ替えは1クラブずつ');
+  const top4 = order(4).slice(0, 1), bot1 = order(1).slice(-1), stay4 = order(4)[1], stay1 = order(1).at(-2);
   const mv = SL._.leagueMoves(clubs, order);
   check([0, 1, 2, 3, 4].every((lg) => clubs.filter((c) => c.lg === lg).length === 10), 'どのリーグも10クラブのまま');
-  check(mv.up.size === 6 && mv.down.size === 6 && top4.every((c) => c.lg === 3) && bot1.every((c) => c.lg === 2), '4部の上位2が3部へ、1部の下位2が2部へ（入れ替えは3か所で6クラブずつ）');
+  check(mv.up.size === 3 && mv.down.size === 3 && top4.every((c) => c.lg === 3) && bot1.every((c) => c.lg === 2), '4部の1位が3部へ、1部の最下位が2部へ（入れ替えは3か所で3クラブずつ）');
+  check(stay4.lg === 4 && stay1.lg === 1, '4部の2位・1部の下から2番目はそのまま');
   check(mv.text.some((t) => t.includes('3部へ昇格')) && mv.text.some((t) => t.includes('4部へ降格')), '速報の文');
   // 途中の節から始まった3部・4部は、そのシーズンは入れ替えなし（1部と2部の入れ替えだけ）
   check(JSON.stringify(st.partialLeagues) === '[3,4]', 'シーズンの途中で足したリーグに印が付く');
   const c2 = SL._.newWorld(), o2 = (lg) => c2.filter((c) => c.lg === lg).sort((a, b) => b.str - a.str);
   const mv2 = SL._.leagueMoves(c2, o2, [3, 4]);
-  check(mv2.up.size === 2 && mv2.down.size === 2 && [3, 4].every((lg) => c2.filter((c) => c.lg === lg).length === 10) && [...mv2.up].every((c) => c.lg === 1), '途中から始まったリーグが関わる入れ替えはしない');
+  check(mv2.up.size === 1 && mv2.down.size === 1 && [3, 4].every((lg) => c2.filter((c) => c.lg === lg).length === 10) && [...mv2.up].every((c) => c.lg === 1), '途中から始まったリーグが関わる入れ替えはしない');
 }
 
 console.log(`world: ${failed() ? failed() + ' failed' : 'all passed'}`);

@@ -95,8 +95,8 @@ const SL = (() => {
     { id: 3, name: '国内3部', short: '3部', npcGoals: [7, 13], npcAssists: [5, 9] },
     { id: 4, name: '国内4部', short: '4部', npcGoals: [7, 12], npcAssists: [4, 8] },
   ];
-  // 昇格・降格：国内1部〜4部のあいだで、上のリーグの下位2クラブと下のリーグの上位2クラブが入れ替わる（欧州は入れ替えなし）
-  const LOWEST = 4;
+  // 昇格・降格：国内1部〜4部のあいだで、上のリーグの最下位と下のリーグの1位が入れ替わる（欧州は入れ替えなし）。MOVES：1か所で入れ替わるクラブの数
+  const LOWEST = 4, MOVES = 1;
   // クラブ（ID 0〜49 は保存データの所属に使っているので変えない。30〜49 は国内3部・4部としてあとから足した）。lg は新しい世界を始めるときの所属リーグ。
   // short：画面で使う略称（同じ都市のクラブも見分けられる）、mark：エンブレムの文字、nat：地元の国（NPCの国籍の割合に使う）
   // 特徴8項目：str 総合力 / atk 攻撃力 / dfn 守備力（数値）、depth 選手層 / youth 若手育成 / money 資金力 / pop 人気 / recruit 獲得力（1〜5）
@@ -511,7 +511,7 @@ const SL = (() => {
     const plan = [];
     for (let lg = 1; lg < LOWEST; lg++) {
       if (!clubs.some((c) => c.lg === lg + 1) || skip.includes(lg) || skip.includes(lg + 1)) continue;
-      plan.push([order(lg).slice(-2), lg + 1, false], [order(lg + 1).slice(0, 2), lg, true]);
+      plan.push([order(lg).slice(-MOVES), lg + 1, false], [order(lg + 1).slice(0, MOVES), lg, true]);
     }
     const up = new Set(), down = new Set(), text = [];
     for (const [list, to, isUp] of plan) for (const c of list) {
@@ -1327,7 +1327,7 @@ const SL = (() => {
   function childName(n) { const l = surname(n); return (l ? l + ' ' : '') + pick(FIRST); }
 
   return {
-    setRng, tableOrder, startChanceOvr, chanceLabel, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
+    setRng, MOVES, tableOrder, startChanceOvr, chanceLabel, RANK_MIN, appealChoices, OUTLOOK, growthOutlook, cleanMove, STATS, POS, GROW, GTYPE, gtypeOf, TRAINING, LEAGUES, CLUB_TRAITS, SEASON_WEEKS, START_YEAR, isWorldCupYear,
     mainStats, ovr, startChance, newGame, joinClub, startSeason, standings, rankOf, playWeek, prepareWeek, eventById, resolveEvent,
     endSeason, nationalYear, ageUp, offers, accept, requestTransfer, transferFee, mustRetire, canRetire, retire, careerScore, nextGeneration, childName, clubOf, avg,
     matchPay, START_MONEY,

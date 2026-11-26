@@ -1247,8 +1247,8 @@ function renderTab() {
   if (tab === 'table') {
     const tb = SL.standings(S, c.lg);
     const lower = S.clubs.some((x) => x.lg === c.lg + 1), upper = c.lg >= 2; // 下のリーグがある＝降格あり、2部より下＝昇格あり
-    const zone = (i) => c.lg > 0 && upper && i < 2 ? 'up' : c.lg > 0 && lower && i >= tb.length - 2 ? 'dn' : '';
-    const rule = c.lg === 0 ? '' : `（${[upper ? `上位2チームが${SL.LEAGUES[c.lg - 1].short}へ昇格` : '', lower ? `下位2チームは${SL.LEAGUES[c.lg + 1].short}へ降格` : ''].filter(Boolean).join('・')}）`;
+    const zone = (i) => c.lg > 0 && upper && i < SL.MOVES ? 'up' : c.lg > 0 && lower && i >= tb.length - SL.MOVES ? 'dn' : '';
+    const rule = c.lg === 0 ? '' : `（${[upper ? `${SL.MOVES === 1 ? '1位' : `上位${SL.MOVES}チーム`}が${SL.LEAGUES[c.lg - 1].short}へ昇格` : '', lower ? `${SL.MOVES === 1 ? '最下位' : `下位${SL.MOVES}チーム`}は${SL.LEAGUES[c.lg + 1].short}へ降格` : ''].filter(Boolean).join('・')}）`;
     $('tabBody').innerHTML = `<div class="sub" style="margin-bottom:4px">${SL.LEAGUES[c.lg].name}${rule}</div>
     <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>試</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
     ${tb.map((x, i) => `<tr class="${x.c.id === c.id ? 'me' : ''} ${zone(i)}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${x.c.color}"></span>${esc(x.c.name)}</td><td>${x.t.w + x.t.d + x.t.l}</td><td>${x.t.w}</td><td>${x.t.d}</td><td>${x.t.l}</td><td>${x.t.gf - x.t.ga > 0 ? '+' : ''}${x.t.gf - x.t.ga}</td><td><b>${x.t.p}</b></td></tr>`).join('')}</table></div>`;

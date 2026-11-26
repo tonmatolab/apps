@@ -137,8 +137,9 @@
     const byClub = new Map(clubs.map((c) => [c.id, []]));
     for (const p of npcs) if (byClub.has(p.club)) byClub.get(p.club).push(p);
     const cand = npcs.filter((p) => { const c = clubs[p.club]; return c && p.age <= 31 && ovr(p) >= c.str + 4; }).sort(() => rnd() - .5);
+    const maxMoves = Math.round(clubs.length * .8); // 1年の移籍の上限（30クラブで24件。クラブが増えたら増やす）
     for (const p of cand) {
-      if (out.moves.length >= 24 || !chance(.35)) continue;
+      if (out.moves.length >= maxMoves || !chance(.35)) continue;
       const from = clubs[p.club], o = ovr(p);
       const dests = clubs.filter((c) => c.id !== from.id && c.str >= from.str + 2 && c.str <= o + 2 && (c.lg !== 0 || o >= 76))
         .sort((x, y) => Math.abs(x.str - o) - Math.abs(y.str - o)).slice(0, 3);

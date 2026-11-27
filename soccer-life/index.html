@@ -45,6 +45,7 @@
   .btn.primary:active { box-shadow: 0 1px 0 var(--green-d); }
   .btn.gold { background: linear-gradient(180deg, #ffd04a, var(--gold)); color: #3a2a00; box-shadow: 0 4px 0 #b88400; }
   .btn.x { background: #111; color: #fff; box-shadow: 0 4px 0 #000; }
+  .btn.ofuse { display: block; max-width: 320px; margin: 6px auto 0; text-align: center; text-decoration: none; color: var(--ink); background: var(--paper); box-shadow: var(--shadow); font-size: .92rem; padding: 11px 16px; }
   .btn.ghost { background: transparent; box-shadow: none; color: var(--sub); font-size: .88rem; padding: 10px; }
   .btn:disabled { opacity: .5; pointer-events: none; }
   .row { display: flex; gap: 10px; }
@@ -814,6 +815,8 @@
       <button class="btn primary" id="nextGenBtn">👶 子どもに夢を託す</button>
       <button class="btn ghost" id="endTitleBtn">タイトルへ</button>
     </div>
+    <p class="sub" style="text-align:center;margin:18px 0 0">楽しかったら、とんまとラボを応援してね</p>
+    <a class="btn ofuse" href="https://ofuse.me/ec5bf8eb" target="_blank" rel="noopener">☕ 応援する（OFUSE）</a>
     <div class="hidden" id="adEnd"></div>
     <div class="card">
       <h2 id="endTreeHead">🌳 一族の歴史</h2>

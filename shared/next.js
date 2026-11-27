@@ -6,6 +6,9 @@
   const BASE = new URL('../', me.src); // アプリ集のトップ（/apps/）
   const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
   // 公式Xアカウント（ご意見・不具合・お問い合わせの窓口）。各アプリのいちばん下に出す
+  // 応援（OFUSE）。寄付のボタンは GitHub 版にも出してよい（GitHub Pages の規約で認められている）
+  const OFUSE = 'https://ofuse.me/ec5bf8eb';
+  const SUPPORT = `<p class="tn-sup"><a href="${OFUSE}" target="_blank" rel="noopener">☕ とんまとラボを応援する</a><span>楽しかったら、ひとことメッセージだけでもうれしいです</span></p>`;
   const X_LINE = `<p class="tn-x">お問い合わせ・ご意見・不具合の報告は<br>X（旧Twitter）<a href="https://x.com/tonmatolab" target="_blank" rel="noopener">@tonmatolab</a> へどうぞ<br><a href="${new URL('policy/', BASE).href}">運営者情報・プライバシーポリシー・広告について</a></p>`;
 
   // ----- ホーム画面に追加（manifest・アイコン・service worker） -----
@@ -36,6 +39,9 @@
   .tonmato-next .tn-d { font-size: .75rem; color: #66708a; line-height: 1.4; margin-top: 2px; }
   .tonmato-next .tn-p { font-size: .7rem; font-weight: 800; color: #e8432f; margin-top: 2px; }
   .tonmato-next .tn-all { display: block; text-align: center; margin-top: 10px; font-size: .85rem; font-weight: 800; color: inherit; opacity: .8; }
+  .tonmato-next .tn-sup { margin: 16px 0 0; text-align: center; }
+  .tonmato-next .tn-sup a { display: inline-flex; justify-content: center; padding: 8px 18px; border-radius: 99px; font-size: .86rem; font-weight: 800; }
+  .tonmato-next .tn-sup span { display: block; margin-top: 6px; font-size: .7rem; opacity: .7; }
   .tonmato-next .tn-x { margin: 14px 0 0; text-align: center; font-size: .75rem; line-height: 1.6; color: inherit; opacity: .75; }
   .tonmato-next .tn-x a { display: inline; background: none; box-shadow: none; border: 0; padding: 0; border-radius: 0; color: inherit; font-weight: 800; text-decoration: underline; }`;
   const st = document.createElement('style'); st.textContent = css; head.appendChild(st);
@@ -55,7 +61,7 @@
       const others = apps.filter((a) => a.id !== cur);
       // 毎回少し順番を変えて、いろんなアプリを見てもらう
       const pick = others.map((a) => ({ a, r: Math.random() })).sort((x, y) => x.r - y.r).slice(0, 3).map((x) => x.a);
-      box.innerHTML = `<h3>🎮 次はこれで遊ぼう</h3><div class="tn-list"></div><a class="tn-all" href="${BASE.href}">ほかのゲーム・診断をぜんぶ見る →</a>${X_LINE}`;
+      box.innerHTML = `<h3>🎮 次はこれで遊ぼう</h3><div class="tn-list"></div><a class="tn-all" href="${BASE.href}">ほかのゲーム・診断をぜんぶ見る →</a>${SUPPORT}${X_LINE}`;
       const list = box.querySelector('.tn-list');
       pick.forEach((a) => {
         const el = document.createElement('a');

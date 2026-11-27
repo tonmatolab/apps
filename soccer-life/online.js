@@ -16,6 +16,10 @@
   let ST = null;      // サーバーから受け取った状態
   let skew = 0;       // サーバー時計とのずれ
   let fetchedAt = 0;
+  // 取りに行けなかったとき（サーバーが止まっている・無料枠を使い切った など）は、すぐにやり直さない。30秒→1分→2分…最大5分あける
+  let triedAt = 0, fails = 0;
+  const retryWait = () => Math.min(300000, 30000 * 2 ** Math.max(0, fails - 1));
+  const canRetry = () => !fails || Date.now() - triedAt > retryWait();
 
   // サーバーとのやりとり。ブラウザが「事前確認」のリクエストを先に送らない形（ヘッダーなし・本文は text/plain の JSON）で送る。
   // 引き継ぎコードは本文の auth に入れる。読むだけのもの（GET）でも、コードがあれば POST にして _m: 'GET' を付ける
@@ -369,6 +373,7 @@
     const clubs = { ...col.clubs };
     if (me.status !== 'retired') for (const h of me.history || []) clubs[h.clubId] = (clubs[h.clubId] || 0) + 1;
     if (me.status !== 'retired' && me.club != null && !clubs[me.club]) clubs[me.club] = 0; // 今のクラブ（まだシーズンを終えていない）
+    const live = new Set((me.liveTitles || []).filter((id) => !col.t[id])); // 今の人生で達成した、まだ図鑑にない称号
     const nT = list.filter((t) => col.t[t[0]]).length, nC = Object.keys(clubs).length, total = ST.clubs.length;
     const fresh = new Set((col.last && col.last.titles) || []);
     let html = `<div class="bigstat" style="margin-top:0"><div>称号<b>${nT}/${list.length}</b></div><div>クラブ<b>${nC}/${total}</b></div><div>引退した選手<b>${col.lives || 0}</b></div><div>一族<b>${me.gen}代目</b></div></div>
@@ -377,9 +382,11 @@
     if (COL_TAB === 'titles') {
       const tier = SL.RARITY.map((r) => { const all = list.filter((t) => SL.rarityOf(t[0]).id === r.id); return all.length ? `<span><span class="rb ${r.id}">${r.id}</span> ${all.filter((t) => col.t[t[0]]).length}/${all.length}</span>` : ''; }).join(' ');
       html += `<p class="sub" style="margin:0 0 8px;display:flex;flex-wrap:wrap;gap:4px 10px">${tier}</p>
-        <p class="sub" style="margin:0 0 8px">称号は引退したときに手に入ります。<span class="olb" style="display:inline-block;font-size:.58rem;font-weight:800;color:#fff;background:var(--green);border-radius:5px;padding:1px 4px">オンライン</span> はオンラインだけの称号、「一族」は全世代の合計で取る称号</p>
-        <div class="tgrid">${list.slice().sort((a, b) => !!col.t[b[0]] - !!col.t[a[0]] || SL.rateOf(a[0]) - SL.rateOf(b[0])).map((t) => { // 持っているもの（レアな順）→ まだのもの
+        ${live.size ? `<p class="sub" style="margin:0 0 8px;font-weight:800;color:var(--green)">⏳ 今の人生で${live.size}個達成！ 引退すると図鑑に記録されます</p>` : ''}
+        <p class="sub" style="margin:0 0 8px">称号は引退したときに図鑑に記録されます（「⏳達成中」は今の人生で条件を満たしたもの）。<span class="olb" style="display:inline-block;font-size:.58rem;font-weight:800;color:#fff;background:var(--green);border-radius:5px;padding:1px 4px">オンライン</span> はオンラインだけの称号、「一族」は全世代の合計で取る称号</p>
+        <div class="tgrid">${list.slice().sort((a, b) => (!!col.t[b[0]] || live.has(b[0])) - (!!col.t[a[0]] || live.has(a[0])) || SL.rateOf(a[0]) - SL.rateOf(b[0])).map((t) => { // 持っているもの・達成中（レアな順）→ まだのもの
           const [id, name, desc, hint, , famT] = t, got = col.t[id], R = SL.rarityOf(id), ol = SL.ONLINE_TITLES.includes(t) ? `<span class="olb">${famT ? '一族' : 'オンライン'}</span>` : '';
+          if (!got && live.has(id)) return `<div class="tcard ${R.id} live"><b><span class="rb ${R.id}">${R.id}</span>${esc(name)}${ol}<span class="new lv">⏳達成中</span></b><span>${esc(desc)}</span><span class="cond">🎯 ${esc(hint)}</span><span>🏃 ${esc(me.name)}（${me.gen}代目）・引退で記録</span></div>`;
           return got ? `<div class="tcard ${R.id}"><b><span class="rb ${R.id}">${R.id}</span>${esc(name)}${ol}${fresh.has(id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(desc)}</span><span class="cond">🎯 ${esc(hint)}</span><span>🏃 ${esc(got[3])}（${got[1]}代目）${got[0] > 1 ? `・${got[0]}回` : ''}</span></div>`
             : `<div class="tcard locked"><b><span class="rb ${R.id}">${R.id}</span>？？？${ol}</b><span>${esc(hint)}</span></div>`;
         }).join('')}</div>`;
@@ -515,7 +522,9 @@
   }
   async function load() {
     if (!CODE) return renderStart();
+    triedAt = Date.now();
     const j = await api('/state');
+    fails = j.error && j.error !== 'unauthorized' ? fails + 1 : 0;
     if (j.error === 'unauthorized') { CODE = null; store.del('code'); return renderStart(); }
     if (j.error) { toast(errMsg(j.error)); return ST ? route() : renderStart(); }
     setState(j); route();
@@ -528,16 +537,16 @@
     if (!ST || $('scrHome').classList.contains('hidden')) return;
     $('topCd').textContent = countdown();
     const due = ST.world.nextAt + 8000 - (Date.now() + skew);
-    if (due < 0 && Date.now() - fetchedAt > 30000 && document.visibilityState === 'visible') load();
+    if (due < 0 && Date.now() - fetchedAt > 30000 && canRetry() && document.visibilityState === 'visible') load();
     // ルーレットに賭けているときだけ、回った直後に1回取りに行く
     const cz = ST.casino;
-    if (cz && cz.myBets.length && cz.nextAt + 3000 - (Date.now() + skew) < 0 && Date.now() - fetchedAt > 15000 && document.visibilityState === 'visible' && !document.querySelector('.sheet.casino')) load();
+    if (cz && cz.myBets.length && cz.nextAt + 3000 - (Date.now() + skew) < 0 && Date.now() - fetchedAt > 15000 && canRetry() && document.visibilityState === 'visible' && !document.querySelector('.sheet.casino')) load();
   }, 1000);
   // 満員のときの「一人用モードで遊ぶ」
   document.addEventListener('click', (e) => { if (e.target.closest('.ol-solo')) location.href = location.pathname; });
   // 移籍方針の「変える」（ホーム・オフの画面）
   document.addEventListener('click', (e) => { if (e.target.closest('#ol-polBtn, #ol-polBtn2')) openPolicy(); });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ST && Date.now() - fetchedAt > 60000) load(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ST && Date.now() - fetchedAt > 60000 && canRetry()) load(); });
 
   $('startBtn').onclick = () => renderCreate(false);
   $('createBack').onclick = () => (ST && ST.me.status === 'retired' ? renderHome() : renderStart());

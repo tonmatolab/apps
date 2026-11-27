@@ -172,7 +172,7 @@ export function newMember(id, account, name, pos, opt = {}) {
     id, account, gen: opt.gen || 1, lineage: opt.lineage || [], parent: opt.parent || null,
     pl, status: 'draft', training: pos === 'GK' ? 'gk' : mainStats(pos)[0],
     season: emptySeason(), totals: emptyTotals(), history: [], awards: [], trophies: [], caps: 0, natGoals: 0, wc: [], log: [],
-    last: null, offer: null, summary: null, created: Date.now(), records: newRecords(), cupSeason: emptySeason(), motw: 0,
+    last: null, offer: null, summary: null, created: Date.now(), records: newRecords(), cupSeason: emptySeason(), motw: 0, col: newOnlineCol(),
   };
   return m;
 }
@@ -683,6 +683,21 @@ export function nextGeneration(old, id, name, pos, w, members = [], appeal = nul
   return m;
 }
 
+// 今の人生で、すでに条件を満たしている称号（現役のうち。引退したときに図鑑に記録される）
+// 引退してはじめて決まるもの（「太く短く」＝30歳以下で引退）は入れない
+const LIVE_SKIP = new Set(['short']);
+export function liveTitles(m, w) {
+  if (m.summary || m.status === 'draft' || m.status === 'dormant' || (!m.history.length && !m.season.apps)) return [];
+  const s = adapter(m, w); s.caps = m.caps; s.natGoals = m.natGoals;
+  const T = m.totals, S = m.season;
+  s.totals = { ...T, apps: T.apps + S.apps, goals: T.goals + S.goals, assists: T.assists + S.assists, cs: T.cs + S.cs, tackles: (T.tackles || 0) + (S.tackles || 0), inters: (T.inters || 0) + (S.inters || 0) };
+  const sum = { score: SL.careerScore(s), earned: m.history.reduce((a, h) => a + (h.salary || 0), 0) };
+  const col = m.col || newOnlineCol();
+  const fam = new Set(Object.keys(col.clubs).map(Number).concat(m.history.map((x) => x.clubId), m.pl.club != null ? [m.pl.club] : []));
+  const oc = onlineContext(m, w, fam);
+  if (m.pl.club != null) oc.lgs.add(SL.LEAGUES[w.clubs[m.pl.club].lg].short); // 今のリーグ（シーズンの途中でも）
+  return SL.earnedTitles(s, sum).filter((id) => !LIVE_SKIP.has(id) && !SL.ONLINE_HIDE.has(id)).concat(SL.onlineTitles(oc));
+}
 export function scoreNow(m, w) {
   if (m.summary) return m.summary.score;
   const s = adapter(m, w); s.caps = m.caps; s.natGoals = m.natGoals;

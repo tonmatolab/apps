@@ -69,5 +69,21 @@ let m1;
   check(r.col.lives === 1 && r.col.t.p50 == null, '引退したままの人は、その人生が図鑑に入る');
 }
 
+// 現役のうちに達成した称号（引退前でも図鑑で見られる）
+{
+  const m = G.newMember('live', 'acc7', '現役 三郎', 'FW');
+  m.status = 'active'; m.pl.club = 40; m.pl.age = 24;
+  check(G.liveTitles({ ...m, history: [], season: { apps: 0 } }, w).length === 0, 'まだ試合に出ていなければ何もない');
+  m.history = [row(2027, 40, '4部'), row(2028, 30, '3部')];
+  for (const h of m.history) { m.totals.apps += h.apps; m.totals.goals += h.goals; }
+  m.season.apps = 5; m.season.goals = 3; m.motw = 1; m.pl.club = 0; // シーズンの途中で欧州1部（下剋上）
+  const live = G.liveTitles(m, w);
+  check(live.includes('g1') && live.includes('ol_motw') && live.includes('ol_climb'), `現役でも条件を満たした称号がわかる（${live.join(',')}）`);
+  check(!live.includes('short') && !live.some((id) => SL.ONLINE_HIDE.has(id)), '引退して決まる称号・オンラインで取れない称号は入らない');
+  check(m.col.lives === 0 && !Object.keys(m.col.t).length, '達成中は図鑑には記録しない（引退で記録）');
+  m.status = 'draft';
+  check(G.liveTitles(m, w).length === 0, '入団先を選んでいる間は出さない');
+}
+
 console.log(`olcol: ${failures ? failures + ' failed' : 'all passed'}`);
 process.exitCode = failures ? 1 : 0;

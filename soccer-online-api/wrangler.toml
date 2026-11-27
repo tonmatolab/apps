@@ -17,4 +17,5 @@ new_sqlite_classes = ["League"]
 [vars]
 TICK_MINUTES = "30"   # 何分ごとに1節すすめるか
 RL_MINUTES = "3"      # オンラインのルーレットが何分ごとに回るか（全員共通の台）
+KEIBA_MINUTES = "60"  # オンラインの競馬が何分ごとに走るか（毎時0分。全員共通のレース。馬券を買った人がいるときだけ走る）
 DEV = "0"             # 1 にすると /api/dev/tick が使える（本番では 0）

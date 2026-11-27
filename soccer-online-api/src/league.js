@@ -83,6 +83,7 @@ export class League extends DurableObject {
   ensureSchedule(forceSave = false) {
     let changed = forceSave || this.needSave;
     if (!this.w.rl) { this.w.rl = G.newTable(Date.now(), this.rlMs()); changed = true; }
+    if (!this.w.kb) { this.w.kb = { round: 0, nextAt: this.kbNext(), card: G.SL.newKeibaCard(1), hist: [], last: null }; changed = true; }
     if (!(this.w.nextAt > 0)) { this.w.nextAt = Date.now() + this.tickMs(); changed = true; }
     // 移行した世界・作ったばかりの名簿は、ここでまとめて保存する（全部成功か全部なし）
     if (changed || this.rostersDirty) this.atomic(() => { this.saveWorld(); if (this.rostersDirty) this.saveRosters(); });
@@ -124,7 +125,57 @@ export class League extends DurableObject {
   rlMs() { return Math.max(.1, Number(this.env.RL_MINUTES || 3)) * 60000; }
   // アラームは1つだけなので「次の試合」と「次のルーレット」の早いほうに合わせる
   // 次に起きる時刻：次の節か、賭けがあるときだけ次のルーレット（誰も賭けていないのに3分ごとに起きない）
-  async armAlarm() { this.rlCatchUp(); await this.ctx.storage.setAlarm(this.betCount() ? Math.min(this.w.nextAt, this.w.rl.nextAt) : this.w.nextAt); }
+  async armAlarm() {
+    this.rlCatchUp(); this.kbCatchUp();
+    let at = this.w.nextAt;
+    if (this.betCount()) at = Math.min(at, this.w.rl.nextAt);
+    if (this.kbBetCount()) at = Math.min(at, this.w.kb.nextAt);
+    await this.ctx.storage.setAlarm(at);
+  }
+  kbMs() { return Math.max(.1, Number(this.env.KEIBA_MINUTES || 60)) * 60000; }
+  // 次の発走時刻：区切りのいい時刻（1時間ごとなら毎時0分）
+  kbNext(now = Date.now()) { const ms = this.kbMs(); return (Math.floor(now / ms) + 1) * ms; }
+  kbBetCount() { let n = 0; for (const m of this.members.values()) if (m.kbBet) n++; return n; }
+  // 誰も馬券を買わずに発走の時刻を過ぎたら、走らせずに次の区切りまで時刻を進める（出走表はそのまま。保存しない）
+  kbCatchUp(now = Date.now()) {
+    const K = this.w.kb;
+    if (!K || now < K.nextAt || this.kbBetCount()) return;
+    K.nextAt = this.kbNext(now);
+  }
+  // レースを1回走らせ、馬券を買った全員を同じ着順で精算する。書き込むのは「買った人」と「世界の1行」だけ
+  kbRun() {
+    const K = this.w.kb, card = K.card, order = G.SL.keibaOrder(card), round = K.round + 1, winners = [];
+    let players = 0, totalBet = 0;
+    for (const m of this.members.values()) {
+      if (!m.kbBet) continue;
+      const bets = m.kbBet.bets; m.kbBet = null;
+      if (m.status === 'draft' || m.status === 'retired') { this.saveMember(m); continue; }
+      const e = G.SL.keibaCheck(m.pl, card, bets);
+      if (e) { m.kbLast = { round, void: e, total: bets.reduce((x, b) => x + b.a, 0) }; this.saveMember(m); continue; }
+      const r = G.SL.resolveKeiba(m.pl, card, bets, order);
+      m.kbLast = { round, net: r.net, total: r.total, back: r.back, results: r.results };
+      players++; totalBet += r.total;
+      const big = r.results.filter((x) => x.win).sort((a, b) => b.odds - a.odds)[0];
+      if (r.net >= 500) G.addNews(this.w, `🏇 ${m.pl.name}が競馬で+${r.net.toLocaleString()}万円！（${big ? `${big.name} ${big.odds}倍` : ''}）`);
+      winners.push({ name: m.pl.name, net: r.net });
+      this.saveMember(m);
+    }
+    const pub = G.SL.keibaPublic(card), win = card.horses[order[0] - 1];
+    K.round = round;
+    K.hist.unshift({ no: win.no, odds: win.win }); if (K.hist.length > 10) K.hist.length = 10;
+    K.last = { round, name: card.name, course: card.course, horses: pub.horses, order, at: Date.now(), players, totalBet, winners: winners.filter((x) => x.net > 0).sort((a, b) => b.net - a.net).slice(0, 5) };
+    K.card = G.SL.newKeibaCard(round + 1);
+    K.nextAt = this.kbNext();
+    this.saveWorld();
+  }
+  keibaView(m) {
+    this.kbCatchUp();
+    const K = this.w.kb;
+    return {
+      now: Date.now(), nextAt: K.nextAt, round: K.card.round, intervalMin: this.kbMs() / 60000, card: G.SL.keibaPublic(K.card), last: K.last, hist: K.hist,
+      players: this.kbBetCount(), myBets: m && m.kbBet ? m.kbBet.bets : [], myLast: m ? m.kbLast || null : null, money: m ? m.pl.money : null,
+    };
+  }
   // 誰も賭けずに回る時刻を過ぎていたら、回さずに次の区切り（3分ごと）まで時刻を進める（保存はしない。いつ計算しても同じになる）
   rlCatchUp(now = Date.now()) {
     const T = this.w.rl, ms = this.rlMs();
@@ -145,7 +196,7 @@ export class League extends DurableObject {
   }
   // 休眠・引退のまま長く来ていない人をしまう（メモリと players から外して idle へ）。しまった人数を返す
   archiveIdle(now = Date.now()) {
-    const out = [...this.members.values()].filter((m) => (m.status === 'dormant' || m.status === 'retired') && !m.rlBet && now - (m.seenAt || now) > G.ARCHIVE_MS);
+    const out = [...this.members.values()].filter((m) => (m.status === 'dormant' || m.status === 'retired') && !m.rlBet && !m.kbBet && now - (m.seenAt || now) > G.ARCHIVE_MS);
     for (const m of out) {
       this.sql.exec('INSERT OR REPLACE INTO idle (account, id, data) VALUES (?, ?, ?)', m.account, m.id, JSON.stringify(m));
       this.sql.exec('DELETE FROM players WHERE id = ?', m.id);
@@ -172,6 +223,7 @@ export class League extends DurableObject {
     // 「次の時刻」も同じまとまりで保存するので、成功したあとにアラームがやり直されても二重には進まない
     this.atomic(() => {
       if (now >= this.w.rl.nextAt - 500 && this.betCount()) this.rlSpin();
+      if (now >= this.w.kb.nextAt - 500 && this.kbBetCount()) this.kbRun();
       if (now >= this.w.nextAt - 500) {
         if (this.clockMode()) { this.clockCatchUp(now); this.w.nextAt = G.nextSlot(now) + 2000; }
         else { this.tick(); this.w.nextAt = now + this.tickMs(); }
@@ -397,6 +449,10 @@ export class League extends DurableObject {
         };
         return json(dump);
       }
+      if (req.method === 'POST' && path === '/dev/race') {
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        this.atomic(() => this.kbRun()); await this.armAlarm(); return json({ ok: true, last: this.w.kb.last });
+      }
       if (req.method === 'POST' && path === '/dev/spin') {
         if (this.env.DEV !== '1') return err('not_found', 404);
         this.rlSpin(); await this.armAlarm(); return json({ ok: true, last: this.w.rl.last });
@@ -422,6 +478,18 @@ export class League extends DurableObject {
         this.saveMember(m); return json(this.stateView(m));
       }
       // 次の回への賭けを置く（[] なら取り消し）。賭けはプレイヤーのデータに保存し、お金は回った瞬間に動く
+      if (method === 'GET' && path === '/keiba') return json(this.keibaView(m));
+      if (req.method === 'POST' && path === '/keiba/bet') {
+        if (m.status === 'draft' || m.status === 'retired') return err('not_now');
+        const bets = Array.isArray(body.bets) ? body.bets.slice(0, 20).map((b) => ({ k: String(b && b.k).slice(0, 8), a: Number(b && b.a) })) : [];
+        if (!bets.length) { if (m.kbBet) { m.kbBet = null; this.saveMember(m); await this.armAlarm(); } return json(this.keibaView(m)); }
+        this.kbCatchUp(); // 誰も買っていなかった間に過ぎた発走時刻は飛ばして、次のレースに
+        const e = G.SL.keibaCheck(m.pl, this.w.kb.card, bets); if (e) return err(e);
+        m.kbBet = { bets, at: Date.now(), round: this.w.kb.card.round };
+        this.saveMember(m);
+        await this.armAlarm();
+        return json(this.keibaView(m));
+      }
       if (req.method === 'POST' && path === '/casino/bet') {
         if (m.status === 'draft' || m.status === 'retired') return err('not_now');
         const bets = Array.isArray(body.bets) ? body.bets.map((b) => ({ k: String(b && b.k), a: Number(b && b.a) })) : [];
@@ -606,6 +674,7 @@ export class League extends DurableObject {
       shop: m.status === 'draft' || m.status === 'retired' ? [] : G.SL.shopList(G.adapter(m, w)),
       caps: { club: G.CLUB_CAP, gk: G.GK_CAP, fw: G.FW_CAP, salary: G.SALARY_CAP },
       casino: this.tableView(m),
+      keiba: m.kbBet && this.w.kb ? { round: this.w.kb.card.round, total: m.kbBet.bets.reduce((x, b) => x + b.a, 0), nextAt: this.w.kb.nextAt } : null,
       news: (w.news || []).slice(0, 12),
       me: {
         id: m.id, gen: m.gen, status: m.status, training: m.training, name: p.name, pos: p.pos, age: p.age, stats: p.stats, ovr: G.ovr(p),

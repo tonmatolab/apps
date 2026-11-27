@@ -233,8 +233,11 @@
     // ルーレットに賭けているとき
     const cz = ST.casino;
     const czLine = cz && cz.myBets.length ? `🎰 第${cz.round}回に${man(cz.myBets.reduce((x, b) => x + b.a, 0))}賭けています（${new Date(cz.nextAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}ごろ回ります）` : '';
-    $('casinoNote').textContent = czLine;
-    $('casinoNote').classList.toggle('hidden', !czLine);
+    const kb = ST.keiba;
+    const kbLine = kb ? `🏇 第${kb.round}レースの馬券を${man(kb.total)}買っています（${new Date(kb.nextAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}ごろ発走）` : '';
+    $('casinoNote').textContent = [czLine, kbLine].filter(Boolean).join('\n');
+    $('casinoNote').style.whiteSpace = 'pre-line';
+    $('casinoNote').classList.toggle('hidden', !czLine && !kbLine);
     // 前節
     const L = me.last;
     $('lastCard').classList.toggle('hidden', !L);
@@ -541,6 +544,8 @@
     // ルーレットに賭けているときだけ、回った直後に1回取りに行く
     const cz = ST.casino;
     if (cz && cz.myBets.length && cz.nextAt + 3000 - (Date.now() + skew) < 0 && Date.now() - fetchedAt > 15000 && canRetry() && document.visibilityState === 'visible' && !document.querySelector('.sheet.casino')) load();
+    const kbs = ST.keiba;
+    if (kbs && kbs.nextAt + 3000 - (Date.now() + skew) < 0 && Date.now() - fetchedAt > 15000 && canRetry() && document.visibilityState === 'visible' && !document.querySelector('.sheet.casino')) load();
   }, 1000);
   // 満員のときの「一人用モードで遊ぶ」
   document.addEventListener('click', (e) => { if (e.target.closest('.ol-solo')) location.href = location.pathname; });
@@ -591,6 +596,11 @@
   $('casinoBtn').onclick = () => openRouletteTable({
     load: async () => tableErr(await api('/casino')),
     bet: async (bets) => tableErr(await api('/casino/bet', { bets })),
+    onClose: () => load(),
+  });
+  $('keibaBtn').onclick = () => openKeibaTable({
+    load: async () => tableErr(await api('/keiba')),
+    bet: async (bets) => tableErr(await api('/keiba/bet', { bets })),
     onClose: () => load(),
   });
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; renderTab(); } });

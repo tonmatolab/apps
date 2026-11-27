@@ -121,7 +121,7 @@
   //   bet(bets)   … 次の回への賭けを確定する（[] で取り消し）。返り値は load と同じ
   // 結果を取りに行くのは、この画面を開いている間に「回る時刻を過ぎたとき」だけ（無料枠を守る）
   window.openRouletteTable = async function openRouletteTable(opt) {
-    let T = null, skew = 0, bets = {}, chip = 100, rot = 0, shown = 0, busy = false, fetching = false, lastFetch = 0, prevBets = null;
+    let T = null, skew = 0, bets = {}, chip = 100, rot = 0, shown = 0, busy = false, fetching = false, lastFetch = 0, prevBets = null, fails = 0;
     const bg = document.createElement('div'); bg.className = 'ov-bg';
     const outside = Object.entries(SL.RL_BETS).map(([k, b]) => `<button class="rl-cell rl-out rl-${k}" data-k="${k}">${b.name}<small>×${b.pay}</small><i></i></button>`).join('');
     const nums = Array.from({ length: 36 }, (_, i) => i + 1).map((n) => `<button class="rl-cell rl-num rl-c-${colorOf(n)}" data-k="n${n}">${n}<i></i></button>`).join('');
@@ -206,10 +206,11 @@
       paint();
     }
     async function refresh(animate) {
-      if (fetching) return; fetching = true;
+      if (fetching) return; fetching = true; lastFetch = Date.now(); // 失敗しても、すぐにはやり直さない
       const j = await opt.load();
       fetching = false;
-      if (!j || j.error) { flash((j && j.error) || '通信できませんでした'); return; }
+      if (!j || j.error) { fails++; flash((j && j.error) || '通信できませんでした'); return; }
+      fails = 0;
       const before = shown;
       if (animate && j.last && j.last.round > before && !j.myBets.length) bets = {}; // 回ったので盤をまっさらに
       apply(j, animate);
@@ -233,7 +234,7 @@
     const timer = setInterval(() => {
       if (!T) return;
       tickTimer();
-      if (T.nextAt + 2500 - (Date.now() + skew) < 0 && Date.now() - lastFetch > 4000) refresh(true);
+      if (T.nextAt + 2500 - (Date.now() + skew) < 0 && Date.now() - lastFetch > Math.min(60000, 4000 * 2 ** fails)) refresh(true);
     }, 1000);
 
     bg.addEventListener('click', (e) => {

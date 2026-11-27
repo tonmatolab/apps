@@ -524,6 +524,40 @@
   .rl-out small { margin-left: 3px; font-size: .62rem; color: #b7cbbb; }
   .rl-out.rl-red { background: #d33b2c; } .rl-out.rl-black { background: #1f2328; }
   .rl-sum { text-align: center; font-size: .82rem; margin-top: 8px; }
+  /* 競馬 */
+  .kb-cap { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; font-family: var(--num); font-weight: 900; font-size: .7rem; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); vertical-align: -3px; margin-right: 3px; }
+  .kb-title { text-align: center; margin: 6px 0 4px; font-size: .9rem; }
+  .kb-track { position: relative; background: linear-gradient(180deg, #2f8a4a, #267a3f); border-radius: 12px; padding: 6px 30px 6px 6px; margin-bottom: 8px; }
+  .kb-lane { display: flex; align-items: center; height: 24px; border-bottom: 1px dashed rgba(255,255,255,.18); }
+  .kb-lane:last-of-type { border-bottom: none; }
+  .kb-no { flex: none; width: 24px; }
+  .kb-run { position: relative; flex: 1; height: 24px; }
+  .kb-horse { position: absolute; top: 0; font-size: 20px; line-height: 24px; transform: scaleX(-1); }
+  .kb-goal { position: absolute; top: 4px; bottom: 4px; right: 26px; width: 3px; background: repeating-linear-gradient(180deg, #fff 0 5px, #c33 5px 10px); border-radius: 2px; }
+  .kb-hist { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; min-height: 22px; margin: 4px 0 8px; font-size: .7rem; font-family: var(--num); font-weight: 800; }
+  .kb-h { background: #1d4d32; border-radius: 6px; padding: 1px 6px 1px 2px; }
+  .kb-types { display: flex; gap: 6px; justify-content: center; margin-bottom: 4px; }
+  .kb-types button { border: 2px solid #3d7a55; background: #1d4d32; color: #f3f7f2; border-radius: 10px; padding: 5px 14px; font: inherit; font-weight: 800; font-size: .82rem; cursor: pointer; }
+  .kb-types button.on { background: #e9c46a; color: #3a2a00; border-color: #e9c46a; }
+  .kb-note { text-align: center; margin: 0 0 6px; font-size: .72rem; }
+  .kb-tbl { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .kb-tbl th { font-size: .66rem; color: #b7cbbb; font-weight: 700; text-align: left; padding: 2px 4px; }
+  .kb-tbl td { padding: 6px 4px; border-top: 1px solid rgba(255,255,255,.1); }
+  .kb-row { cursor: pointer; }
+  .kb-row:active td { background: rgba(255,255,255,.06); }
+  .kb-row.bet td { background: rgba(233,196,106,.16); }
+  .kb-row.pick td { background: rgba(123,227,165,.22); }
+  .kb-tbl .nm { font-weight: 800; }
+  .kb-tbl .nm small { display: block; font-size: .62rem; color: #b7cbbb; font-weight: 600; }
+  .kb-tbl .pop { text-align: center; font-family: var(--num); color: #b7cbbb; }
+  .kb-tbl .od { text-align: right; font-family: var(--num); font-weight: 900; color: #ffd04a; white-space: nowrap; }
+  .kb-tbl .od i { display: block; font-style: normal; font-size: .64rem; color: #7be3a5; }
+  .kb-bets { margin-top: 8px; display: grid; gap: 4px; }
+  .kb-bet { display: flex; align-items: center; gap: 8px; background: #1d4d32; border-radius: 10px; padding: 5px 8px; font-size: .78rem; }
+  .kb-bet span { flex: 1; }
+  .kb-bet small { color: #b7cbbb; }
+  .kb-bet b { font-family: var(--num); color: #ffd04a; }
+  .kb-bet button { border: none; background: transparent; color: #ff9a8a; font-size: 1rem; cursor: pointer; padding: 0 4px; }
   .rl-timer { text-align: center; font-size: .86rem; margin-top: 4px; }
   .rl-timer b { font-family: var(--num); font-size: 1.15rem; color: #ffd04a; }
   .rl-winners { margin-bottom: 6px; }
@@ -731,6 +765,7 @@
       <h2>💰 お金の使い道 <span class="sub" style="margin-left:auto" id="shopMoney"></span></h2>
       <div class="shop" id="shopList"></div>
       <button class="btn" id="casinoBtn" style="margin-top:10px">🎰 カジノでルーレット</button>
+      <button class="btn" id="keibaBtn" style="margin-top:8px">🏇 競馬</button>
     </div>
     <div class="actions">
       <div class="row">
@@ -884,6 +919,7 @@
       <div class="shop" id="ol-shopList"></div>
       <p class="sub hidden" id="ol-casinoNote" style="margin:10px 0 0;font-weight:800;color:var(--green)"></p>
       <button class="btn" id="ol-casinoBtn" style="margin-top:10px">🎰 みんなのルーレット（3分ごと）</button>
+      <button class="btn" id="ol-keibaBtn" style="margin-top:8px">🏇 みんなの競馬（毎時0分に発走）</button>
     </div>
     <div class="card hidden" id="ol-lastCard"><h2 id="ol-lastHead">📺 前節の試合</h2><div id="ol-lastBody"></div></div>
     <div class="card" id="ol-seasonCard">
@@ -2427,6 +2463,11 @@ $('casinoBtn').onclick = () => openRoulette({
   spin: (bets) => { const r = SL.spinRoulette(S.p, bets); if (!r.error) save(); return r; },
   onClose: () => renderGame(),
 });
+$('keibaBtn').onclick = () => openKeiba({
+  getMoney: () => S.p.money,
+  run: (card, bets) => { const r = SL.runKeiba(S.p, card, bets); if (!r.error) save(); return r; },
+  onClose: () => renderGame(),
+});
 $('colBtn').onclick = () => { colTab = 'titles'; renderCol(); };
 $('colBack').onclick = renderTitle;
 $('colTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { colTab = b.dataset.c; renderCol(); } });
@@ -2436,6 +2477,7 @@ $('endTitleBtn').onclick = renderTitle;
 if (location.hash !== '#online') renderTitle();
 </script>
 <script src="casino.js"></script>
+<script src="keiba.js"></script>
 <script src="pk.js"></script>
 <script src="online.js"></script>
 <script src="../shared/apps.js"></script>

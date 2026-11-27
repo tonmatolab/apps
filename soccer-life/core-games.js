@@ -3,7 +3,7 @@
 // core.js のあとに読み込む。core.js の内部の部品（SL._）を使い、作ったものを SL に足す。
 'use strict';
 (function (SL) {
-  const { rnd, ri, chance } = SL._;
+  const { rnd, ri, chance, pick } = SL._;
   // ===== PK戦チャレンジ（5本蹴ってゴール数で賞金。1節に1回） =====
   // キーパーが飛ぶ方向（dive）は蹴る側に見えない所で決める（オンラインはサーバー）
   const PK = { kicks: 5, perGoal: 4, perfect: 10, tol: { high: .12, low: .2 } };
@@ -75,5 +75,91 @@
     return { num, color: rlColor(num), results, total, back, net: back - total, money: p.money };
   }
 
-  Object.assign(SL, { PK, pkDive, pkCheckKick, pkResult, pkReward, ROULETTE, RL_BETS, rlColor, rlBetInfo, rlCheck, spinRoulette, resolveRoulette });
+  // ===== 競馬（8頭のレース。単勝・複勝・馬連。オッズは出走表を作ったときに決まる＝固定オッズ） =====
+  // 馬の名前・レース名はすべて架空。ゲーム内のお金だけを賭ける
+  const KEIBA = { horses: 8, minBet: 10, maxTotal: 10000, maxBets: 8, rate: 0.85, sims: 3000, sigma: 8 };
+  const HORSE_A = ['サンダー', 'ミラクル', 'スター', 'ブルー', 'レッド', 'シルバー', 'ハヤテ', 'ツバサ', 'アオゾラ', 'ヒカリ', 'カゼノ', 'ユメノ', 'ホシノ', 'ムーン', 'ロイヤル', 'マジカル', 'ラッキー', 'トップ', 'ドリーム', 'ソラノ', 'コハク', 'ナギサ'];
+  const HORSE_B = ['ランナー', 'ボルト', 'ウイング', 'ダッシュ', 'ハート', 'ロード', 'ソング', 'フラッシュ', 'ステップ', 'キッド', 'チャンス', 'ジェット', 'ファイター', 'ヒーロー', 'メロディ', 'スマイル', 'ロケット', 'タイフーン', 'プリンス', 'ビート', 'リズム', 'パレード'];
+  const RACE_NAMES = ['ルーキーステークス', 'スプリント杯', 'とんまと記念', 'ゴールデンカップ', '星空賞', 'ドリームレース', 'グランプリ', 'サンライズ特別', 'ムーンライト賞', '若葉ステークス', 'チャレンジカップ', '月夜特別'];
+  const COURSES = ['芝1200m', '芝1600m', '芝2000m', '芝2400m', 'ダート1400m', 'ダート1800m'];
+  const STYLES = ['逃げ', '先行', '差し', '追込'];
+  const odds1 = (x) => Math.round(x * 10) / 10;
+  const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+  // 1レース：力に、その日の出来（ゆらぎ）を足して、高い順にゴール。着順（馬番の配列）を返す
+  function keibaOrder(card, r = rnd) {
+    const g = () => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    return card.horses.map((h) => ({ no: h.no, v: h.str + g() * KEIBA.sigma })).sort((x, y) => y.v - x.v).map((x) => x.no);
+  }
+  // 出走表を作る（馬・オッズ）。オッズは何千回もレースを回して勝つ割合から決める（払い戻し率 rate）
+  function newKeibaCard(round = 1) {
+    const used = new Set(), horses = [];
+    for (let no = 1; no <= KEIBA.horses; no++) {
+      let name; do name = pick(HORSE_A) + pick(HORSE_B); while (used.has(name)); used.add(name);
+      horses.push({ no, name, str: ri(62, 82), style: pick(STYLES) });
+    }
+    const card = { round, name: pick(RACE_NAMES), course: pick(COURSES), horses };
+    const N = KEIBA.sims, win = {}, top3 = {}, pair = {};
+    for (let i = 0; i < N; i++) {
+      const o = keibaOrder(card);
+      win[o[0]] = (win[o[0]] || 0) + 1;
+      for (const x of o.slice(0, 3)) top3[x] = (top3[x] || 0) + 1;
+      const k = pairKey(o[0], o[1]); pair[k] = (pair[k] || 0) + 1;
+    }
+    const od = (n, lo, hi) => Math.min(hi, Math.max(lo, odds1(KEIBA.rate / (Math.max(n, .5) / N))));
+    for (const h of horses) { h.win = od(win[h.no] || 0, 1.1, 999.9); h.place = od(top3[h.no] || 0, 1.1, 99.9); }
+    // 人気（単勝オッズの低い順）
+    horses.slice().sort((x, y) => x.win - y.win).forEach((h, i) => { h.pop = i + 1; });
+    card.pairs = {};
+    for (let a = 1; a <= KEIBA.horses; a++) for (let b = a + 1; b <= KEIBA.horses; b++) card.pairs[pairKey(a, b)] = od(pair[pairKey(a, b)] || 0, 1.5, 9999.9);
+    return card;
+  }
+  // 画面に送る出走表（馬の力 str は見せない。オッズと人気で読む）
+  const keibaPublic = (card) => card && { ...card, horses: card.horses.map(({ str, ...h }) => h) };
+  function keibaBetInfo(card, k) {
+    let m = /^([wp])([1-8])$/.exec(k);
+    if (m) {
+      const h = card.horses[+m[2] - 1]; if (!h) return null;
+      return m[1] === 'w' ? { name: `単勝 ${h.no} ${h.name}`, odds: h.win, win: (o) => o[0] === h.no }
+        : { name: `複勝 ${h.no} ${h.name}`, odds: h.place, win: (o) => o.slice(0, 3).includes(h.no) };
+    }
+    m = /^q([1-8])-([1-8])$/.exec(k);
+    if (m && +m[1] < +m[2] && card.pairs[k.slice(1)]) { const a = +m[1], b = +m[2]; return { name: `馬連 ${a}-${b}`, odds: card.pairs[k.slice(1)], win: (o) => pairKey(o[0], o[1]) === pairKey(a, b) }; }
+    return null;
+  }
+  function keibaCheck(p, card, bets) {
+    if (!Array.isArray(bets) || !bets.length) return '賭けてください';
+    if (bets.length > KEIBA.maxBets) return `馬券は${KEIBA.maxBets}点まで`;
+    let total = 0; const seen = new Set();
+    for (const b of bets) {
+      const a = Number(b && b.a);
+      if (!keibaBetInfo(card, b && b.k) || seen.has(b.k) || !Number.isInteger(a) || a < KEIBA.minBet || a % 10) return '賭け方がおかしい';
+      seen.add(b.k); total += a;
+    }
+    if (total > KEIBA.maxTotal) return '1レースに賭けられるのは1億円まで';
+    if (total > p.money) return 'お金が足りない';
+    return null;
+  }
+  // 着順 order で精算する（オンラインは全員に同じ着順を使う）
+  function resolveKeiba(p, card, bets, order) {
+    let total = 0, back = 0;
+    const results = bets.map((b) => {
+      const info = keibaBetInfo(card, b.k), a = Number(b.a), win = info.win(order), payout = win ? Math.round(a * info.odds) : 0;
+      total += a; back += payout;
+      return { k: b.k, name: info.name, a, odds: info.odds, win, payout };
+    });
+    p.money += back - total;
+    const K = p.keiba || (p.keiba = { races: 0, bet: 0, back: 0, best: 0, bestOdds: 0 });
+    K.races++; K.bet += total; K.back += back; K.best = Math.max(K.best, back - total);
+    for (const r of results) if (r.win) K.bestOdds = Math.max(K.bestOdds, r.odds);
+    return { order, results, total, back, net: back - total, money: p.money };
+  }
+  // 一人用：その場で走らせる
+  function runKeiba(p, card, bets) {
+    const e = keibaCheck(p, card, bets);
+    if (e) return { error: e };
+    return resolveKeiba(p, card, bets, keibaOrder(card));
+  }
+
+  Object.assign(SL, { KEIBA, newKeibaCard, keibaPublic, keibaOrder, keibaBetInfo, keibaCheck, resolveKeiba, runKeiba,
+    PK, pkDive, pkCheckKick, pkResult, pkReward, ROULETTE, RL_BETS, rlColor, rlBetInfo, rlCheck, spinRoulette, resolveRoulette });
 })(typeof SL !== 'undefined' ? SL : require('./core.js'));

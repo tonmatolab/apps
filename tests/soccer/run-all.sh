@@ -12,6 +12,7 @@ echo "== 個人ランキング・個人賞"; node tests/soccer/awards.test.js
 echo "== NPCの1年（成長・移籍・引退・30シーズン）"; node tests/soccer/life.test.js
 echo "== オンラインのポジションの偏り対策（FWの上限・空き・狙い目）"; node --no-warnings tests/soccer/positions.test.mjs
 echo "== 冬の移籍期間（第8〜10節）"; node tests/soccer/winter.test.js
+echo "== 競馬（ミニゲーム）"; node tests/soccer/keiba.test.js
 echo "== オンラインの移籍方針（オフに選ばなかったときの自動の決め方）"; node --no-warnings tests/soccer/policy.test.mjs
 echo "== オンラインの称号図鑑（世代をまたいで集まる・オンライン専用の称号）"; node --no-warnings tests/soccer/olcol.test.mjs
 echo "== セーブデータ（読み込み・移行・バックアップ）"; node tests/soccer/save.test.js

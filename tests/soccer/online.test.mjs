@@ -56,6 +56,22 @@ try {
   check(pk.status === 410 && pk.j.error === 'pk_ended', 'PKチャレンジは終了している');
   const bet = await call('/casino/bet', { code: A, body: { bets: [{ k: 'red', a: 10 }] } });
   check(bet.status === 200 && bet.j.myBets.length === 1, 'ルーレットに賭けられる');
+  {
+    const kv = (await call('/keiba', { code: A })).j;
+    check(kv.card && kv.card.horses.length === 8 && kv.card.horses.every((h) => h.win > 1 && h.place >= 1.1 && !('str' in h)), '競馬の出走表（8頭・オッズあり・馬の力は見せない）');
+    check((await call('/keiba/bet', { code: A, body: { bets: [{ k: 'w9', a: 10 }] } })).status === 400, 'ない馬の馬券は買えない');
+    const before = (await call('/state', { code: A })).j.me.money;
+    const kb = await call('/keiba/bet', { code: A, body: { bets: [{ k: 'w1', a: 10 }, { k: 'p2', a: 10 }, { k: 'q1-2', a: 10 }] } });
+    check(kb.status === 200 && kb.j.myBets.length === 3 && kb.j.nextAt > kb.j.now, '単勝・複勝・馬連を買える（発走はこれから）');
+    check(kb.j.nextAt % 3600000 === 0 && kb.j.nextAt - kb.j.now <= 3600000, '発走は毎時0分（1時間に1回）');
+    check((await call('/state', { code: A })).j.keiba.total === 30, 'ホームに「馬券を買っています」が出る');
+    const run = await call('/dev/race', { body: {} });
+    check(run.status === 200 && run.j.last.order.length === 8 && new Set(run.j.last.order).size === 8, 'レースが走って8頭の着順が決まる');
+    const after = (await call('/keiba', { code: A })).j;
+    check(after.myLast && after.myLast.round === run.j.last.round && after.myBets.length === 0 && after.card.round === run.j.last.round + 1, '精算されて、次のレースの出走表になる');
+    const me = (await call('/state', { code: A })).j.me;
+    check(me.money === before + after.myLast.net, `お金は払い戻しの分だけ動く（${after.myLast.net >= 0 ? '+' : ''}${after.myLast.net}万円）`);
+  }
   // 画面は「事前確認」の要らない形で送る：ヘッダーなしの POST（text/plain）、コードは本文の auth、読むだけのものは _m: 'GET'
   {
     const raw = async (p, body) => { const r = await fetch(B + p, { method: 'POST', body: JSON.stringify(body) }); return { status: r.status, j: await r.json().catch(() => null) }; };

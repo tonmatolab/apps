@@ -6,7 +6,7 @@
   const BASE = new URL('../', me.src); // アプリ集のトップ（/apps/）
   const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
   // 公式Xアカウント（ご意見・不具合・お問い合わせの窓口）。各アプリのいちばん下に出す
-  const X_LINE = '<p class="tn-x">お問い合わせ・ご意見・不具合の報告は<br>X（旧Twitter）<a href="https://x.com/tonmatolab" target="_blank" rel="noopener">@tonmatolab</a> へどうぞ</p>';
+  const X_LINE = `<p class="tn-x">お問い合わせ・ご意見・不具合の報告は<br>X（旧Twitter）<a href="https://x.com/tonmatolab" target="_blank" rel="noopener">@tonmatolab</a> へどうぞ<br><a href="${new URL('policy/', BASE).href}">運営者情報・プライバシーポリシー・広告について</a></p>`;
 
   // ----- ホーム画面に追加（manifest・アイコン・service worker） -----
   const head = document.head;

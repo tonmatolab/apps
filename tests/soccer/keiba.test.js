@@ -25,8 +25,8 @@ check(SL.keibaCheck(p, card, [{ k: 'w9', a: 10 }]) === '賭け方がおかしい
 check(SL.keibaCheck(p, card, [{ k: 'q2-1', a: 10 }]) === '賭け方がおかしい', '馬連は小さい番号が先');
 check(SL.keibaCheck(p, card, [{ k: 'w1', a: 15 }]) === '賭け方がおかしい', '10万円単位');
 check(SL.keibaCheck(p, card, [{ k: 'w1', a: 10 }, { k: 'w1', a: 10 }]) === '賭け方がおかしい', '同じ馬券を2つに分けない');
-check(SL.keibaCheck(p, card, [{ k: 'w1', a: 2000 }]) === 'お金が足りない', 'お金が足りなければだめ');
-check(SL.keibaCheck({ money: 1e9 }, card, [{ k: 'w1', a: 10010 }]) === '1レースに賭けられるのは1億円まで', '1レース1億円まで');
+check(SL.keibaCheck({ money: 100 }, card, [{ k: 'w1', a: 500 }]) === 'お金が足りない', 'お金が足りなければだめ');
+check(SL.keibaCheck({ money: 1e9 }, card, [{ k: 'w1', a: 1010 }]) === '1レースに賭けられるのは1,000万円まで', '1レース1,000万円まで');
 check(SL.keibaCheck(p, card, Array.from({ length: 9 }, (_, i) => ({ k: i < 8 ? `w${i + 1}` : 'p1', a: 10 }))) === '馬券は8点まで', '8点まで');
 
 // 精算
@@ -55,7 +55,7 @@ check(SL.keibaCheck(p, card, Array.from({ length: 9 }, (_, i) => ({ k: i < 8 ? `
   const q = { money: 500 };
   const r = SL.runKeiba(q, card, [{ k: 'w1', a: 100 }]);
   check(r.order.length === 8 && new Set(r.order).size === 8 && q.money === 400 + r.back, '一人用はその場で着順が決まり、お金が動く');
-  check(SL.runKeiba(q, card, [{ k: 'w1', a: 9990 }]).error === 'お金が足りない', 'お金が足りなければ走らない');
+  check(SL.runKeiba({ money: 50 }, card, [{ k: 'w1', a: 100 }]).error === 'お金が足りない', 'お金が足りなければ走らない');
 }
 
 console.log(`keiba: ${failed() ? failed() + ' failed' : 'all passed'}`);

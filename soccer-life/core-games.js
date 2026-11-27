@@ -35,7 +35,7 @@
     d2: { name: '2nd 12', pay: 3, win: (n) => n >= 13 && n <= 24 },
     d3: { name: '3rd 12', pay: 3, win: (n) => n >= 25 },
   };
-  const ROULETTE = { minBet: 10, maxTotal: 10000, maxBets: 12, order: RL_ORDER };
+  const ROULETTE = { minBet: 10, maxTotal: 1000, maxBets: 12, order: RL_ORDER };
   function rlBetInfo(k) {
     if (RL_BETS[k]) return RL_BETS[k];
     const m = /^n([0-9]{1,2})$/.exec(k);
@@ -52,7 +52,7 @@
       if (!rlBetInfo(b && b.k) || !Number.isInteger(a) || a < ROULETTE.minBet || a % 10) return '賭け方がおかしい';
       total += a;
     }
-    if (total > ROULETTE.maxTotal) return "1回に賭けられるのは1億円まで";
+    if (total > ROULETTE.maxTotal) return "1回に賭けられるのは1,000万円まで";
     if (total > p.money) return 'お金が足りない';
     return null;
   }
@@ -77,7 +77,7 @@
 
   // ===== 競馬（8頭のレース。単勝・複勝・馬連。オッズは出走表を作ったときに決まる＝固定オッズ） =====
   // 馬の名前・レース名はすべて架空。ゲーム内のお金だけを賭ける
-  const KEIBA = { horses: 8, minBet: 10, maxTotal: 10000, maxBets: 8, rate: 0.85, sims: 3000, sigma: 8 };
+  const KEIBA = { horses: 8, minBet: 10, maxTotal: 1000, maxBets: 8, rate: 0.85, sims: 3000, sigma: 8 };
   const HORSE_A = ['サンダー', 'ミラクル', 'スター', 'ブルー', 'レッド', 'シルバー', 'ハヤテ', 'ツバサ', 'アオゾラ', 'ヒカリ', 'カゼノ', 'ユメノ', 'ホシノ', 'ムーン', 'ロイヤル', 'マジカル', 'ラッキー', 'トップ', 'ドリーム', 'ソラノ', 'コハク', 'ナギサ'];
   const HORSE_B = ['ランナー', 'ボルト', 'ウイング', 'ダッシュ', 'ハート', 'ロード', 'ソング', 'フラッシュ', 'ステップ', 'キッド', 'チャンス', 'ジェット', 'ファイター', 'ヒーロー', 'メロディ', 'スマイル', 'ロケット', 'タイフーン', 'プリンス', 'ビート', 'リズム', 'パレード'];
   const RACE_NAMES = ['ルーキーステークス', 'スプリント杯', 'とんまと記念', 'ゴールデンカップ', '星空賞', 'ドリームレース', 'グランプリ', 'サンライズ特別', 'ムーンライト賞', '若葉ステークス', 'チャレンジカップ', '月夜特別'];
@@ -135,7 +135,7 @@
       if (!keibaBetInfo(card, b && b.k) || seen.has(b.k) || !Number.isInteger(a) || a < KEIBA.minBet || a % 10) return '賭け方がおかしい';
       seen.add(b.k); total += a;
     }
-    if (total > KEIBA.maxTotal) return '1レースに賭けられるのは1億円まで';
+    if (total > KEIBA.maxTotal) return '1レースに賭けられるのは1,000万円まで';
     if (total > p.money) return 'お金が足りない';
     return null;
   }

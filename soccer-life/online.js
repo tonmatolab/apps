@@ -144,7 +144,7 @@
     const my = j.casino && j.casino.myLast;
     if (seenRl !== null && my && my.round > seenRl) {
       const col = { red: '赤', black: '黒', green: '緑' }[SL.rlColor(my.num)];
-      toast(my.void ? `🎰 第${my.round}回：お金が足りず賭けは無効` : `🎰 第${my.round}回は${my.num}（${col}）：${my.net > 0 ? '+' : my.net < 0 ? '−' : '±'}${man(Math.abs(my.net))}`);
+      toast(my.void ? `🎰 第${my.round}回：賭けは無効（${my.void}）` : `🎰 第${my.round}回は${my.num}（${col}）：${my.net > 0 ? '+' : my.net < 0 ? '−' : '±'}${man(Math.abs(my.net))}`);
     }
     if (my) seenRl = Math.max(seenRl || 0, my.round); else if (seenRl === null) seenRl = 0;
   }

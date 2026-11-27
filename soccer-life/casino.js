@@ -7,7 +7,7 @@
 // ゲーム内のお金だけを賭ける。当たり外れは core.js の spinRoulette（オンラインはサーバー）が決める。
 'use strict';
 (() => {
-  const CHIPS = [10, 50, 100, 500, 1000, 5000];
+  const CHIPS = [10, 50, 100, 500, 1000]; // 1回に賭けられるのは1,000万円まで
   const SEG = 360 / 37;
   const fmt = (v) => (v >= 10000 ? `${(v / 10000).toFixed(v % 10000 ? 1 : 0)}億` : `${v.toLocaleString()}万`) + '円';
   const colorOf = (n) => SL.rlColor(n);
@@ -70,7 +70,7 @@
       if (spinning) return;
       const next = (bets[k] || 0) + chip;
       if (!bets[k] && Object.keys(bets).length >= SL.ROULETTE.maxBets) return flash(`賭けは${SL.ROULETTE.maxBets}か所まで`);
-      if (total() + chip > Math.min(opt.getMoney(), SL.ROULETTE.maxTotal)) return flash(opt.getMoney() < total() + chip ? 'お金が足りない' : '1回に賭けられるのは1億円まで');
+      if (total() + chip > Math.min(opt.getMoney(), SL.ROULETTE.maxTotal)) return flash(opt.getMoney() < total() + chip ? 'お金が足りない' : '1回に賭けられるのは1,000万円まで');
       bets[k] = next; paint();
     }
     function flash(t) { const el = $q('.rl-result'); el.textContent = t; el.className = 'rl-result warn'; }
@@ -159,7 +159,7 @@
       const col = { red: '赤', black: '黒', green: '緑' }[L.color];
       let mine = '<small>この回は賭けていません</small>';
       if (my && my.round === L.round) {
-        if (my.void) mine = `<small>所持金が足りず、賭けは無効になりました</small>`;
+        if (my.void) mine = `<small>賭けは無効になりました（${esc(my.void)}）</small>`;
         else {
           const wins = (my.results || []).filter((x) => x.win);
           mine = `${my.net > 0 ? `🎉 +${fmt(my.net)}` : my.net < 0 ? `−${fmt(-my.net)}` : '±0'}${wins.length ? `<br><small>当たり：${wins.map((x) => `${x.name}（${fmt(x.payout)}）`).join('・')}</small>` : ''}`;
@@ -218,7 +218,7 @@
     function addBet(k) {
       if (busy || !T) return;
       if (!bets[k] && Object.keys(bets).length >= SL.ROULETTE.maxBets) return flash(`賭けは${SL.ROULETTE.maxBets}か所まで`);
-      if (total() + chip > Math.min(T.money, SL.ROULETTE.maxTotal)) return flash(T.money < total() + chip ? 'お金が足りない' : '1回に賭けられるのは1億円まで');
+      if (total() + chip > Math.min(T.money, SL.ROULETTE.maxTotal)) return flash(T.money < total() + chip ? 'お金が足りない' : '1回に賭けられるのは1,000万円まで');
       bets[k] = (bets[k] || 0) + chip; paint();
     }
     async function send(list) {

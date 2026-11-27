@@ -7,7 +7,7 @@
 // ゲーム内のお金だけを賭ける。着順は core-games.js（オンラインはサーバー）が決める。
 'use strict';
 (() => {
-  const CHIPS = [10, 50, 100, 500, 1000, 5000];
+  const CHIPS = [10, 50, 100, 500, 1000]; // 1レースに賭けられるのは1,000万円まで
   const od = (x) => Number(x).toFixed(1); // オッズはいつも小数1けた（4 → 4.0）
   const fmt = (v) => (v >= 10000 ? `${(v / 10000).toFixed(v % 10000 ? 1 : 0)}億` : `${v.toLocaleString()}万`) + '円';
   // 帽子の色（1白 2黒 3赤 4青 5黄 6緑 7橙 8桃）
@@ -75,7 +75,7 @@
     function addBet(k, money) {
       if (st.busy || !st.card) return;
       if (!st.bets[k] && Object.keys(st.bets).length >= SL.KEIBA.maxBets) return flash(`馬券は${SL.KEIBA.maxBets}点まで`);
-      if (total() + st.chip > Math.min(money, SL.KEIBA.maxTotal)) return flash(money < total() + st.chip ? 'お金が足りない' : '1レースに賭けられるのは1億円まで');
+      if (total() + st.chip > Math.min(money, SL.KEIBA.maxTotal)) return flash(money < total() + st.chip ? 'お金が足りない' : '1レースに賭けられるのは1,000万円まで');
       st.bets[k] = (st.bets[k] || 0) + st.chip;
       return true;
     }
@@ -176,7 +176,7 @@
       const L = T.last, my = T.myLast;
       if (!L) return '<span class="sub">まだ1回も走っていません</span>';
       let mine = '<small>このレースは買っていません</small>';
-      if (my && my.round === L.round) mine = my.void ? '<small>所持金が足りず、馬券は無効になりました</small>' : V.resultLine(my);
+      if (my && my.round === L.round) mine = my.void ? `<small>馬券は無効になりました（${esc(my.void)}）</small>` : V.resultLine(my);
       return `<small>第${L.round}レース ${esc(L.name)}</small><br>${V.orderText(L.order, L)}<br>${mine}`;
     }
     function paint() {

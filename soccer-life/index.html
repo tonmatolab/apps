@@ -354,6 +354,34 @@
   .ol .topbar .cd { margin-left: auto; color: var(--green); font-family: var(--num); }
   .ol .pc .av { width: 80px; height: 80px; }
   .ol .stl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; }
+  /* たためるカード（タップで開く） */
+  details.fold > summary { list-style: none; cursor: pointer; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary h2 { margin: 0; white-space: nowrap; }
+  details.fold > summary h2 .sub { flex: 1; font-size: .72rem; }
+  details.fold > summary h2::after { content: '▼ 開く'; margin-left: auto; font-size: .7rem; color: var(--sub); font-weight: 800; flex: none; }
+  details.fold[open] > summary h2::after { content: '▲ 閉じる'; }
+  details.fold[open] > summary { margin-bottom: 8px; }
+  details.fold .sub { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  details.fold[open] .sub { display: none; }
+  details.logfold { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  details.logfold > summary { list-style: none; cursor: pointer; font-weight: 800; font-size: .84rem; color: var(--green); text-align: center; }
+  details.logfold > summary::-webkit-details-marker { display: none; }
+  details.logfold > summary::before { content: '▼ '; }
+  details.logfold[open] > summary::before { content: '▲ '; }
+  /* 能力（六角形） */
+  .pc .abil { border-top: 1px solid var(--line); padding: 10px 14px 12px; }
+  .pc .abil h3 { margin: 0; font-size: .9rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .pc .abil .potline { font-size: .74rem; color: var(--sub); font-weight: 700; }
+  .radar { display: block; width: 100%; max-width: 300px; margin: 2px auto 0; }
+  .radar .grid { fill: none; stroke: var(--line); stroke-width: 1; }
+  .radar .ax { stroke: var(--line); stroke-width: 1; }
+  .radar .area { fill: var(--green); fill-opacity: .22; stroke: var(--green); stroke-width: 2; stroke-linejoin: round; }
+  .radar .dot { fill: var(--green); }
+  .radar text { fill: var(--sub); font-size: 11px; font-weight: 700; }
+  .radar text.main { fill: var(--ink); font-weight: 900; }
+  .radar text.v { fill: var(--ink); font-size: 13px; font-weight: 900; font-family: var(--num); }
+  .abil .extra { margin: 0; text-align: center; font-size: .72rem; color: var(--sub); }
   .ol .stl li { grid-template-columns: 4.8em 1fr 2em; }
   .ol .hl li.mine { color: var(--green); }
   .ol .hl li.mate { font-weight: 800; color: var(--blue); }
@@ -838,7 +866,7 @@
     <!-- 画面下のナビは online.js が最後に足す -->
     <div class="topbar"><span id="ol-topYear"></span><span class="cd" id="ol-topCd"></span><button class="btn small" id="ol-refreshBtn">🔄</button></div>
     <div class="card hidden" id="ol-motwCard" style="padding:10px 14px"></div>
-    <div class="card hidden" id="ol-newsCard"><h2>📰 リーグ速報</h2><ul class="newslist" id="ol-newsList"></ul></div>
+    <details class="card hidden fold" id="ol-newsCard"><summary><h2>📰 リーグ速報 <span class="sub" id="ol-newsPeek"></span></h2></summary><ul class="newslist" id="ol-newsList"></ul></details>
     <div class="card pc" id="ol-pCard"></div>
     <div id="ol-statusPanel"></div>
     <div class="card hidden" id="ol-shopCard">
@@ -853,7 +881,6 @@
       <div class="season" id="ol-seasonBox"></div>
       <p class="sub" id="ol-nextTxt" style="margin:8px 0 0;font-weight:700"></p>
     </div>
-    <div class="card" id="ol-statCard"><h2 id="ol-statHead">📊 能力</h2><ul class="stl" id="ol-statList"></ul></div>
     <div class="card">
       <div class="tabs" id="ol-tabs">
         <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="national">全国</button><button data-t="cohort">同期</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="records">記録</button><button data-t="career">経歴</button>

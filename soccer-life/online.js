@@ -204,10 +204,12 @@
       $('pCard').insertAdjacentHTML('beforeend', `<div class="standing"><span>🔁 移籍方針：${policyText(me)}</span><button class="btn small" id="ol-polBtn" style="margin-left:auto;padding:2px 10px">変える</button></div>`);
     }
     if (me.depth || me.outlook) $('pCard').insertAdjacentHTML('beforeend', `<div class="standing">${me.depth ? `<span class="${me.depth.starter ? 'st' : ''}">👥 ${esc(me.depth.text)}</span>` : ''}${me.outlook ? `<span>${me.outlook.icon} ${me.outlook.label}（来年 ${me.outlook.nextIcon}${me.outlook.nextLabel}）</span>` : ''}</div>`);
+    $('pCard').insertAdjacentHTML('beforeend', `<div class="abil"><h3>📊 能力 <span class="potline">${me.potKnown ? `才能 <b style="color:var(--gold)">${me.potKnown}</b>（見抜いた）` : me.potLo != null ? `才能の見立て ${me.potLo}〜${me.potHi}` : ''}</span></h3>${radarHTML(me.stats, me.pos)}</div>`);
     renderStatus();
     // リーグ速報
     $('newsCard').classList.toggle('hidden', !(ST.news && ST.news.length));
     if (ST.news) $('newsList').innerHTML = newsHTML(ST.news);
+    $('newsPeek').textContent = ST.news && ST.news[0] ? ST.news[0].t : '';
     // 今週の最優秀選手
     const mv = ST.motw;
     $('motwCard').classList.toggle('hidden', !mv);
@@ -229,7 +231,6 @@
     const czLine = cz && cz.myBets.length ? `🎰 第${cz.round}回に${man(cz.myBets.reduce((x, b) => x + b.a, 0))}賭けています（${new Date(cz.nextAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}ごろ回ります）` : '';
     $('casinoNote').textContent = czLine;
     $('casinoNote').classList.toggle('hidden', !czLine);
-    $('statHead').innerHTML = `📊 能力 <span class="potline">${me.potKnown ? `才能 <b style="color:var(--gold)">${me.potKnown}</b>（見抜いた）` : me.potLo != null ? `才能の見立て ${me.potLo}〜${me.potHi}` : ''}</span>`;
     // 前節
     const L = me.last;
     $('lastCard').classList.toggle('hidden', !L);
@@ -241,27 +242,42 @@
       $('lastBody').innerHTML = `<div class="score"><div class="tm">${crest(H)}${esc(H.name)}</div><div class="sc">${L.home ? L.gf : L.gc} - ${L.home ? L.gc : L.gf}</div><div class="tm">${crest(A)}${esc(A.name)}</div></div>
         <div class="me-row"><div class="rating" style="background:${L.rating ? ratingColor(L.rating) : '#b9c3bb'}">${L.rating ? L.rating.toFixed(1) : '-'}</div>
           <div><div class="sub">${role}</div><div style="font-weight:800;font-size:.86rem">${[L.goals ? `⚽ ${L.goals}ゴール` : '', L.assists ? `👟 ${L.assists}アシスト` : '', L.cs ? '🧱 無失点' : '', L.pay ? `💰 試合給 +${L.pay}万円` : ''].filter(Boolean).join('　') || (!L.mins ? '次こそ出番を' : L.rating >= 6.5 ? '堅実なプレーで貢献' : L.rating < 5.5 ? '見せ場を作れず…' : 'まずまずの出来')}</div></div></div>
-        ${L.st ? statLineHTML(L.st, me.pos) : ''}${L.log ? matchLogHTML(L.log, us, op, L.ht) : `<ul class="hl">${L.events.map((e) => {
+        ${L.st ? statLineHTML(L.st, me.pos) : ''}<details class="logfold"><summary>試合の流れを見る</summary>${L.log ? matchLogHTML(L.log, us, op, L.ht) : `<ul class="hl">${L.events.map((e) => {
           if (!e.us) return `<li><span class="m">${e.min}'</span><span class="sub">${esc(op.city)}のゴール</span></li>`;
           const mine = e.who === 'me' || e.assist === 'me', mate = !mine && (e.who || e.assist);
           const t = e.who === 'me' ? `あなたの${esc(e.how)}！` : e.who ? `<b>${esc(e.who)}</b>のゴール` : `${esc(us.city)}のゴール`;
           const a = e.assist === 'me' ? '（あなたのアシスト）' : e.assist ? `（${esc(e.assist)}のアシスト）` : '';
           return `<li class="${mine ? 'mine' : mate ? 'mate' : ''}"><span class="m">${e.min}'</span><span>⚽ ${t}${a}</span></li>`;
-        }).join('') || '<li class="empty">スコアレス</li>'}</ul>`}${L.note ? `<p class="sub">🚑 ${esc(L.note)}</p>` : ''}`;
+        }).join('') || '<li class="empty">スコアレス</li>'}</ul>`}</details>${L.note ? `<p class="sub">🚑 ${esc(L.note)}</p>` : ''}`;
     }
     // シーズン
     const S = me.season, rank = c ? ST.tables[c.lg].findIndex((t) => t.id === c.id) + 1 : '-';
     $('seasonHead').innerHTML = `📅 ${w.year}年シーズン`;
     $('seasonBox').innerHTML = `<div>順位<b>${rank}位</b></div><div>出場<b>${S.apps}</b></div><div>${me.pos === 'GK' || me.pos === 'DF' ? '無失点' : 'ゴール'}<b>${me.pos === 'GK' || me.pos === 'DF' ? S.cs : S.goals}</b></div><div>平均評価<b>${S.avg ? S.avg.toFixed(2) : '-'}</b></div>`;
     $('nextTxt').textContent = ST.next ? `次節：${ST.next.home ? 'ホーム' : 'アウェイ'} vs ${club(ST.next.opp).name}` : '';
-    // 能力
-    const main = SL.mainStats(me.pos);
-    $('statList').innerHTML = Object.keys(SL.STATS).filter((k) => k !== 'gk' || me.pos === 'GK').sort((a, b) => main.includes(b) - main.includes(a))
-      .map((k) => `<li class="${main.includes(k) ? 'main' : ''}"><span>${SL.STATS[k]}</span><div class="bar"><i style="width:${me.stats[k]}%;${main.includes(k) ? '' : 'background:#9fb3a3'}"></i></div><span class="v">${me.stats[k]}</span></li>`).join('');
     renderTab();
     show('scrHome');
   }
 
+  // 能力の六角形。FW・MF・DF は セービング以外の6つ、GK は シュートの代わりにセービング（シュートは下に数字で）
+  function radarHTML(st, pos) {
+    const keys = pos === 'GK' ? ['gk', 'drb', 'spd', 'phy', 'def', 'pas'] : ['sht', 'drb', 'spd', 'phy', 'def', 'pas'];
+    const main = SL.mainStats(pos), W = 300, H = 254, cx = 150, cy = 126, R = 84;
+    const pt = (i, r) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+    const poly = (r) => keys.map((_, i) => pt(i, r).map((v) => v.toFixed(1)).join(',')).join(' ');
+    const grid = [.25, .5, .75, 1].map((f) => `<polygon class="grid" points="${poly(R * f)}"/>`).join('');
+    const axes = keys.map((_, i) => { const [x, y] = pt(i, R); return `<line class="ax" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('');
+    const vals = keys.map((k) => Math.max(0, Math.min(99, st[k] || 0)));
+    const area = vals.map((v, i) => pt(i, R * v / 100).map((n) => n.toFixed(1)).join(',')).join(' ');
+    const dots = vals.map((v, i) => { const [x, y] = pt(i, R * v / 100); return `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"/>`; }).join('');
+    const labels = keys.map((k, i) => {
+      const [x, y] = pt(i, R + 26), anchor = Math.abs(x - cx) < 4 ? 'middle' : x > cx ? 'start' : 'end', dx = anchor === 'start' ? -10 : anchor === 'end' ? 10 : 0;
+      const cls = main.includes(k) ? 'main' : '';
+      return `<text x="${(x + dx).toFixed(1)}" y="${(y - 2).toFixed(1)}" text-anchor="${anchor}" class="${cls}">${SL.STATS[k]}</text><text x="${(x + dx).toFixed(1)}" y="${(y + 13).toFixed(1)}" text-anchor="${anchor}" class="v">${st[k]}</text>`;
+    }).join('');
+    const extra = pos === 'GK' ? `<p class="extra">シュート ${st.sht}</p>` : '';
+    return `<svg class="radar" viewBox="0 0 ${W} ${H}" role="img" aria-label="能力：${keys.map((k) => `${SL.STATS[k]}${st[k]}`).join('・')}">${grid}${axes}<polygon class="area" points="${area}"/>${dots}${labels}</svg>${extra}`;
+  }
   function renderStatus() {
     const me = ST.me, w = ST.world, el = $('statusPanel');
     if (me.status === 'active') {

@@ -565,7 +565,7 @@
   {
     const home = document.getElementById('ol-scrHome');
     const nav = document.createElement('div'); nav.className = 'actions olnav';
-    nav.innerHTML = '<div class="navrow" id="ol-nav"><button data-go="top"><b>🏠</b>ホーム</button><button data-go="last"><b>📺</b>前の試合</button><button data-go="mates"><b>👥</b>チーム</button><button data-go="rank"><b>🏅</b>ランキング</button><button data-go="career"><b>📜</b>キャリア</button></div>';
+    nav.innerHTML = '<div class="navrow" id="ol-nav"><button data-go="top"><b>🏠</b>ホーム</button><button data-go="last"><b>📺</b>前の試合</button><button data-go="mates"><b>👥</b>チーム</button><button data-go="rank"><b>🏅</b>ランキング</button><button data-go="career"><b>📜</b>キャリア</button><button data-go="col"><b>🎖️</b>称号</button></div>';
     home.appendChild(nav);
     nav.addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b || !ST) return;

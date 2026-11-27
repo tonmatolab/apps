@@ -904,25 +904,31 @@ function loadSave() { const r = SaveData.read(store); saveStatus = r.status; ret
 const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
 // 同じランキング・人数を、短い間に何度も取りに行かない（無料枠を守る）。記録や名前を送ったら捨てる。
 // 記録を送った返事には上位10件が入っているので、それをそのゲームのランキングとして覚える
-// ランキング・人数（/board・/get）は5分使い回す。ページを開き直しても使えるように、タブを閉じるまで sessionStorage にも残す
-const API_MEMO = {}, MEMO_MS = 5 * 60000;
+// ランキングは10分・人数（/get）は1時間使い回す。開き直しても・次に来たときも使えるように localStorage に残す
+// 記録や名前を送ったときだけ捨てる（自分の記録がすぐ見えるように）
+const API_MEMO = {}, MEMO_MS = { board: 10 * 60000, get: 60 * 60000 };
+const memoTtl = (path) => (path.startsWith('/get') ? MEMO_MS.get : MEMO_MS.board);
 function memoGet(path) {
   let m = API_MEMO[path];
-  if (!m) try { m = JSON.parse(sessionStorage.getItem('memo:' + path)); } catch { m = null; }
-  return m && Date.now() - m.t < MEMO_MS ? m.j : null;
+  if (!m) try { m = JSON.parse(localStorage.getItem('soccer-memo:' + path)); } catch { m = null; }
+  if (!m && path === '/get?keys=soccer-play') try { // 「次はこれで遊ぼう」（shared/next.js）が取った全アプリの人数を使い回す
+    const c = JSON.parse(localStorage.getItem('tn-counts') || 'null');
+    if (c && c.j && c.j['soccer-play'] != null) m = { t: c.t, j: { 'soccer-play': c.j['soccer-play'] } };
+  } catch {}
+  return m && Date.now() - m.t < memoTtl(path) ? m.j : null;
 }
 function memoSet(path, j) {
   API_MEMO[path] = { t: Date.now(), j };
-  try { sessionStorage.setItem('memo:' + path, JSON.stringify(API_MEMO[path])); } catch {}
+  try { localStorage.setItem('soccer-memo:' + path, JSON.stringify(API_MEMO[path])); } catch {}
 }
 function memoClear() {
-  for (const k in API_MEMO) delete API_MEMO[k];
-  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith('memo:')) sessionStorage.removeItem(k); } catch {}
+  for (const k in API_MEMO) if (k.startsWith('/board')) delete API_MEMO[k];
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith('soccer-memo:/board')) localStorage.removeItem(k); } catch {}
 }
 async function api(path, method = 'GET', data) {
   const memo = method === 'GET' && /^\/(board|get)\?/.test(path);
   if (memo) { const hit = memoGet(path); if (hit) return hit; }
-  if (method !== 'GET') memoClear();
+  if (path === '/score' || path === '/name') memoClear();
   const j = await apiFetch(path, method, data);
   if (memo && j && !j.error) memoSet(path, j);
   if (path === '/score' && j && j.top && data) for (const p of [`/board?game=${data.game}`, `/board?game=${data.game}&limit=10`]) memoSet(p, { total: j.total, top: j.top });

@@ -40,11 +40,11 @@
   .tonmato-next .tn-x a { display: inline; background: none; box-shadow: none; border: 0; padding: 0; border-radius: 0; color: inherit; font-weight: 800; text-decoration: underline; }`;
   const st = document.createElement('style'); st.textContent = css; head.appendChild(st);
 
-  // 全アプリの遊んだ人数（1回で全部取って、10分間はこのタブで使い回す。トップページと共通の入れ物）
+  // 全アプリの遊んだ人数（1回で全部取って、1時間は使い回す。次に来たときも使えるように localStorage。トップページと共通の入れ物）
   function playCounts(apps) {
-    try { const c = JSON.parse(sessionStorage.getItem('tn-counts') || 'null'); if (c && Date.now() - c.t < 600000) return Promise.resolve(c.j); } catch {}
+    try { const c = JSON.parse(localStorage.getItem('tn-counts') || 'null'); if (c && Date.now() - c.t < 3600000) return Promise.resolve(c.j); } catch {}
     return fetch(`${API}/get?keys=${apps.map((a) => a.key).join(',')}`).then((r) => r.json()).then((j) => {
-      try { sessionStorage.setItem('tn-counts', JSON.stringify({ t: Date.now(), j })); } catch {}
+      try { localStorage.setItem('tn-counts', JSON.stringify({ t: Date.now(), j })); } catch {}
       return j;
     });
   }

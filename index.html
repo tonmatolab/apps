@@ -250,8 +250,10 @@ render(null);
   // 手元での確認中は閲覧数を増やさない
   const v = LOCAL ? await call('/get?keys=portal-view').then((j) => j && { value: j['portal-view'] }) : await call('/hit/portal-view', 'POST');
   if (v) countUp($('views'), v.value);
-  const j = await call('/get?keys=' + APPS.map((a) => a.key).join(','));
-  if (j) try { sessionStorage.setItem('tn-counts', JSON.stringify({ t: Date.now(), j })); } catch {} // 各アプリの「次はこれで遊ぼう」が使い回す（shared/next.js）
+  // 全アプリの人数は1時間使い回す（各アプリの「次はこれで遊ぼう」＝ shared/next.js と共通の入れ物）
+  let j = null;
+  try { const c = JSON.parse(localStorage.getItem('tn-counts') || 'null'); if (c && Date.now() - c.t < 3600000) j = c.j; } catch {}
+  if (!j) { j = await call('/get?keys=' + APPS.map((a) => a.key).join(',')); if (j) try { localStorage.setItem('tn-counts', JSON.stringify({ t: Date.now(), j })); } catch {} }
   if (j) render(j);
 })();
 

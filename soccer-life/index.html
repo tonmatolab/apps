@@ -428,6 +428,12 @@
   .tcard b { display: block; font-size: .86rem; }
   .tcard span { display: block; font-size: .66rem; color: var(--sub); }
   .tcard.locked { background: var(--chip); border-color: var(--line); }
+  .tcard .olb { display: inline-block; margin-left: 4px; font-size: .58rem; font-weight: 800; color: #fff; background: var(--green); border-radius: 5px; padding: 1px 4px; vertical-align: 1px; }
+  .clubdex { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .clubdex div { text-align: center; font-size: .6rem; line-height: 1.25; border-radius: 10px; padding: 5px 2px; background: var(--chip); border: 2px solid var(--line); overflow: hidden; }
+  .clubdex div.got { border-color: var(--gold); background: var(--paper); font-weight: 800; }
+  .clubdex div:not(.got) .crest { filter: grayscale(1); opacity: .35; }
+  .clubdex .n { display: block; color: var(--sub); font-weight: 700; }
   .tcard.locked b { color: var(--sub); letter-spacing: .1em; }
   /* レア度：N（灰）・R（青）・SR（紫）・SSR（金）・UR（虹） */
   .rb { display: inline-block; font-family: var(--num); font-weight: 900; font-size: .62rem; line-height: 1; padding: 3px 6px 2px; border-radius: 6px; color: #fff; letter-spacing: .02em; vertical-align: 1px; white-space: nowrap; }
@@ -883,7 +889,7 @@
     </div>
     <div class="card">
       <div class="tabs" id="ol-tabs">
-        <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="national">全国</button><button data-t="cohort">同期</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="records">記録</button><button data-t="career">経歴</button>
+        <button data-t="table" class="on">順位表</button><button data-t="rank">個人</button><button data-t="national">全国</button><button data-t="cohort">同期</button><button data-t="mates">チーム</button><button data-t="results">結果</button><button data-t="records">記録</button><button data-t="career">経歴</button><button data-t="col">図鑑</button>
       </div>
       <div id="ol-tabBody"></div>
     </div>

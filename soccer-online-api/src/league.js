@@ -62,6 +62,18 @@ export class League extends DurableObject {
     });
     this.reqAuth = new WeakMap(); // リクエストごとの引き継ぎコード（本文で送られてきたとき）
     const fresh = this.loadState();
+    // 失敗しても起動は止めない（図鑑に前の世代が入らないだけ。次の起動でもう一度ためす）
+    if (!this.sql.exec("SELECT k FROM npcstats WHERE k = 'colPast'").toArray().length) try { this.atomic(() => {
+      const rows = this.sql.exec('SELECT account, data FROM past').toArray().map((r) => ({ account: r.account, m: JSON.parse(r.data) })).sort((a, b) => (a.m.gen || 1) - (b.m.gen || 1));
+      const touched = new Set();
+      for (const { account, m: pm } of rows) {
+        const cur = this.members.get(this.byAccount.get(account));
+        if (!cur || !pm.summary || pm.summary.colDone) continue;
+        G.recordLife(pm, this.w, cur.col); touched.add(cur);
+      }
+      for (const m of touched) { m.col.last = null; this.saveMember(m); }
+      this.sql.exec("INSERT INTO npcstats (k, v) VALUES ('colPast', '1') ON CONFLICT(k) DO UPDATE SET v = excluded.v");
+    }); } catch (e) { console.log('colPast failed', e && e.message); }
     this.ensureSchedule(fresh);
     await this.armAlarm();
   }
@@ -605,7 +617,7 @@ export class League extends DurableObject {
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
         caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, winter: m.winter && m.status === 'active' ? { ...m.winter, closeAt: w.nextAt + Math.max(0, G.SL.WINTER.close - 1 - w.week) * this.tickMs() } : null, lineage: m.lineage, log: m.log.slice(-12),
-        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0,
+        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0, col: m.col || null,
         perks: { trainer: p.trainMul > 1, clinic: !!p.clinic, camp: !!p.camp, house: !!p.house, edu: p.edu || 0 },
       },
     };

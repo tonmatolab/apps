@@ -108,6 +108,7 @@ export function migrateMember(m, w) {
   SL.gtypeOf(m.pl); // 成長の型がなければ名前から決める（Phase 4）
   if (m.status !== 'draft' && m.status !== 'retired' && m.debutYear == null) m.debutYear = (m.history[0] && m.history[0].year) || w.year;
   if (!m.seenAt) m.seenAt = Date.now(); // 最後に来た時刻（休眠の判定。以前のデータは今を入れる）
+  if (!m.col) { m.col = newOnlineCol(); if (m.status === 'retired' && m.summary) recordLife(m, w); }
   return m;
 }
 export function migrateWorld(w) {
@@ -180,7 +181,7 @@ export function newMember(id, account, name, pos, opt = {}) {
 export function adapter(m, w) {
   return {
     p: m.pl, clubs: w.clubs, history: m.history, totals: m.totals, trophies: m.trophies, awards: m.awards, caps: m.caps, natGoals: m.natGoals,
-    wc: m.wc, year: w.year, log: m.log, papers: [], news: [], family: { combo: 0, jointApps: 0, jointGoals: 0 }, rival: null, mode: 'online',
+    wc: m.wc, year: w.year, log: m.log, papers: [], news: [], family: { combo: 0, jointApps: 0, jointGoals: 0, hats: m.hats || 0 }, rival: null, mode: 'online',
     gen: m.gen, lineage: m.lineage, parent: m.parent, season: m.season, lastMatch: null,
     records: m.records || (m.records = newRecords()), phase: w.phase === 'season' ? 'season' : 'off',
   };
@@ -217,6 +218,7 @@ export function join(m, w, i, members = []) {
   const o = m.draft[i]; if (!o) return 'bad_choice';
   if (clubFull(members, o.club, m.pl.pos, m)) return 'club_full';
   SL.joinClub(adapter(m, w), o);
+  if (o.youth && !m.history.length) m.youthStart = true;
   addNews(w, `🆕 ${m.pl.name}（${m.pl.pos}）が${w.clubs[o.club].name}に入団${m.gen > 1 ? `。${m.gen}代目` : ''}`);
   m.draft = null; m.season = emptySeason(); m.cupSeason = emptySeason();
   if (m.debutYear == null) m.debutYear = w.year; // 休眠から戻ったときは最初のデビューの年のまま
@@ -283,7 +285,11 @@ function clubMatch(w, h, a, byClub, npcs, npcSeason, cup = false) {
         if (!cup) { SL.addLine(S, sl.line); if (sl.motm) S.motm = (S.motm || 0) + 1; }
         S.ratings.push(r.rating);
         if (r.role === 'start') p.fatigue = clamp(p.fatigue + 10, 0, 100);
-        if (chance(.012 + (p.fatigue > 70 ? .03 : 0))) { p.injury = Math.max(p.injury, ri(1, 5)); m.note = '試合中に接触プレーで負傷'; }
+        if (chance(.012 + (p.fatigue > 70 ? .03 : 0))) {
+          p.injury = Math.max(p.injury, ri(1, 5)); m.note = '試合中に接触プレーで負傷';
+          if (p.injury >= 4) m.log.push({ y: w.year, age: p.age, k: 'injury', t: `${w.year}年、試合中の接触プレーで負傷。全治${p.injury}週の離脱を経験したが、そこから復帰した。` });
+        }
+        if (r.goals >= 3) m.hats = (m.hats || 0) + 1;
         p.fame = clamp(p.fame + r.goals * .6 + r.assists * .3 + (r.rating >= 8 ? 1 : 0) + (side.c.lg === 0 ? .2 : SL.isEU(side.c.lg) ? .1 : 0), 0, 100);
         if (!cup) r.pay = SL.matchPay(p, r.mins, r.goals);
         if (!cup && r.goals >= 2) addNews(w, `⚽ ${p.name}が${other.city}戦で${r.goals >= 3 ? 'ハットトリック！' : '2ゴール'}（${side.c.name}）`);
@@ -373,6 +379,8 @@ export function winterMove(m, w, i, members = []) {
   if (clubFull(members, o.club, m.pl.pos, m)) return 'club_full';
   const from = w.clubs[m.pl.club];
   SL.accept(adapter(m, w), o);
+  m.winterN = (m.winterN || 0) + 1;
+  m.log.push({ y: w.year, age: m.pl.age, k: 'winter', t: `${w.year}年の冬、シーズンの途中で${from.name}から${w.clubs[o.club].name}へ移籍。` });
   addNews(w, `❄️ ${m.pl.name}が冬の移籍で${w.clubs[o.club].name}へ（${from.name}から）`);
   m.winter = null;
   return null;
@@ -599,6 +607,38 @@ export function finishOffseason(w, members, now = Date.now(), npcs = null) {
   }
 }
 
+// ----- 称号図鑑（アカウントごと。世代をまたいで集まる） -----
+// t：{ 称号ID: [取った回数, 最初に取った世代, その年, その選手の名前] }、clubs：{ クラブID: シーズン数 }、lives：引退した人数、last：いちばん新しい引退で増えたもの
+export function newOnlineCol() { return { v: 1, t: {}, clubs: {}, lives: 0, last: null }; }
+// この人生のオンラインの文脈（オンライン専用の称号の判定に使う）
+export function onlineContext(m, w, famClubs) {
+  const h = m.history, per = new Map();
+  for (const x of h) per.set(x.clubId, (per.get(x.clubId) || 0) + (x.apps || 0));
+  const years = new Set(h.map((x) => x.year)), R = w.records || {};
+  const inRec = (list) => (list || []).some((r) => r.name === m.pl.name && years.has(r.year));
+  return {
+    lgs: new Set(h.map((x) => x.lg)), first: h[0] ? h[0].lg : null, youth: !!m.youthStart, motw: m.motw || 0, winter: m.winterN || 0,
+    maxClubApps: Math.max(0, ...per.values()), record: inRec(R.seasonGoals) || inRec(R.seasonAssists), famClubs,
+  };
+}
+// 引退した人生を図鑑に記録する（オンライン専用の称号も、ここで summary.titles に足す）。1つの人生で1回だけ
+export function recordLife(m, w, col = m.col || (m.col = newOnlineCol())) {
+  const sm = m.summary;
+  if (!sm || sm.colDone) return [];
+  const fam = new Set(Object.keys(col.clubs).map(Number).concat(m.history.map((x) => x.clubId)));
+  sm.titles = [...new Set((sm.titles || []).concat(SL.onlineTitles(onlineContext(m, w, fam))))];
+  const fresh = [];
+  for (const id of sm.titles) {
+    if (col.t[id]) col.t[id][0]++;
+    else { col.t[id] = [1, m.gen, sm.endYear || w.year, sm.name]; fresh.push(id); }
+  }
+  for (const x of m.history) col.clubs[x.clubId] = (col.clubs[x.clubId] || 0) + 1;
+  col.lives++;
+  col.last = { gen: m.gen, name: sm.name, titles: fresh };
+  sm.colDone = true;
+  return fresh;
+}
+
 // ----- 引退と次の世代 -----
 export function retire(m, w) {
   const s = adapter(m, w);
@@ -606,6 +646,7 @@ export function retire(m, w) {
   m.summary = SL.retire(s);
   addNews(w, `👋 ${m.summary.name}が${m.summary.retireAge}歳で引退。「${m.summary.title}」ランク${m.summary.letter}`);
   m.status = 'retired'; m.offer = null; m.pl.club = null;
+  recordLife(m, w);
   const sm = m.summary, R = w.records || (w.records = newWorldRecords());
   const row = { name: sm.name, years: `${sm.startYear}-${sm.endYear}`, gen: sm.gen, title: sm.title };
   pushTop(R.careerGoals, { ...row, v: sm.goals });
@@ -637,6 +678,7 @@ export function nextGeneration(old, id, name, pos, w, members = [], appeal = nul
   const sm = old.summary;
   const lineage = old.lineage.concat([{ gen: old.gen, name: sm.name, pos: sm.pos, title: sm.title, letter: sm.letter, score: sm.score, apps: sm.apps, goals: sm.goals, cs: sm.cs, years: `${sm.startYear}-${sm.endYear}` }]);
   const m = newMember(id, old.account, name, pos, { gen: old.gen + 1, lineage, bonus: SL.inheritBonus(sm) + extraBonus, parent: { name: sm.name, title: sm.title }, appeal });
+  m.col = old.col || newOnlineCol(); // 称号図鑑はアカウント（一族）で集める
   m.draft = draftOffers(m, w, members);
   return m;
 }

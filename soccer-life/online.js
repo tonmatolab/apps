@@ -351,13 +351,49 @@
         if (sm.titles && !done.includes(me.id) && typeof loadCol === 'function') {
           const r = SL.addToCollection(loadCol(), sm, 'online');
           saveCol(r.col); done.push(me.id); store.set('colIds', JSON.stringify(done));
-          if (r.newTitles.length) toast(`称号を${r.newTitles.length}個手に入れた！（図鑑に記録）`);
+          const olNew = me.col && me.col.last && me.col.last.gen === me.gen ? me.col.last.titles.length : 0;
+          if (olNew) toast(`オンライン図鑑に新しい称号が${olNew}個！（「図鑑」のタブで見られます）`);
+          else if (r.newTitles.length) toast(`称号を${r.newTitles.length}個手に入れた！（図鑑に記録）`);
           if (typeof celebrateTopTitle === 'function') celebrateTopTitle(sm); // 激レア以上なら演出（初めて引退画面を開いたとき）
         }
       } catch {}
       const ts = SL.byRarity ? SL.byRarity(sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean) : (sm.titles || []).map((id) => SL.titleInfo(id)).filter(Boolean);
       if (ts.length) el.insertAdjacentHTML('beforeend', `<div class="card"><h2>🎖️ 手に入れた称号 <span class="sub" style="margin-left:auto">${ts.length}個</span></h2><div class="tgrid">${typeof titleCardsHTML === 'function' ? titleCardsHTML(sm.titles || []) : ts.map((t) => `<div class="tcard"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></div>`).join('')}</div></div>`);
     }
+  }
+
+  // ===== 称号図鑑（アカウントごと。サーバーに残るので、世代をまたいで・どの端末でも同じ） =====
+  function renderOnlineCol(body, me) {
+    const col = me.col || { t: {}, clubs: {}, lives: 0 }, list = SL.onlineTitleList();
+    // クラブ：記録済みの世代＋今の人生
+    const clubs = { ...col.clubs };
+    if (me.status !== 'retired') for (const h of me.history || []) clubs[h.clubId] = (clubs[h.clubId] || 0) + 1;
+    if (me.status !== 'retired' && me.club != null && !clubs[me.club]) clubs[me.club] = 0; // 今のクラブ（まだシーズンを終えていない）
+    const nT = list.filter((t) => col.t[t[0]]).length, nC = Object.keys(clubs).length, total = ST.clubs.length;
+    const fresh = new Set((col.last && col.last.titles) || []);
+    let html = `<div class="bigstat" style="margin-top:0"><div>称号<b>${nT}/${list.length}</b></div><div>クラブ<b>${nC}/${total}</b></div><div>引退した選手<b>${col.lives || 0}</b></div><div>一族<b>${me.gen}代目</b></div></div>
+      <p class="sub" style="margin:6px 0 8px">図鑑はアカウントに残り、次の世代に引き継がれます。何度も生まれ変わって集めよう</p>
+      <div class="tabs lgtabs" style="margin-bottom:8px"><button data-c="titles" class="${COL_TAB === 'titles' ? 'on' : ''}">称号</button><button data-c="clubs" class="${COL_TAB === 'clubs' ? 'on' : ''}">クラブ</button></div>`;
+    if (COL_TAB === 'titles') {
+      const tier = SL.RARITY.map((r) => { const all = list.filter((t) => SL.rarityOf(t[0]).id === r.id); return all.length ? `<span><span class="rb ${r.id}">${r.id}</span> ${all.filter((t) => col.t[t[0]]).length}/${all.length}</span>` : ''; }).join(' ');
+      html += `<p class="sub" style="margin:0 0 8px;display:flex;flex-wrap:wrap;gap:4px 10px">${tier}</p>
+        <p class="sub" style="margin:0 0 8px">称号は引退したときに手に入ります。<span class="olb" style="display:inline-block;font-size:.58rem;font-weight:800;color:#fff;background:var(--green);border-radius:5px;padding:1px 4px">オンライン</span> はオンラインだけの称号、「一族」は全世代の合計で取る称号</p>
+        <div class="tgrid">${list.slice().sort((a, b) => !!col.t[b[0]] - !!col.t[a[0]] || SL.rateOf(a[0]) - SL.rateOf(b[0])).map((t) => { // 持っているもの（レアな順）→ まだのもの
+          const [id, name, desc, hint, , famT] = t, got = col.t[id], R = SL.rarityOf(id), ol = SL.ONLINE_TITLES.includes(t) ? `<span class="olb">${famT ? '一族' : 'オンライン'}</span>` : '';
+          return got ? `<div class="tcard ${R.id}"><b><span class="rb ${R.id}">${R.id}</span>${esc(name)}${ol}${fresh.has(id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(desc)}</span><span class="cond">🎯 ${esc(hint)}</span><span>🏃 ${esc(got[3])}（${got[1]}代目）${got[0] > 1 ? `・${got[0]}回` : ''}</span></div>`
+            : `<div class="tcard locked"><b><span class="rb ${R.id}">${R.id}</span>？？？${ol}</b><span>${esc(hint)}</span></div>`;
+        }).join('')}</div>`;
+    } else {
+      html += `<p class="sub" style="margin:0 0 8px">一族のだれかがプレーしたクラブ（数字はシーズン数）。全70クラブ制覇で「全クラブ制覇」の称号</p>` + SL.LEAGUE_ORDER.map((lgId) => {
+        const cs = ST.clubs.filter((c) => c.lg === lgId); if (!cs.length) return '';
+        return `<div class="sub" style="margin:10px 0 4px;font-weight:800">${SL.LEAGUES[lgId].name}（${cs.filter((c) => clubs[c.id] != null).length}/${cs.length}）</div><div class="clubdex">${cs.map((c) => {
+          const n = clubs[c.id];
+          return `<div class="${n != null ? 'got' : ''}">${crest(c)}<br>${n != null ? esc(c.short || c.city) : '？？？'}<span class="n">${n != null ? (n ? `${n}季` : '在籍中') : ''}</span></div>`;
+        }).join('')}</div>`;
+      }).join('');
+    }
+    body.innerHTML = html;
+    body.querySelectorAll('[data-c]').forEach((b) => b.onclick = () => { COL_TAB = b.dataset.c; renderOnlineCol(body, me); });
   }
 
   // カップ戦の結果（全体）
@@ -404,6 +440,7 @@
   // 今季の個人ランキング（NPCも含む。サーバーで並べたものを読む）
   let RV = null;
   let TABLE_LG = null; // 順位表で見ているリーグ（最初は自分のリーグ）
+  let COL_TAB = 'titles'; // 図鑑：'titles'（称号）・'clubs'（クラブ）
   async function renderRanking(body, me, lg) {
     if (!RV) RV = { lg: String(lg), cat: me.pos === 'GK' ? 'saves' : me.pos === 'DF' ? 'defense' : me.pos === 'MF' ? 'assists' : 'goals', who: 'all' };
     const v = { ...RV };
@@ -424,6 +461,8 @@
         <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
         ${ST.tables[L.id].map((t, i) => { const c = club(t.id); return `<tr class="${t.id === me.club ? 'me' : ''}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}${c.humans ? `<span class="hum">👤${c.humans}</span>` : ''}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf - t.ga > 0 ? '+' : ''}${t.gf - t.ga}</td><td><b>${t.p}</b></td></tr>`; }).join('')}</table></div>`).join('');
       body.querySelectorAll('.lgtabs button').forEach((b) => b.onclick = () => { TABLE_LG = +b.dataset.lg; renderTab(); });
+    } else if (tab === 'col') {
+      renderOnlineCol(body, me);
     } else if (tab === 'rank') {
       renderRanking(body, me, lg);
     } else if (tab === 'mates') {

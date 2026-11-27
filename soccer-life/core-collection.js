@@ -158,10 +158,45 @@
     ['st33', '不滅の連撃', '33試合、ゴールを決め続けた。', '33試合連続ゴール', (c) => c.R.bestGoalStreak >= 33],
     ['wall', '世界最高の壁', '世界一のチームの、世界一の守護神。', 'GKでW杯優勝・世界年間最優秀選手・通算150試合無失点', (c) => c.pos === 'GK' && c.wcWins >= 1 && c.world >= 1 && c.T.cs >= 150],
   ];
+  // ===== オンライン専用の称号 =====
+  // oc（オンラインの文脈。サーバーの sim.js が作る）：
+  //   lgs：この人生でプレーしたリーグ（略称の Set）、first：デビューしたリーグの略称、youth：育成枠で入団した、motw：週間最優秀の回数、
+  //   winter：冬の移籍の回数、maxClubApps：1つのクラブでの最多出場、record：リーグの歴代記録（シーズン得点・アシスト10位以内）に入った、
+  //   famClubs：一族（すべての世代）でプレーしたクラブID の Set
+  // fam：一族（世代をまたいだ合計）で取る称号。引退した世代の図鑑にも残る
+  const EU1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const DOM_ALL = Array.from({ length: 40 }, (_, i) => 10 + i);
+  const ONLINE_TITLES = [
+    ['ol_motw', '週間MVP', 'その週、リーグでいちばん輝いた。', '週間最優秀選手に選ばれる', (c) => c.motw >= 1],
+    ['ol_motw10', '週間MVPの常連', '何度も、その週の主役になった。', '週間最優秀選手に10回選ばれる', (c) => c.motw >= 10],
+    ['ol_winter', '冬の決断', 'シーズンの途中で、新しい道を選んだ。', '冬の移籍期間に移籍する', (c) => c.winter >= 1],
+    ['ol_legend', 'クラブの象徴', 'そのクラブといえば、この選手。', '1つのクラブで通算100試合出場', (c) => c.maxClubApps >= 100],
+    ['ol_record', '歴史に名を刻む', 'オンラインリーグの記録に名前が残った。', 'シーズン得点かアシストで、リーグ歴代10位に入る', (c) => c.record],
+    ['ol_dom4', '国内を知り尽くす', '4部から1部まで、すべての舞台に立った。', '1人で国内1〜4部すべてでプレー', (c) => ['1部', '2部', '3部', '4部'].every((x) => c.lgs.has(x))],
+    ['ol_eu3', '欧州を渡り歩く', '欧州の1部・2部・3部、すべてで戦った。', '1人で欧州1〜3部すべてでプレー', (c) => ['欧州', '欧州2部', '欧州3部'].every((x) => c.lgs.has(x))],
+    ['ol_climb', '下剋上', 'いちばん下から、いちばん上へ。', '国内4部でデビューし、欧州1部でプレー', (c) => c.first === '4部' && c.lgs.has('欧州')],
+    ['ol_youth', '育成枠の星', '育成枠から、本場の頂点へ駆け上がった。', '欧州3部の育成枠で入団し、欧州1部でプレー', (c) => c.youth && c.lgs.has('欧州')],
+    ['fam_c10', '10のエンブレム', '一族で10のクラブのユニフォームを着た。', '一族（すべての世代の合計）で10クラブでプレー', (c) => c.famClubs.size >= 10, true],
+    ['fam_c30', '30のエンブレム', '一族の足跡は、30のクラブに残っている。', '一族で30クラブでプレー', (c) => c.famClubs.size >= 30, true],
+    ['fam_eu1', '欧州の名門をめぐる', '欧州1部の10クラブ、すべてに一族の足跡が。', '一族で欧州1部の10クラブすべてでプレー', (c) => EU1.every((id) => c.famClubs.has(id)), true],
+    ['fam_dom', '日本中にエンブレムを', '国内40クラブ、すべてに一族の足跡が。', '一族で国内40クラブすべてでプレー', (c) => DOM_ALL.every((id) => c.famClubs.has(id)), true],
+    ['fam_c70', '全クラブ制覇', '70のクラブすべてに、一族の足跡がある。', '一族で70クラブすべてでプレー', (c) => c.famClubs.size >= 70, true],
+  ];
+  // オンラインでは取れない称号（W杯・ライバル・親子・引退試合・出来事・縛り・モード・スターの器）。オンラインの図鑑には出さない
+  const ONLINE_HIDE = new Set(['wc1', 'wc16', 'wc8', 'wc4', 'wc2', 'wcw', 'wcg', 'wcgk', 'rv', 'rvw', 'rvl', 'rvg', 'jt', 'cb', 'cb3', 'lm', 'lmf', 'wed', 'kids3', 'cm', 'sns', 'edu',
+    'ch_loyal', 'ch_domestic', 'ch_weak', 'ch_lowpot', 'ch_norest', 'ch_keeper', 'quickS', 'patient', 'star', 'god', 'ruler', 'wall']);
+  function onlineTitles(oc) { return ONLINE_TITLES.filter((t) => { try { return t[4](oc); } catch { return false; } }).map((t) => t[0]); }
+  // オンラインの図鑑に並べる称号（一人用と共通のもの＋オンライン専用）
+  const onlineTitleList = () => TITLES.filter((t) => !ONLINE_HIDE.has(t[0])).concat(ONLINE_TITLES);
+  const ALL_TITLES = () => TITLES.concat(ONLINE_TITLES);
+  const findTitle = (id) => TITLES.find((x) => x[0] === id) || ONLINE_TITLES.find((x) => x[0] === id);
+
   // ===== レア度 =====
   // RATE：引退した選手のうち、その称号を持っている人の割合（％・目安）。自動で人生を送った600人分から数えた。
   // 自動では出ないもの（2代目以降・縛り・引退試合など）は目安
   const RATE = {
+    ol_motw: 20, ol_motw10: 3, ol_winter: 15, ol_legend: 12, ol_record: 4, ol_dom4: 5, ol_eu3: 1.5, ol_climb: 1, ol_youth: 0.8,
+    fam_c10: 6, fam_c30: 0.8, fam_eu1: 0.3, fam_dom: 0.2, fam_c70: 0.04,
     p50: 100,
     p100: 100,
     cap1: 100,
@@ -297,8 +332,9 @@
   function topTitle(ids) {
     let best = null;
     for (const id of ids || []) {
-      if (!TITLES.some((t) => t[0] === id)) continue;
-      if (!best || rateOf(id) < rateOf(best) || (rateOf(id) === rateOf(best) && TITLES.findIndex((t) => t[0] === id) > TITLES.findIndex((t) => t[0] === best))) best = id;
+      if (!findTitle(id)) continue;
+      const at = (x) => ALL_TITLES().findIndex((t) => t[0] === x);
+      if (!best || rateOf(id) < rateOf(best) || (rateOf(id) === rateOf(best) && at(id) > at(best))) best = id;
     }
     return best;
   }
@@ -308,7 +344,7 @@
     const c = titleContext(s, sum);
     return TITLES.filter((t) => { try { return t[4](c); } catch { return false; } }).map((t) => t[0]);
   }
-  const titleInfo = (id) => { const t = TITLES.find((x) => x[0] === id); return t ? { id: t[0], name: t[1], desc: t[2], hint: t[3], rarity: rarityOf(id), rate: rateOf(id) } : null; };
+  const titleInfo = (id) => { const t = findTitle(id); return t ? { id: t[0], name: t[1], desc: t[2], hint: t[3], rarity: rarityOf(id), rate: rateOf(id), online: ONLINE_TITLES.includes(t), fam: !!t[5] } : null; };
 
   // ===== 実績（端末に残る、すべての人生を通しての目標） =====
   // [id, 名前, 説明, (コレクション) => [いま, 目標]]
@@ -386,5 +422,5 @@
     return { col, newTitles: newT, newAch: newA };
   }
 
-  Object.assign(SL, { TITLES, RARITY, rarityOf, rateOf, topTitle, byRarity, titleInfo, earnedTitles, ACHIEVEMENTS, newCollection, addToCollection });
+  Object.assign(SL, { ONLINE_TITLES, ONLINE_HIDE, onlineTitles, onlineTitleList, TITLES, RARITY, rarityOf, rateOf, topTitle, byRarity, titleInfo, earnedTitles, ACHIEVEMENTS, newCollection, addToCollection });
 })(typeof SL !== 'undefined' ? SL : require('./core.js'));

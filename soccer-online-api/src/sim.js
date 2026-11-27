@@ -292,7 +292,7 @@ function clubMatch(w, h, a, byClub, npcs, npcSeason, cup = false) {
         if (r.goals >= 3) m.hats = (m.hats || 0) + 1;
         p.fame = clamp(p.fame + r.goals * .6 + r.assists * .3 + (r.rating >= 8 ? 1 : 0) + (side.c.lg === 0 ? .2 : SL.isEU(side.c.lg) ? .1 : 0), 0, 100);
         if (!cup) r.pay = SL.matchPay(p, r.mins, r.goals);
-        if (!cup && r.goals >= 2) addNews(w, `⚽ ${p.name}が${other.city}戦で${r.goals >= 3 ? 'ハットトリック！' : '2ゴール'}（${side.c.name}）`);
+        if (!cup && r.goals >= 3) addNews(w, `⚽ ${p.name}が${other.city}戦でハットトリック！（${side.c.name}）`); // 2ゴールは出さない（多すぎて大事な速報が流れてしまう）
         if (!cup && m.totals.apps + S.apps === 1) m.log.push({ y: w.year, age: p.age, k: 'debut', t: `${w.year}年、第${w.week + 1}節の${other.name}戦でプロデビュー。` });
       }
       const report = {

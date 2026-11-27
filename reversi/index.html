@@ -8,8 +8,8 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="リバーシ部屋⚫⚪ 合言葉で友達とすぐ対戦">
 <meta property="og:description" content="部屋を作ってLINEで送るだけ。登録なし・無料でリアルタイム対戦">
-<meta property="og:url" content="https://tonmatolab.github.io/apps/reversi/">
-<meta property="og:image" content="https://tonmatolab.github.io/apps/reversi/og.png">
+<meta property="og:url" content="https://tonmatolab.tonmatolab.workers.dev/reversi/">
+<meta property="og:image" content="https://tonmatolab.tonmatolab.workers.dev/reversi/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -290,7 +290,7 @@ const $ = (id) => document.getElementById(id);
 const API = new URLSearchParams(location.search).get('api')
   || (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://127.0.0.1:8788/api' : 'https://tonmatolab-rooms.tonmatolab.workers.dev/api');
 const WS_BASE = API.replace(/^http/, 'ws');
-const SITE = 'https://tonmatolab.github.io/apps/reversi/';
+const SITE = 'https://tonmatolab.tonmatolab.workers.dev/reversi/';
 const STAMPS = ['👍', '😂', '😱', '🤔', '😭', '🔥', '🙏', '👏'];
 const CPU_NAMES = ['CPU（よわい）', 'CPU（ふつう）', 'CPU（つよい）'];
 

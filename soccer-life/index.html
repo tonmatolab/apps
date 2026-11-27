@@ -8,8 +8,8 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="サッカー人生⚽ 入団から引退、そして次の世代へ">
 <meta property="og:description" content="18歳でプロ入り。得点王、海外移籍、ワールドカップ…あなたはどんな選手人生を送る？">
-<meta property="og:url" content="https://tonmatolab.github.io/apps/soccer-life/">
-<meta property="og:image" content="https://tonmatolab.github.io/apps/soccer-life/og.png">
+<meta property="og:url" content="https://tonmatolab.tonmatolab.workers.dev/soccer-life/">
+<meta property="og:image" content="https://tonmatolab.tonmatolab.workers.dev/soccer-life/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -959,7 +959,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const APP_TITLE = 'サッカー人生';
 const HASHTAGS = ['サッカー人生'];
-const SITE = 'tonmatolab.github.io/apps/soccer-life';
+const SITE = 'tonmatolab.tonmatolab.workers.dev/soccer-life';
 const store = {
   get(k) { try { return localStorage.getItem('soccer-' + k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem('soccer-' + k, v); } catch {} },

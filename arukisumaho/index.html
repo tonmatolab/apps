@@ -8,8 +8,8 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="歩きスマホ、ダメ絶対📵">
 <meta property="og:description" content="歩きスマホの人をスワイプで突き飛ばせ。何人に注意できる？">
-<meta property="og:url" content="https://tonmatolab.github.io/apps/arukisumaho/">
-<meta property="og:image" content="https://tonmatolab.github.io/apps/arukisumaho/og.png">
+<meta property="og:url" content="https://tonmatolab.tonmatolab.workers.dev/arukisumaho/">
+<meta property="og:image" content="https://tonmatolab.tonmatolab.workers.dev/arukisumaho/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -250,7 +250,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const isTouch = matchMedia('(pointer: coarse)').matches;
 const OG = new URLSearchParams(location.search).has('og');
 const AUTO = new URLSearchParams(location.search).has('auto'), DIE = new URLSearchParams(location.search).has('die'); // 動作確認用の自動プレイ
-const APP_URL = 'https://tonmatolab.github.io/apps/arukisumaho/';
+const APP_URL = 'https://tonmatolab.tonmatolab.workers.dev/arukisumaho/';
 const HASHTAGS = ['歩きスマホダメ絶対'];
 const store = {
   get(k) { try { return localStorage.getItem('aruki_' + k); } catch { return null; } },

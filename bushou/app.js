@@ -1,7 +1,7 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
 const API = 'https://tonmatolab-counter.tonmatolab.workers.dev';
-const SITE = 'tonmatolab.github.io/apps/bushou';
+const SITE = 'tonmatolab.tonmatolab.workers.dev/bushou';
 const HASHTAGS = ['名将ガチャ'];
 const AFFILIATE = { amazonTag: '' }; // 例: 'yourname-22'
 const RECS = [

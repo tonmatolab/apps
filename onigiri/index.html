@@ -8,8 +8,8 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="おにぎり握り職人🍙 割ったら査定される">
 <meta property="og:description" content="ぎゅっ、くるっ、で握って、まっぷたつ。あなたのおにぎりはいくら？">
-<meta property="og:url" content="https://tonmatolab.github.io/apps/onigiri/">
-<meta property="og:image" content="https://tonmatolab.github.io/apps/onigiri/og.png">
+<meta property="og:url" content="https://tonmatolab.tonmatolab.workers.dev/onigiri/">
+<meta property="og:image" content="https://tonmatolab.tonmatolab.workers.dev/onigiri/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1303,7 +1303,7 @@ function shareText(R) {
   const t = TITLE[R.title];
   return `🍙おにぎりを握って、まっぷたつにした\n\n称号「${t.icon}${t.name}」\n査定額 ${yen(R.price)}（${R.shape === 'tri' ? '三角' : SHAPE_NAME[R.shape]}・${FIRM_NAME[R.firm]}・${R.M}g・${R.fill ? FILL[R.fill].name : '具なし'}）\n${R.comments[0].icon}「${R.comments[0].text}」\n\nあなたのおにぎりはいくら？`;
 }
-const pageUrl = () => 'https://tonmatolab.github.io/apps/onigiri/';
+const pageUrl = () => 'https://tonmatolab.tonmatolab.workers.dev/onigiri/';
 const cardBlob = () => new Promise((res) => $('resCv').toBlob(res, 'image/png'));
 async function share() {
   const R = lastRes; if (!R) return; const text = shareText(R), url = pageUrl();

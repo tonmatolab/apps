@@ -8,8 +8,8 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="のびーるトルコアイス🍦 ちぎらずにどこまで伸ばせる？">
 <meta property="og:description" content="指で引っ張るだけ。欲張るとプツン。月まで届く？">
-<meta property="og:url" content="https://tonmatolab.github.io/apps/nobiru/">
-<meta property="og:image" content="https://tonmatolab.github.io/apps/nobiru/og.png">
+<meta property="og:url" content="https://tonmatolab.tonmatolab.workers.dev/nobiru/">
+<meta property="og:image" content="https://tonmatolab.tonmatolab.workers.dev/nobiru/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -907,7 +907,7 @@ const replay = {
 };
 
 // ===== シェア =====
-const pageUrl = () => 'https://tonmatolab.github.io/apps/nobiru/';
+const pageUrl = () => 'https://tonmatolab.tonmatolab.workers.dev/nobiru/';
 // 記録を入れたURL：開いた人の画面に「挑戦状」として目標ラインが出る
 function shareUrl() {
   const r = lastRes; if (!r || !r.ok || r.cm < 10) return pageUrl();
@@ -933,7 +933,7 @@ function shareImage() {
   x.fillStyle = '#fff'; x.font = '900 56px "Zen Maru Gothic"'; const tt = r.ok ? `${r.icon} ${r.title}` : `${lenText(r.m)}でちぎれた`; x.strokeText(tt, W / 2, H - 220); x.fillText(tt, W / 2, H - 220);
   x.font = '800 38px "Zen Maru Gothic"'; const sub = r.ok ? (r.pct ? `全体の上位${r.pct}%` : 'ちぎらずに、どこまで伸ばせる？') : (CAUSES[r.cause] || CAUSES.speed)[0];
   x.strokeText(sub, W / 2, H - 150); x.fillText(sub, W / 2, H - 150);
-  x.font = '700 32px "Zen Maru Gothic"'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText('とんまとラボ｜tonmatolab.github.io/apps/nobiru/', W / 2, H - 50);
+  x.font = '700 32px "Zen Maru Gothic"'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText('とんまとラボ｜tonmatolab.tonmatolab.workers.dev/nobiru/', W / 2, H - 50);
   return new Promise((res) => c.toBlob(res, 'image/png'));
 }
 async function share() {

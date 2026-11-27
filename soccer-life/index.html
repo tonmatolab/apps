@@ -813,6 +813,7 @@
       <button class="btn primary" id="nextGenBtn">👶 子どもに夢を託す</button>
       <button class="btn ghost" id="endTitleBtn">タイトルへ</button>
     </div>
+    <div class="hidden" id="adEnd"></div>
     <div class="card">
       <h2 id="endTreeHead">🌳 一族の歴史</h2>
       <ul class="tree" id="endTree"></ul>
@@ -2025,6 +2026,7 @@ function renderEnd() {
   $('nextGenBtn').textContent = sm.child ? `👨‍👧 ${sm.child.name}の物語へ（${S.gen + 1}代目）` : sm.kids ? `👶 子どもに夢を託す（${S.gen + 1}代目）` : `👶 次の世代へ（あなたに憧れた子が${S.gen + 1}代目に）`;
   $('nameBox').classList.add('hidden');
   show('scrEnd');
+  if (window.TonmatoAds) TonmatoAds.show($('adEnd'), 'wowow'); // 広告（Cloudflare 版だけ）
   prepShareImage();
 }
 function renderRank() {
@@ -2482,5 +2484,6 @@ if (location.hash !== '#online') renderTitle();
 <script src="online.js"></script>
 <script src="../shared/apps.js"></script>
 <script src="../shared/next.js"></script>
+<script src="../shared/ads.js"></script>
 </body>
 </html>

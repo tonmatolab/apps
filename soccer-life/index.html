@@ -641,6 +641,7 @@
 <main>
   <!-- ===== タイトル ===== -->
   <section id="scrTitle">
+    <div class="hidden" id="adTop"></div>
     <div class="hero" id="heroArt"><img src="hero.jpg" width="1200" height="675" alt="サッカー人生：背番号10の選手がボールを抱えてスタジアムに立つ" fetchpriority="high"></div>
     <div class="logo">
       <h1 class="vh">サッカー<span>人生</span></h1>
@@ -946,6 +947,7 @@
   <p class="foot">このゲームに登場するクラブ・リーグ・選手はすべて架空のものです。<br>オンラインリーグの選手名はプレイヤーが自由につけたものです。</p>
 </main>
 
+<script src="../shared/ads.js"></script><!-- 広告（タイトル画面を描く前に読む） -->
 <script src="core.js"></script>
 <script src="core-world.js"></script>
 <script src="core-match.js"></script>
@@ -1256,6 +1258,7 @@ function treeHead(gen) {
 }
 
 function renderTitle() {
+  if (window.TonmatoAds) TonmatoAds.show($('adTop'), 'wowowTop', 'top'); // 広告（Cloudflare 版だけ）
   // タイトル画面の絵は hero.jpg（index.html に直接書いている）。読み込めなかったときだけ、前の絵（SVG）に戻す
   const hi = $('heroArt').querySelector('img');
   const fallback = () => { $('heroArt').innerHTML = heroSVG(); document.querySelector('#scrTitle .logo h1').classList.remove('vh'); };
@@ -2484,6 +2487,5 @@ if (location.hash !== '#online') renderTitle();
 <script src="online.js"></script>
 <script src="../shared/apps.js"></script>
 <script src="../shared/next.js"></script>
-<script src="../shared/ads.js"></script>
 </body>
 </html>

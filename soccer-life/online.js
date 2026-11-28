@@ -463,6 +463,7 @@
   let RV = null;
   let TABLE_LG = null; // 順位表で見ているリーグ（最初は自分のリーグ）
   let COL_TAB = 'titles'; // 図鑑：'titles'（称号）・'clubs'（クラブ）
+  let TEAM_TAB = 'squad'; // チーム：'squad'（1軍の名簿）・'players'（本物のプレイヤー）・'b'（Bチーム）
   async function renderRanking(body, me, lg) {
     if (!RV) RV = { lg: String(lg), cat: me.pos === 'GK' ? 'saves' : me.pos === 'DF' ? 'defense' : me.pos === 'MF' ? 'assists' : 'goals', who: 'all' };
     const v = { ...RV };
@@ -488,12 +489,17 @@
     } else if (tab === 'rank') {
       renderRanking(body, me, lg);
     } else if (tab === 'mates') {
-      body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `${ST.squad ? squadHTML(club(me.club), ST.squad.rows, ST.squad.reserves) + '<h2 style="margin-top:12px">👥 本物のプレイヤーの今季（1軍）</h2>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>`}${(() => {
-        const row = (m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`;
-        const A = ST.mates.filter((m) => !m.b), B = ST.mates.filter((m) => m.b);
-        return (A.length ? `<ul class="list">${A.map(row).join('')}</ul>` : `<p class="empty">${me.reserve ? '1軍の' : 'ほかの'}プレイヤーはまだいません。友達を誘おう</p>`)
-          + (B.length || me.reserve ? `<h2 style="margin-top:12px">🅱️ Bチーム（${B.length + (me.reserve ? 1 : 0)}人）</h2><p class="sub" style="margin:0 0 6px">1軍の名簿とは別。成績は Bチームの今季</p>${B.length ? `<ul class="list">${B.map(row).join('')}</ul>` : '<p class="empty">ほかの Bチームのプレイヤーはいません</p>'}` : '');
-      })()}`;
+      if (me.club == null) { body.innerHTML = '<p class="empty">所属なし</p>'; return; }
+      const row = (m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`;
+      const A = ST.mates.filter((m) => !m.b), B = ST.mates.filter((m) => m.b), nB = B.length + (me.reserve ? 1 : 0);
+      if (!['squad', 'players', 'b'].includes(TEAM_TAB)) TEAM_TAB = 'squad';
+      const tabs = `<div class="tabs lgtabs" style="margin-bottom:8px">${[['squad', '名簿（1軍）'], ['players', 'プレイヤー（1軍）'], ['b', `🅱️ Bチーム（${nB}）`]].map(([k, n]) => `<button data-tt="${k}" class="${TEAM_TAB === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+      let html = '';
+      if (TEAM_TAB === 'squad') html = ST.squad ? squadHTML(club(me.club), ST.squad.rows, ST.squad.reserves) : '<p class="empty">名簿を読み込めませんでした</p>';
+      else if (TEAM_TAB === 'players') html = `<p class="sub" style="margin:0 0 6px">1軍の本物のプレイヤーの今季${me.reserve ? '' : '（あなた以外）'}</p>` + (A.length ? `<ul class="list">${A.map(row).join('')}</ul>` : `<p class="empty">${me.reserve ? '1軍の' : 'ほかの'}プレイヤーはまだいません。友達を誘おう</p>`);
+      else html = `<p class="sub" style="margin:0 0 6px">1軍の名簿とは別。成績は Bチームの今季${me.reserve ? '（あなたも Bチーム）' : ''}</p>` + (B.length ? `<ul class="list">${B.map(row).join('')}</ul>` : `<p class="empty">${me.reserve ? 'ほかの Bチームのプレイヤーはいません' : 'このクラブの Bチームに本物のプレイヤーはいません'}</p>`);
+      body.innerHTML = tabs + html;
+      body.querySelectorAll('[data-tt]').forEach((b) => b.onclick = () => { TEAM_TAB = b.dataset.tt; renderTab(); });
     } else if (tab === 'national') {
       renderNational(body);
     } else if (tab === 'cohort') {

@@ -570,7 +570,13 @@
   .kb-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
   .kb-tag { font-style: normal; font-size: .6rem; font-weight: 900; border-radius: 5px; padding: 0 5px; color: #fff; font-family: var(--num); }
   .kb-tag.t-w { background: #d33b2c; } .kb-tag.t-p { background: #2f6fe0; } .kb-tag.t-q { background: #8a3ff0; }
-  .kb-board { background: #0d2c1b; border-radius: 14px; padding: 10px; margin: 6px 0 8px; }
+  .kb-board { background: #0d2c1b; border-radius: 14px; padding: 8px 10px; margin: 6px 0 8px; }
+  .kb-board > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+  .kb-board > summary::-webkit-details-marker { display: none; }
+  .kb-board > summary span { font-size: .66rem; color: #b7cbbb; font-weight: 700; }
+  .kb-board > summary::after { content: '▼ 開く'; margin-left: auto; font-size: .66rem; color: #e9c46a; font-weight: 800; }
+  .kb-board[open] > summary::after { content: '▲ 閉じる'; }
+  .kb-board[open] > summary { margin-bottom: 6px; }
   .kb-board-h { font-weight: 900; font-size: .9rem; margin-bottom: 6px; }
   .kb-res { width: 100%; border-collapse: collapse; font-size: .76rem; }
   .kb-res th { font-size: .62rem; color: #b7cbbb; font-weight: 700; text-align: left; padding: 1px 4px; }

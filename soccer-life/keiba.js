@@ -130,10 +130,12 @@
         my = `<div class="kb-myres">${mine.results.map((x) => { const P = betParts(x.k); return `<div class="${x.win ? 'hit' : 'miss'}"><span>${x.win ? '🎯' : '✕'} <em class="kb-type t-${x.k[0]}">${P.type}</em>${horseLabel(race, P.nos)}</span><span>${fmt(x.a)} → <b>${x.win ? fmt(x.payout) : 'はずれ'}</b></span></div>`; }).join('')}
           <div class="kb-net ${mine.net > 0 ? 'plus' : mine.net < 0 ? 'minus' : ''}">収支 ${mine.net > 0 ? '+' : mine.net < 0 ? '−' : '±'}${fmt(Math.abs(mine.net))}（${fmt(mine.total)} 買って ${fmt(mine.back)} 戻り）</div></div>`;
       }
-      $q('.kb-last').innerHTML = `<div class="kb-board"><div class="kb-board-h">🏁 第${race.round}レース ${esc(race.name)} の結果</div>
+      // ふだんはたたんでおく（タップで開く）。同じレースを描き直すときは、開いていればそのまま
+      const prev = $q('.kb-last details'), keepOpen = prev && prev.open && prev.dataset.round === String(race.round);
+      $q('.kb-last').innerHTML = `<details class="kb-board" data-round="${race.round}"${keepOpen ? ' open' : ''}><summary class="kb-board-h">🏁 第${race.round}レース ${esc(race.name)} の結果<span>着順・払い戻し・あなたの馬券</span></summary>
         <table class="kb-res"><tr><th>着</th><th>馬</th><th>人気</th><th>単勝</th></tr>${rows}</table>
         <div class="kb-sub">払い戻し（オッズ）</div>${pay}
-        <div class="kb-sub">あなたの馬券</div>${my}</div>`;
+        <div class="kb-sub">あなたの馬券</div>${my}</details>`;
     }
     const orderText = (order, card) => order.slice(0, 3).map((no, i) => `${i + 1}着 ${cap(no)}${esc(card.horses[no - 1].name)}`).join('<br>');
     const resultLine = (r) => `${r.net > 0 ? `🎉 +${fmt(r.net)}` : r.net < 0 ? `−${fmt(-r.net)}` : '±0'}${(r.results || []).some((x) => x.win) ? `<br><small>的中：${r.results.filter((x) => x.win).map((x) => `${esc(x.name)}（${fmt(x.payout)}）`).join('・')}</small>` : ''}`;

@@ -6,7 +6,7 @@ import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（全国ランキングと共通）
 
-// 登録の上限（休眠・引退をのぞく人数）。1軍の定員（国内14人×40クラブ＋欧州12人×30クラブ＝920人）をこえた人は Bチームに入る。
+// 登録の上限（休眠・引退をのぞく人数）。1軍の定員（国内22人×40クラブ＋欧州12人×30クラブ＝1240人）をこえた人は Bチームに入る。
 // 無料枠の書き込み（1節ごとに1人1行）を守るため、全体では 1300人まで
 const MAX_PLAYERS = 1300;
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）

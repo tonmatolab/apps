@@ -43,10 +43,13 @@ export function phaseEndAt(now, phase) {
 }
 export const OFF_TICKS = 6; // オフシーズンの長さ（節の何回分か。30分ごとなら3時間）。この間に契約を選ぶ。選ばなかった人は移籍方針で自動で決まる
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
-// 国内のクラブは14人まで（国内の枠が足りなくなったので12人から増やした）。欧州は12人のまま
-export const CLUB_CAP = 14, CLUB_CAP_EU = 12, GK_CAP = 3, FW_CAP = 4;
+// 国内のクラブは22人まで（名簿の全員。12人→14人→22人と増やした）。足りない分は NPC が入る。欧州は12人のまま
+export const CLUB_CAP = 22, CLUB_CAP_EU = 12, GK_CAP = 3, FW_CAP = 4;
 export const capOf = (clubId) => (SL.isEU((CLUB_SEED[clubId] || {}).lg) ? CLUB_CAP_EU : CLUB_CAP); // 欧州と国内のあいだは入れかわらない（昇格・降格は欧州の中・国内の中だけ）ので、最初のリーグで決まる // 1クラブの本物のプレイヤーの上限（GK・FWは別に上限。先発の枠が少ないので）。名簿は22人のままで、そのぶんNPCが控え組に回る
-export const POS_CAP = { GK: GK_CAP, FW: FW_CAP };
+export const POS_CAP = { GK: GK_CAP, FW: FW_CAP }; // 欧州：GK・FWだけ上限（先発の枠が少ないので）
+// 国内：ポジションごとに名簿の枠まで（GK3・DF7・MF7・FW5）。1つのポジションに偏って、ほかのポジションが空にならないように
+export const POS_CAP_DOM = { ...SL.SQUAD_QUOTA };
+export const posCapOf = (clubId, pos) => (SL.isEU((CLUB_SEED[clubId] || {}).lg) ? POS_CAP[pos] : POS_CAP_DOM[pos]);
 const XI = { GK: 1, DF: 4, MF: 4, FW: 2 }; // 先発の枠（4-4-2）
 export const POP_BONUS = 6; // 「狙い目」のポジションで始めたときの才能のボーナス
 // 年俸の上限（万円）。リーグごと
@@ -131,7 +134,8 @@ export function humansAt(members, clubId, pos = null, except = null) {
   return n;
 }
 export function clubFull(members, clubId, pos, except = null) {
-  return humansAt(members, clubId, null, except) >= capOf(clubId) || (POS_CAP[pos] != null && humansAt(members, clubId, pos, except) >= POS_CAP[pos]);
+  const pc = posCapOf(clubId, pos);
+  return humansAt(members, clubId, null, except) >= capOf(clubId) || (pc != null && humansAt(members, clubId, pos, except) >= pc);
 }
 // ポジションごとの空きと混み具合（新人が入れる国内のクラブで数える）
 //   open：あと何人入れるか / crowd：本物のプレイヤーの数 ÷ 先発の枠の数 / label：激戦・ふつう・狙い目 / bonus：狙い目なら才能のボーナス
@@ -144,7 +148,8 @@ export function positionInfo(w, members) {
     for (const c of dom) {
       const all = humansAt(members, c.id), mine = humansAt(members, c.id, pos);
       humans += mine;
-      open += Math.max(0, Math.min(capOf(c.id) - all, POS_CAP[pos] != null ? POS_CAP[pos] - mine : Infinity));
+      const pc = posCapOf(c.id, pos);
+      open += Math.max(0, Math.min(capOf(c.id) - all, pc != null ? pc - mine : Infinity));
     }
     const crowd = humans / (dom.length * XI[pos]);
     const label = open === 0 ? '満員' : crowd >= 1 ? '激戦' : crowd <= .5 ? '狙い目' : 'ふつう';

@@ -47,7 +47,7 @@ const offer = (club, salary) => ({ club: club.id, salary, years: 2, fee: 0 });
   check(pu.kind === 'move' && pu.offer.club === euro.id, '上を目指す：いちばん上のリーグへ（年俸が下がっても）');
   // 満員のクラブには移らない
   const full = [];
-  for (let i = 0; i < 4; i++) { const x = G.newMember('f' + i, 'f', 'FW' + i, 'FW'); x.pl.club = weak.id; x.status = 'active'; full.push(x); }
+  for (let i = 0; i < G.posCapOf(weak.id, 'FW'); i++) { const x = G.newMember('f' + i, 'f', 'FW' + i, 'FW'); x.pl.club = weak.id; x.status = 'active'; full.push(x); }
   const sub2 = member(55, strong, [offer(weak, 900)]);
   check(G.planAuto(sub2, w, [sub2, ...full], npcs).kind === 'stay', 'FWが満員のクラブには移らない');
 }

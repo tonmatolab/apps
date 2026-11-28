@@ -83,15 +83,6 @@
   #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 120px 40px rgba(232, 40, 30, .8); }
   #flash.on { animation: fl .45s; }
   #flash.pow { box-shadow: inset 0 0 0 100vmax rgba(255,255,255,.55); }
-  #replay { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
-  #replay.hidden { display: none; }
-  #replay .bar { position: absolute; left: 0; right: 0; height: 11vh; background: #000; animation: barIn .35s ease-out; }
-  #replay .bar.t { top: 0; } #replay .bar.b { bottom: 0; }
-  @keyframes barIn { from { height: 0; } }
-  #replay .rp-tag { position: absolute; top: calc(11vh + 12px); left: 14px; background: #e8281e; color: #fff; font-weight: 900; font-size: 14px; padding: 4px 12px; border-radius: 6px; animation: pulse 1s infinite; }
-  #replay .rp-dist { position: absolute; bottom: calc(11vh + 18px); left: 0; right: 0; text-align: center; font-family: "Dela Gothic One", sans-serif; font-size: 44px; color: var(--y); -webkit-text-stroke: 8px #161616; paint-order: stroke fill; opacity: 0; transform: scale(2); transition: all .35s cubic-bezier(.2,1.6,.4,1); }
-  #replay .rp-dist.on { opacity: 1; transform: scale(1); }
-  #replay .rp-skip { position: absolute; bottom: 3.5vh; left: 0; right: 0; text-align: center; color: #bbb; font-size: 12px; font-weight: 800; }
   @keyframes fl { 0% { opacity: 1; } 100% { opacity: 0; } }
   #fever { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
     background: repeating-conic-gradient(from 0deg at 50% 45%, rgba(255,212,0,.0) 0 4deg, rgba(255,255,255,.22) 4deg 5deg); -webkit-mask: radial-gradient(circle at 50% 45%, transparent 30%, #000 75%); mask: radial-gradient(circle at 50% 45%, transparent 30%, #000 75%); }
@@ -146,6 +137,10 @@
   .grid b { font-size: 22px; font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
   .comment { background: #161616; color: #fff; border-radius: 14px; padding: 10px 12px; font-size: 13px; font-weight: 800; line-height: 1.6; margin-bottom: 14px; }
   .comment::before { content: "📢 "; }
+  .aff { margin-top: 16px; padding-top: 14px; border-top: 2px dashed #d8cfbd; text-align: center; }
+  .aff.hidden { display: none; }
+  .aff-msg { margin: 0; font-size: 13px; font-weight: 800; line-height: 1.7; color: var(--sub); }
+  .aff .tn-ad { margin-top: 8px; }
   .tonmato-next { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
 
   #pause { z-index: 6; background: rgba(0,0,0,.55); display: grid; place-items: center; }
@@ -167,7 +162,6 @@
 <div id="fx"></div>
 <div id="fever"></div>
 <div id="flash"></div>
-<div id="replay" class="hidden"><div class="bar t"></div><div class="bar b"></div><div class="rp-tag">🎬 ベストショット</div><div class="rp-dist" id="rpDist"></div><div class="rp-skip">タップでスキップ</div></div>
 
 <div id="hud" class="hidden">
   <div class="hrow">
@@ -225,6 +219,10 @@
       <button class="btn go" id="againBtn">↻ もう一回注意しに行く</button>
       <button class="btn x" id="shareBtn">𝕏 で結果をシェア</button>
       <button class="btn sub" id="toTitleBtn">タイトルへ</button>
+      <div class="aff hidden" id="aff">
+        <p class="aff-msg">おつかれさまでした！<br>スマホを見るのは、立ち止まってから。<br>ひと息ついたら、楽天市場でゆっくりお買い物でもどうぞ。</p>
+        <div id="affAd"></div>
+      </div>
     </div>
     <div class="tonmato-next" data-current="arukisumaho"></div>
     <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
@@ -238,6 +236,7 @@
 <div id="loading"><div><div class="tape"></div>街を作っています…</div></div>
 <div id="ogTitle"><h1><span>歩きスマホ、</span>ダメ絶対</h1><p>スワイプで突き飛ばせ！</p></div>
 
+<script src="../shared/ads.js"></script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 <script type="module">
 import * as THREE from 'three';
@@ -1211,7 +1210,7 @@ function throwPhone(e) {
   const k = .8 + S.pow * .5;
   p.vel.set(rand(-2.5, 2.5), rand(6, 10) * k, -(S.speed + rand(2, 9) * k));
   p.av.set(rand(-20, 20), rand(-20, 20), rand(-20, 20));
-  if (S.mode !== 'replay') S.phones++;
+  S.phones++;
 }
 // スマホが地面に落ちて、画面がバキバキに割れる
 function crackPhone(p) {
@@ -1949,7 +1948,7 @@ function toLie(e) {
   e.lieQ.setFromEuler(new THREE.Euler(-Math.PI / 2, rand(-.7, .7) + (Math.random() < .3 ? Math.PI : 0), 0, 'YXZ'));
   if (Math.random() < .7) attachDizzy(e);
 }
-// ===== ベストショット（一番遠くまで飛んだ人）を記録して、最後にスローで流す =====
+// ===== 一番遠くまで飛んだ距離を記録する =====
 function recordShot(e, far = false) {
   const b = e.shot; if (!b || S.mode !== 'play') { e.shot = null; return; }
   e.shot = null;
@@ -1958,51 +1957,10 @@ function recordShot(e, far = false) {
   if (!far) S.far = Math.max(S.far, b.dist); else S.farHome = true;
   if (!S.bestShot || b.dist > S.bestShot.dist) S.bestShot = b;
 }
-const RP = { e: null, t: 0, endT: 0, landed: false, go: false };
-function farText(b) { return b.dist >= 999 ? '場外ホームラン☆' : `飛距離 ${b.dist.toFixed(1)}m`; }
-function startReplay() {
-  const b = S.bestShot; if (!b || b.dist < 4) return false;
-  releaseAll(); clearBubs();
-  const e = spawn(b.arch, 'phone', b.pos.x, S.pz - 7) || spawn('adult', 'phone', b.pos.x, S.pz - 7); if (!e) return false;
-  e.state = 'rpwait'; e.h.pivot.rotation.set(0, b.rotY, 0); e.h.pivot.position.y = b.pos.y; e.sd = b.sd;
-  poseWalk(e.h, 1, .38, 'phone');
-  Object.assign(RP, { e, b, t: 0, endT: 0, landed: false, go: false });
-  S.mode = 'replay';
-  $('rpDist').textContent = farText(b); $('rpDist').classList.remove('on');
-  $('replay').classList.remove('hidden');
-  return true;
-}
-function updReplay(dt) {
-  const e = RP.e, b = RP.b;
-  RP.t += dt;
-  if (!RP.go && RP.t > .45) {
-    RP.go = true; S.pow = b.pow;
-    throwPhone(e); e.h.phone.visible = false;
-    e.state = 'fly'; e.fate = b.fate; e.t = 0; e.bounces = 0; e.kind = 'done'; e.vendHit = false; e.shot = null;
-    e.vel.copy(b.vel); e.av.copy(b.av);
-    _v.copy(e.h.pivot.position); burst(_v, 10, 1.2);
-    hitText(_v, b.pow > .85 ? 'フルスイング！' : 'ドーン！', b.pow > .85 ? 'huge' : 'r big');
-    say(e.h.pivot, pick(L.scream), '', 2);
-    SFX.hit(); if (b.pow > .85) SFX.power(); SFX.fly();
-  }
-  const st = e.state;
-  if (RP.go && !RP.landed && (st === 'off' || st === 'lie' || st === 'stuck')) {
-    RP.landed = true; $('rpDist').classList.add('on'); SFX.combo(40);
-    if (navigator.vibrate) try { navigator.vibrate(30); } catch {}
-  }
-  if (RP.landed) RP.endT += dt;
-  if (RP.endT > .7 || RP.t > 3.4) endReplay();
-}
-function endReplay() {
-  if (S.mode !== 'replay') return;
-  S.mode = 'over'; S.overT = 99; RP.e = null;
-  $('replay').classList.add('hidden');
-  showResult();
-}
 
 function updPlayer(dt) {
   const P = player.h.pivot;
-  if (S.mode === 'over' || S.mode === 'replay') {
+  if (S.mode === 'over') {
     S.pf.vel.y -= G * dt; P.position.addScaledVector(S.pf.vel, dt);
     P.rotation.x += 7 * dt; poseFlail(player.h, S.overT, 1);
     if (P.position.y < .3) { P.position.y = .3; S.pf.vel.set(0, 0, 0); P.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0, 'YXZ')), .2); poseLie(player.h, S.overT, 0); }
@@ -2036,16 +1994,6 @@ function titleAI(dt) {
 
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 function updCamera(dt, snap = false) {
-  if (S.mode === 'replay' && RP.e) { // リプレイ：横からついていく
-    const p = RP.e.h.pivot.position;
-    camPos.set(p.x + 3.6, Math.max(1.4, p.y + .9), p.z + 3.4);
-    camera.position.lerp(camPos, Math.min(1, dt * (RP.go ? 6 : 3)));
-    camLook.lerp(p, Math.min(1, dt * 10)); camera.lookAt(camLook);
-    camera.fov += (50 - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix();
-    sky.position.copy(camera.position); clouds.position.set(camera.position.x, 0, camera.position.z);
-    sun.position.set(p.x + SUN_DIR.x * 50, SUN_DIR.y * 50, p.z + SUN_DIR.z * 50); sun.target.position.set(p.x, 0, p.z);
-    return;
-  }
   const aspect = innerWidth / innerHeight;
   const dist = 7.6, hgt = 4.0;
   const tanH = 2.45 / dist;
@@ -2097,7 +2045,6 @@ function frame(now) {
   if (S.hitstop > 0) { S.hitstop -= dt; renderer.render(scene, camera); return; }
   if (S.slowT > 0) { S.slowT -= dt; dt *= .35; }
   if (S.mode === 'over') dt *= S.overT < 1.2 ? .4 : 1;
-  if (S.mode === 'replay') dt *= .5;
   update(dt);
   renderer.render(scene, camera);
 }
@@ -2114,8 +2061,7 @@ function update(dt) {
   if (S.inv > 0) S.inv -= dt;
   if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 1.6);
   if (S.feverT > 0) { S.feverT -= dt; if (S.feverT <= 0) { S.gauge = 0; $('fever').classList.remove('on'); } }
-  if (S.mode === 'over') { S.overT += dt; if (S.overT > 2.2 && !S.shown) { S.shown = true; if (!startReplay()) showResult(); } }
-  if (S.mode === 'replay') updReplay(dt);
+  if (S.mode === 'over') { S.overT += dt; if (S.overT > 2.2 && !S.shown) { S.shown = true; showResult(); } }
   if (S.mode === 'play' || S.mode === 'title') updSpawner();
   updPlayer(dt);
   for (let i = active.length - 1; i >= 0; i--) { const e = active[i]; if (e) updPed(e, dt); }
@@ -2134,7 +2080,7 @@ function show(id) { for (const s of ['title', 'result', 'pause']) $(s).classList
 function resetRun() {
   releaseAll(); clearBubs();
   Object.assign(S, { lives: 3, combo: 0, maxCombo: 0, shoves: 0, phones: 0, chains: 0, homeruns: 0, score: 0, gauge: 0, feverT: 0, shoveT: 0, stagT: 0, inv: 0, slowT: 0, hitstop: 0, shake: 0, dist: 0, lane: 1, overT: 0, shown: false, nextHeal: 40, pow: .6, propsHit: 0, bestShot: null, far: 0, farHome: false });
-  resetProps(); S.nextProp = S.pz - 12; $('replay').classList.add('hidden');
+  resetProps(); S.nextProp = S.pz - 12;
   S.px = 0; S.nextRow = S.pz - 26;
   const P = player.h.pivot; P.rotation.set(0, Math.PI, 0); P.scale.setScalar(player.h.sc); P.visible = true;
   $('fever').classList.remove('on');
@@ -2183,6 +2129,7 @@ function showResult() {
   $('rProps').textContent = S.propsHit;
   $('rBest').innerHTML = isNew && S.shoves > 0 ? '<span class="new">🎉 自己ベスト更新！</span>' : `自己ベスト ${Math.max(best, S.shoves)}人`;
   $('rComment').textContent = comment();
+  if (window.TonmatoAds && TonmatoAds.show($('affAd'), 'rakutenBanner')) $('aff').classList.remove('hidden');
   show('result'); $('result').scrollTop = 0;
 }
 function toTitle() {
@@ -2223,7 +2170,6 @@ function swipePow() {
 }
 canvas.addEventListener('pointerdown', (e) => {
   audio();
-  if (S.mode === 'replay') { endReplay(); return; }
   tp = { x: e.clientX, y: e.clientY, id: e.pointerId, done: false, dir: '', hist: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
 });
 addEventListener('pointermove', (e) => {
@@ -2239,7 +2185,6 @@ addEventListener('pointermove', (e) => {
 addEventListener('pointerup', () => { tp = null; });
 addEventListener('pointercancel', () => { tp = null; });
 addEventListener('keydown', (e) => {
-  if (S.mode === 'replay') { endReplay(); return; }
   const k = { ArrowLeft: 'L', a: 'L', ArrowRight: 'R', d: 'R', ArrowUp: 'U', w: 'U', ' ': 'U', ArrowDown: 'D', s: 'D' }[e.key];
   if (k) { e.preventDefault(); audio(); swipe(k, e.shiftKey ? 1 : .6); }
 });

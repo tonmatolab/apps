@@ -10,6 +10,8 @@
   const enabled = location.hostname === HOST || local;
   // 広告の一覧（もしもアフィリエイトでもらったコードを、https にしてそのまま入れる）
   const ADS = {
+    // 楽天市場（380×60）：トップページへのバナー
+    rakutenBanner: `<a href="https://af.moshimo.com/af/c/click?a_id=5930233&p_id=54&pc_id=54&pl_id=1221" rel="nofollow sponsored" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="https://image.moshimo.com/af-img/0032/000000001221.gif" width="380" height="60" alt="楽天市場" style="border:none;max-width:100%;height:auto" loading="lazy"></a><img src="https://i.moshimo.com/af/i/impression?a_id=5930233&p_id=54&pc_id=54&pl_id=1221" width="1" height="1" style="border:none" alt="" loading="lazy">`,
     // WOWOW（320×50）：画面の上に置く横長
     wowowTop: `<a href="https://af.moshimo.com/af/c/click?a_id=5930234&p_id=5300&pc_id=14446&pl_id=69388" rel="nofollow sponsored" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="https://image.moshimo.com/af-img/4982/000000069388.jpg" width="320" height="50" alt="WOWOW" style="border:none;max-width:100%;height:auto"></a><img src="https://i.moshimo.com/af/i/impression?a_id=5930234&p_id=5300&pc_id=14446&pl_id=69388" width="1" height="1" style="border:none" alt="" loading="lazy">`,
     // WOWOW（300×250）

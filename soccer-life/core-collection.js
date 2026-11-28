@@ -423,5 +423,13 @@
     return { col, newTitles: newT, newAch: newA };
   }
 
-  Object.assign(SL, { ONLINE_TITLES, ONLINE_HIDE, onlineTitles, onlineTitleList, TITLES, RARITY, rarityOf, rateOf, topTitle, byRarity, titleInfo, earnedTitles, ACHIEVEMENTS, newCollection, addToCollection });
+  // ===== 引退する前の見通し（「今引退したら」）。s は一人用の形（オンラインは adapter）。titles を渡せばそれを使う =====
+  function retirePreview(s, opt = {}) {
+    const score = opt.score != null ? opt.score : SL.careerScore(s), R = SL.RANK_MIN, order = ['SS', 'S', 'A', 'B', 'C'];
+    const letter = order.find((k) => score >= R[k]) || 'D';
+    const i = order.indexOf(letter), up = letter === 'D' ? 'C' : i > 0 ? order[i - 1] : null;
+    const titles = opt.titles || earnedTitles(s, { score, earned: (s.history || []).reduce((a, h) => a + (h.salary || 0), 0) });
+    return { score, letter, next: up ? { letter: up, need: R[up] - score } : null, titles: byRarity(titles), bonus: SL.inheritBonus({ score, kids: (s.p && s.p.kids) || 0, edu: (s.p && s.p.edu) || 0 }) };
+  }
+  Object.assign(SL, { retirePreview, ONLINE_TITLES, ONLINE_HIDE, onlineTitles, onlineTitleList, TITLES, RARITY, rarityOf, rateOf, topTitle, byRarity, titleInfo, earnedTitles, ACHIEVEMENTS, newCollection, addToCollection });
 })(typeof SL !== 'undefined' ? SL : require('./core.js'));

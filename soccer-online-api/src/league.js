@@ -600,6 +600,14 @@ export class League extends DurableObject {
       }
       // オフに移籍を希望する（1回だけ・人気-1）
       // 冬の移籍期間のオファー：{ choice: 番号 | 'stay' }
+      if (req.method === 'POST' && path === '/retire-plan') {
+        const e = G.planRetire(m, this.w, !!body.on); if (e) return err(e);
+        this.saveMember(m); this.saveWorld(); return json(this.stateView(m));
+      }
+      if (method === 'GET' && path === '/retire-preview') {
+        if (m.status === 'draft' || m.status === 'retired' || m.status === 'dormant') return err('not_now');
+        return json(G.retirePreviewOf(m, this.w));
+      }
       if (req.method === 'POST' && path === '/winter') {
         if (m.status !== 'active' || !m.winter) return err('not_now');
         if (body.choice === 'stay') { m.winter = null; this.saveMember(m); return json(this.stateView(m)); }
@@ -775,7 +783,7 @@ export class League extends DurableObject {
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
         caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, winter: m.winter && m.status === 'active' ? { ...m.winter, closeAt: w.nextAt + Math.max(0, G.SL.WINTER.close - 1 - w.week) * this.tickMs() } : null, lineage: m.lineage, log: m.log.slice(-12),
-        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0, col: m.col || null, reserve: !!m.reserve, rsv: m.rsv ? { ...m.rsv, ratings: undefined, avg: G.avg(m.rsv.ratings || []) } : null, rsvLast: m.rsvLast || null, liveTitles: G.liveTitles(m, w),
+        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0, col: m.col || null, retirePlan: m.retirePlan || null, reserve: !!m.reserve, rsv: m.rsv ? { ...m.rsv, ratings: undefined, avg: G.avg(m.rsv.ratings || []) } : null, rsvLast: m.rsvLast || null, liveTitles: G.liveTitles(m, w),
         perks: { trainer: p.trainMul > 1, clinic: !!p.clinic, camp: !!p.camp, house: !!p.house, edu: p.edu || 0 },
       },
     };

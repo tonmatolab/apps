@@ -455,6 +455,7 @@ export function playMatchday(w, members, npcs = [], npcSeason = null) {
   w.week++;
   w.last = { year: w.year, week: w.week, at: Date.now(), results, cup: cupRes };
   promoteReserves(w, members); // 1軍に空きが出たら、Bチームから昇格
+  if (w.week === SEASON_WEEKS) for (const m of members) if (m.retirePlan === w.year && m.pl.club != null) addNews(w, `🏟️ ${m.pl.name}（${w.clubs[m.pl.club].name}）、現役最後の試合を終えた`);
   // 冬の移籍期間：第7節が終わったらオファーが届き、第10節が終わるまで選べる（選ばなければ残留）
   if (w.week === SL.WINTER.open) {
     let n = 0;
@@ -563,6 +564,10 @@ export function endSeason(w, members, npcs = [], npcSeason = null) {
   for (const m of active.concat(reserves)) {
     const s = adapter(m, w);
     const notes = SL.ageUp(s); // （NPCの1年は上でまとめて済ませた。adapter には名簿がないので ageUp では動かない）
+    if (m.retirePlan === w.year) { // 今季限りで引退を宣言していた
+      m.log.push({ y: w.year, age: m.pl.age, k: 'retire', t: `${w.year}年、宣言どおり、このシーズン限りでスパイクを脱いだ。` });
+      delete m.retirePlan; retire(m, w); trimLog(m); continue;
+    }
     let res;
     if (m.reserve) res = reserveOffSeason(m, w, members);
     else {
@@ -850,6 +855,26 @@ export function liveTitles(m, w) {
   const oc = onlineContext(m, w, fam);
   if (m.pl.club != null) oc.lgs.add(SL.LEAGUES[w.clubs[m.pl.club].lg].short); // 今のリーグ（シーズンの途中でも）
   return SL.earnedTitles(s, sum).filter((id) => !LIVE_SKIP.has(id) && !SL.ONLINE_HIDE.has(id)).concat(SL.onlineTitles(oc));
+}
+// 引退できる年齢（オフの引退・今季限りの宣言とも）
+export const RETIRE_AGE = 30;
+// 今季限りで引退する／取り消す。シーズン中・30歳から
+export function planRetire(m, w, on) {
+  if (m.status !== 'active' || w.phase !== 'season') return 'not_now';
+  if (m.pl.age < RETIRE_AGE) return 'too_young';
+  if (on) {
+    if (m.retirePlan !== w.year) { m.retirePlan = w.year; addNews(w, `📣 ${m.pl.name}が、今季限りでの現役引退を発表（${m.pl.age}歳）`); m.log.push({ y: w.year, age: m.pl.age, k: 'retire', t: `${w.year}年、${m.pl.age}歳で今季限りでの引退を発表。` }); }
+  } else if (m.retirePlan === w.year) { delete m.retirePlan; addNews(w, `🔁 ${m.pl.name}が、引退の発表を取り消して現役を続ける`); }
+  return null;
+}
+// 引退する前の見通し（今引退したら）：生涯スコア・ランク・手に入る称号（図鑑にまだないもの）・次の世代のボーナス
+export function retirePreviewOf(m, w) {
+  const s = adapter(m, w); s.caps = m.caps; s.natGoals = m.natGoals;
+  const score = scoreNow(m, w);
+  const titles = liveTitles(m, w).concat(m.pl.age <= 30 && score >= SL.RANK_MIN.B ? ['short'] : []);
+  const pv = SL.retirePreview(s, { score, titles: [...new Set(titles)] });
+  const col = m.col || { t: {} };
+  return { ...pv, newTitles: pv.titles.filter((id) => !col.t[id]) };
 }
 export function scoreNow(m, w) {
   if (m.summary) return m.summary.score;

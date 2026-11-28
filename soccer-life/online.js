@@ -38,7 +38,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { reserve_full: 'Bチームが満員です。ほかの候補を選ぶか、しばらくしてから試してください', pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（国内は1クラブ22人まで・GK3・DF7・MF7・FW5／欧州は12人まで・GK3・FW4）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', too_many_today: '同じ回線からの登録は1日3人までです。明日またどうぞ（前に作ったアカウントは、引き継ぎコードで続けられます）', name_crowded: 'その名前の選手はもう2人います。ほかの名前にしてください', full: 'オンラインリーグは定員に達しています。空きが出るまでお待ちください（3日来ていない人は休眠になり、枠が空きます）', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { too_young: '30歳から引退できます', reserve_full: 'Bチームが満員です。ほかの候補を選ぶか、しばらくしてから試してください', pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（国内は1クラブ22人まで・GK3・DF7・MF7・FW5／欧州は12人まで・GK3・FW4）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', too_many_today: '同じ回線からの登録は1日3人までです。明日またどうぞ（前に作ったアカウントは、引き継ぎコードで続けられます）', name_crowded: 'その名前の選手はもう2人います。ほかの名前にしてください', full: 'オンラインリーグは定員に達しています。空きが出るまでお待ちください（3日来ていない人は休眠になり、枠が空きます）', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
 
@@ -307,7 +307,10 @@
         <button class="btn" id="ol-winterStay" style="margin-top:8px">${esc(club(me.club).city)}に残る</button></div>` : '';
       el.innerHTML = reserveCard + winterCard + `<div class="card"><h2>🏋️ 練習メニュー <span class="sub" style="margin-left:auto">毎節の前に反映</span></h2><div class="trains">${Object.entries(SL.TRAINING).filter(([k, t]) => !t.gkOnly || me.pos === 'GK')
         .map(([k, t]) => `<button class="tr${me.training === k ? ' on' : ''}" data-k="${k}"><i>${t.icon}</i>${t.name}${t.stats && t.stats.length === 1 && main.includes(t.stats[0]) ? '<br><span class="sub" style="font-size:.6rem">得意</span>' : ''}</button>`).join('')}</div>
-        <p class="sub" style="margin:8px 0 0">${me.injury ? '🚑 ケガの間はリハビリになります' : SL.TRAINING[me.training].desc || ''}</p></div>`;
+        <p class="sub" style="margin:8px 0 0">${me.injury ? '🚑 ケガの間はリハビリになります' : SL.TRAINING[me.training].desc || ''}</p></div>`
+        + (me.age >= 30 ? (me.retirePlan === w.year
+          ? `<div class="card panel"><h2>📣 今季限りで引退します</h2><p style="margin:0;font-weight:700">最終節（第${w.weeks}節）のあとに引退します。残りの試合を楽しもう</p><div class="row" style="margin-top:8px"><button class="btn" id="ol-rpView">見通しを見る</button><button class="btn ghost" id="ol-rpOff">宣言を取り消す</button></div></div>`
+          : '<div class="card"><button class="btn ghost" id="ol-rpOn" style="margin:0">👋 今季限りで引退する…</button></div>') : '');
       if (W) {
         const go = async (choice) => {
           if (choice !== 'stay' && !confirm(`${club(W.list[choice].club).name}へ移籍しますか？`)) return;
@@ -318,6 +321,10 @@
         el.querySelectorAll('#ol-winterList .offer').forEach((b) => b.onclick = () => go(+b.dataset.i));
         $('winterStay').onclick = () => go('stay');
       }
+      const rpSend = async (on) => { const j = await api('/retire-plan', { on }); if (j.error) return toast(errMsg(j.error)); setState(j); renderHome(); toast(on ? '📣 今季限りでの引退を発表した' : '引退の発表を取り消した'); };
+      if ($('rpOn')) $('rpOn').onclick = async () => { if (await retireSheet('plan')) rpSend(true); };
+      if ($('rpOff')) $('rpOff').onclick = () => { if (confirm('引退の発表を取り消して、来季も続けますか？')) rpSend(false); };
+      if ($('rpView')) $('rpView').onclick = () => retireSheet('view');
       el.querySelectorAll('.tr').forEach((b) => b.onclick = async () => {
         const k = b.dataset.k; const j = await api('/training', { k });
         if (j.error) return toast(errMsg(j.error));
@@ -343,7 +350,7 @@
         <p class="sub" style="margin:8px 0 0">⏰ オフは${offUntil(w)}まで（毎日 2〜5時・14〜17時）。選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}${me.reserve ? 'の1軍へ' : 'へ移籍'}` : me.reserve || (onlyB) ? `${esc(c.name)}のBチームへ` : `${esc(c.name)}に残留`}</b>` : ''}</p>
         <button class="btn small" id="ol-polBtn2" style="margin-top:6px">🔁 移籍方針を変える</button></div>`;
       const pick = async (choice) => {
-        if (choice === 'retire' && !confirm('本当に引退しますか？')) return;
+        if (choice === 'retire' && !me.offer.forced && !(await retireSheet('now'))) return;
         const j = await api('/decide', { choice });
         if (j.error) return toast(errMsg(j.error));
         setState(j); renderHome(); toast(choice === 'retire' ? 'おつかれさまでした' : '契約しました！');
@@ -546,6 +553,27 @@
     if (ST.me.status === 'draft') return renderDraft();
     renderHome();
   }
+  // ===== 引退する前の見通し =====
+  async function retireSheet(mode) { // mode：'now'（オフに引退）・'plan'（今季限りで引退を宣言）
+    const pv = await api('/retire-preview');
+    if (pv.error) { toast(errMsg(pv.error)); return false; }
+    return new Promise((resolve) => {
+      const nw = new Set(pv.newTitles || []);
+      const ts = pv.titles.map((id) => SL.titleInfo(id)).filter(Boolean);
+      const bg = document.createElement('div'); bg.className = 'ov-bg';
+      bg.innerHTML = `<div class="sheet okaeri"><h2 style="justify-content:center">👋 ${mode === 'plan' ? '今季限りで引退する？' : mode === 'view' ? '引退の見通し' : '引退する？'}</h2>
+        <p class="sub" style="text-align:center;margin:-4px 0 10px">${mode === 'plan' ? '最終節のあとに引退します。シーズン中ならいつでも取り消せます。<br>下は「いま引退したら」の見通しです（残りの試合でまだ変わります）' : 'いま引退したら、こうなります'}</p>
+        <div class="bigstat" style="margin:0 0 8px"><div>生涯スコア<b>${pv.score.toLocaleString()}</b></div><div>ランク<b>${pv.letter}</b></div><div>子どもの才能<b>+${pv.bonus}</b></div></div>
+        ${pv.next ? `<p class="sub" style="text-align:center;margin:0 0 8px">あと <b>${pv.next.need.toLocaleString()}点</b> でランク${pv.next.letter}</p>` : '<p class="sub" style="text-align:center;margin:0 0 8px">最高ランク！</p>'}
+        <h3>🎖️ 手に入る称号（${ts.length}個・図鑑に新しく入るもの ${nw.size}個）</h3>
+        <div class="tgrid" style="max-height:38vh;overflow:auto">${ts.map((t) => `<div class="tcard ${t.rarity.id}"><b><span class="rb ${t.rarity.id}">${t.rarity.id}</span>${esc(t.name)}${nw.has(t.id) ? '<span class="new">NEW</span>' : ''}</b><span>${esc(t.desc)}</span></div>`).join('') || '<p class="empty">まだありません</p>'}</div>
+        ${mode === 'view' ? '' : `<button class="btn primary" data-rs="ok" style="margin-top:12px">${mode === 'plan' ? '📣 今季限りで引退を宣言する' : '👋 引退する'}</button>`}
+        <button class="btn ghost" data-rs="no" style="margin-top:${mode === 'view' ? 12 : 0}px">${mode === 'view' ? '閉じる' : 'やっぱり続ける'}</button></div>`;
+      document.body.appendChild(bg);
+      bg.addEventListener('click', (e) => { const b = e.target.closest('[data-rs]'); if (!b && e.target !== bg) return; bg.remove(); resolve(!!b && b.dataset.rs === 'ok'); });
+    });
+  }
+
   // ===== おかえりのまとめ =====
   const OKAERI_MS = 3 * 3600000; // これだけ空いて開いたら、まとめを出す
   const snapOf = (j) => {

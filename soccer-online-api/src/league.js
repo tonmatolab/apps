@@ -13,6 +13,9 @@ const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限（1時間。メモリだけなので、サーバーが休むと消える）
 const SIGNUP_PER_DAY = 3;      // 同じIPからの新規登録の上限（日本時間の1日。保存するので消えない）
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// 選手は30人ずつ1行（pchunk）にまとめて保存する。Durable Object は使われていないとすぐ眠り、起きるたびに全員を読み込むので、
+// 1人1行だと起きるたびに1,000行以上を読む。まとめると数十行で済む（節ごとの書き込みも数十行になる）
+const CHUNK = 30;
 
 function cleanName(raw) {
   let s = String(raw || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').replace(/\s+/g, ' ').trim();
@@ -56,6 +59,8 @@ export class League extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS past (id TEXT PRIMARY KEY, account TEXT, data TEXT)');
     // 同じIPからの登録の回数（IPはそのまま残さず、元に戻せない形にして保存）。起動のときは読まない
     this.sql.exec('CREATE TABLE IF NOT EXISTS signups (ip TEXT PRIMARY KEY, day TEXT, n INTEGER)');
+    // 選手のまとまり（data は選手のデータの配列）。前の players 表は、移したあとは読まない（もしものときの控えとして残す）
+    this.sql.exec('CREATE TABLE IF NOT EXISTS pchunk (k INTEGER PRIMARY KEY, data TEXT)');
     // 前の世代（active = 0）は past へ移す（一度だけ。済んだ印を1行で持つ。毎回 players を数えると、そのたびに全員分を読んでしまう）
     if (!this.sql.exec("SELECT k FROM npcstats WHERE k = 'pastMoved'").toArray().length) this.ctx.storage.transactionSync(() => {
       this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) SELECT id, account, data FROM players WHERE active = 0');
@@ -83,12 +88,12 @@ export class League extends DurableObject {
   // 次の試合・次のルーレットの時刻がなければ決めて、必ず保存する
   // （保存しないと、起き直すたびに時刻が先送りされて進まない／アラームを設定できない）
   ensureSchedule(forceSave = false) {
-    let changed = forceSave || this.needSave;
+    let changed = forceSave || this.needSave || this.needChunk;
     if (!this.w.rl) { this.w.rl = G.newTable(Date.now(), this.rlMs()); changed = true; }
     if (!this.w.kb) { this.w.kb = { round: 0, nextAt: this.kbNext(), card: G.SL.newKeibaCard(1), hist: [], last: null }; changed = true; }
     if (!(this.w.nextAt > 0)) { this.w.nextAt = Date.now() + this.tickMs(); changed = true; }
     // 移行した世界・作ったばかりの名簿は、ここでまとめて保存する（全部成功か全部なし）
-    if (changed || this.rostersDirty) this.atomic(() => { this.saveWorld(); if (this.rostersDirty) this.saveRosters(); });
+    if (changed || this.rostersDirty) this.atomic(() => { if (this.needChunk) this.chunkAll(); this.saveWorld(); if (this.rostersDirty) this.saveRosters(); });
     this.needSave = false; this.rostersDirty = false;
   }
 
@@ -109,18 +114,67 @@ export class League extends DurableObject {
     this.accounts = new Map(); // hash -> account id（来た人の分だけ。起動のたびに全員分を読まない）
     this.members = new Map(); // player id -> member
     this.byAccount = new Map(); // account -> player id（現役中または引退直後の1人）
-    for (const r of this.sql.exec('SELECT id, account, data FROM players WHERE active = 1')) {
-      const m = G.migrateMember(JSON.parse(r.data), this.w);
-      this.members.set(r.id, m); this.byAccount.set(r.account, r.id);
+    this.chunks = new Map(); // まとまりの番号 -> Map(player id -> member)
+    this.chunkOf = new Map(); // player id -> まとまりの番号
+    this.dirty = new Set(); // 書き直すまとまり
+    this.needChunk = false;
+    if (this.sql.exec("SELECT k FROM npcstats WHERE k = 'chunked'").toArray().length) {
+      for (const r of this.sql.exec('SELECT k, data FROM pchunk')) {
+        const map = new Map();
+        for (const raw of JSON.parse(r.data)) { const m = G.migrateMember(raw, this.w); this.members.set(m.id, m); this.byAccount.set(m.account, m.id); map.set(m.id, m); this.chunkOf.set(m.id, r.k); }
+        this.chunks.set(r.k, map);
+      }
+    } else {
+      // まだまとめていない：前の players 表（1人1行）から読み、このあとまとまりに作り直す（ensureSchedule で一度だけ）
+      for (const r of this.sql.exec('SELECT id, account, data FROM players WHERE active = 1')) {
+        const m = G.migrateMember(JSON.parse(r.data), this.w);
+        if (!m.id) m.id = r.id; if (!m.account) m.account = r.account;
+        this.members.set(r.id, m); this.byAccount.set(r.account, r.id);
+      }
+      this.needChunk = true;
     }
     return !row;
   }
 
   // 複数の書き込みを「全部成功」か「全部なし」にする。失敗したらメモリも保存済みの状態に戻す。
   // アラームが失敗するとCloudflareが同じ処理をやり直すので、途中まで進んだ状態が残ると節が二重に進む。それを防ぐ。
+  // まとまりへの書き込みは、最後に1回だけ（同じまとまりを何度も書かない）
   atomic(fn) {
-    try { return this.ctx.storage.transactionSync(fn); }
-    catch (e) { this.loadState(); throw e; }
+    this.batch = (this.batch || 0) + 1;
+    try { return this.ctx.storage.transactionSync(() => { const r = fn(); if (this.batch === 1) this.flush(); return r; }); }
+    catch (e) { this.dirty = new Set(); this.loadState(); throw e; }
+    finally { this.batch--; }
+  }
+  // 選手をまとまりに入れる（空きのあるまとまりへ）。番号を返す
+  assignChunk(m) {
+    let k = this.chunkOf.get(m.id);
+    if (k == null) {
+      for (const [ck, map] of this.chunks) if (map.size < CHUNK) { k = ck; break; }
+      if (k == null) k = Math.max(-1, ...this.chunks.keys()) + 1;
+      if (!this.chunks.has(k)) this.chunks.set(k, new Map());
+      this.chunkOf.set(m.id, k);
+    }
+    this.chunks.get(k).set(m.id, m);
+    return k;
+  }
+  unchunk(id) {
+    const k = this.chunkOf.get(id); if (k == null) return;
+    this.chunks.get(k).delete(id); this.chunkOf.delete(id); this.dirty.add(k);
+  }
+  // 書き直すまとまりを保存する（空になったまとまりは消す）
+  flush() {
+    for (const k of this.dirty) {
+      const map = this.chunks.get(k);
+      if (!map || !map.size) { this.sql.exec('DELETE FROM pchunk WHERE k = ?', k); this.chunks.delete(k); continue; }
+      this.sql.exec('INSERT INTO pchunk (k, data) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET data = excluded.data', k, JSON.stringify([...map.values()]));
+    }
+    this.dirty = new Set();
+  }
+  // 1人1行の players 表から、まとまりに作り直す（一度だけ）
+  chunkAll() {
+    for (const m of this.members.values()) this.dirty.add(this.assignChunk(m));
+    this.sql.exec("INSERT INTO npcstats (k, v) VALUES ('chunked', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", String(Date.now()));
+    this.needChunk = false;
   }
 
   tickMs() { return Math.max(1, Number(this.env.TICK_MINUTES || 60)) * 60000; }
@@ -193,17 +247,19 @@ export class League extends DurableObject {
   }
   isAdmin(req) { const key = this.env.ADMIN_KEY || ''; return key.length >= 16 && req.headers.get('X-Admin-Key') === key; }
   saveMember(m, active = 1) {
-    if (!active) { this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) VALUES (?, ?, ?)', m.id, m.account, JSON.stringify(m)); this.sql.exec('DELETE FROM players WHERE id = ?', m.id); return; }
-    this.sql.exec('INSERT INTO players (id, account, active, data) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET account = excluded.account, active = excluded.active, data = excluded.data', m.id, m.account, active, JSON.stringify(m));
+    if (!active) { this.sql.exec('INSERT OR REPLACE INTO past (id, account, data) VALUES (?, ?, ?)', m.id, m.account, JSON.stringify(m)); this.unchunk(m.id); }
+    else this.dirty.add(this.assignChunk(m));
+    if (!this.batch) this.flush();
   }
   // 休眠・引退のまま長く来ていない人をしまう（メモリと players から外して idle へ）。しまった人数を返す
   archiveIdle(now = Date.now()) {
     const out = [...this.members.values()].filter((m) => (m.status === 'dormant' || m.status === 'retired') && !m.rlBet && !m.kbBet && now - (m.seenAt || now) > G.ARCHIVE_MS);
     for (const m of out) {
       this.sql.exec('INSERT OR REPLACE INTO idle (account, id, data) VALUES (?, ?, ?)', m.account, m.id, JSON.stringify(m));
-      this.sql.exec('DELETE FROM players WHERE id = ?', m.id);
+      this.unchunk(m.id);
       this.members.delete(m.id); this.byAccount.delete(m.account);
     }
+    if (out.length && !this.batch) this.flush();
     return out.length;
   }
   // しまっておいた人が来たら読み込む（長く休眠していた人は、ここで引退にする）
@@ -378,12 +434,19 @@ export class League extends DurableObject {
         return json({ failed: false });
       }
       // 開発用：書き出したデータをそのまま読み込む（本番データのコピーで移行を試すため）
+      if (req.method === 'POST' && path === '/dev/storage') { // 開発用：保存のようす（まとまりの数・人数・中身の指紋）
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        const rows = this.sql.exec('SELECT k, data FROM pchunk').toArray(), ids = rows.flatMap((r) => JSON.parse(r.data).map((m) => m.id)).sort();
+        let h = 0; for (const m of [...this.members.values()].sort((x, y) => (x.id < y.id ? -1 : 1))) for (const ch of m.id + m.pl.money + m.pl.age + m.status + (m.history || []).length) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        return json({ chunked: !!this.sql.exec("SELECT k FROM npcstats WHERE k = 'chunked'").toArray().length, chunkRows: rows.length, maxPerChunk: Math.max(0, ...rows.map((r) => JSON.parse(r.data).length)), maxChunkKB: Math.round(Math.max(0, ...rows.map((r) => r.data.length)) / 1024), idsInChunks: ids.length, uniqueIds: new Set(ids).size, members: this.members.size, fingerprint: h, playersTableRows: this.sql.exec('SELECT COUNT(*) AS n FROM players').one().n, week: this.w.week, year: this.w.year });
+      }
       if (req.method === 'POST' && path === '/dev/import') {
         if (this.env.DEV !== '1') return err('not_found', 404);
         if (!body || !Array.isArray(body.accounts) || !Array.isArray(body.players) || !body.world) return err('bad_dump');
         this.atomic(() => {
           this.sql.exec('DELETE FROM accounts'); this.sql.exec('DELETE FROM players'); this.sql.exec('DELETE FROM world'); this.sql.exec('DELETE FROM rosters'); this.sql.exec('DELETE FROM npcstats'); this.sql.exec('DELETE FROM idle'); this.sql.exec('DELETE FROM past');
-          for (const r of body.npcstats || []) this.sql.exec('INSERT INTO npcstats (k, v) VALUES (?, ?)', r.k, r.v);
+          this.sql.exec('DELETE FROM pchunk');
+          for (const r of body.npcstats || []) if (r.k !== 'chunked') this.sql.exec('INSERT INTO npcstats (k, v) VALUES (?, ?)', r.k, r.v);
           for (const r of body.rosters || []) this.sql.exec('INSERT INTO rosters (club, data) VALUES (?, ?)', r.club, r.data);
           for (const a of body.accounts) this.sql.exec('INSERT INTO accounts (id, hash, created) VALUES (?, ?, ?)', a.id, a.hash, a.created);
           for (const p of body.players) {
@@ -457,7 +520,9 @@ export class League extends DurableObject {
         const dump = {
           app: 'soccer-online', exportedAt: new Date().toISOString(), worldVersion: G.WORLD_VERSION, memberVersion: G.MEMBER_VERSION,
           accounts: this.sql.exec('SELECT id, hash, created FROM accounts').toArray(),
-          players: this.sql.exec('SELECT id, account, active, data FROM players').toArray()
+          players: (this.sql.exec("SELECT k FROM npcstats WHERE k = 'chunked'").toArray().length
+            ? this.sql.exec('SELECT data FROM pchunk').toArray().flatMap((r) => JSON.parse(r.data).map((m) => ({ id: m.id, account: m.account, active: 1, data: JSON.stringify(m) })))
+            : this.sql.exec('SELECT id, account, active, data FROM players').toArray())
             .concat(this.sql.exec('SELECT id, account, 0 AS active, data FROM past').toArray(), this.sql.exec('SELECT id, account, 2 AS active, data FROM idle').toArray()),
           world: (this.sql.exec("SELECT v FROM world WHERE k = 'w'").toArray()[0] || {}).v || null,
           rosters: this.sql.exec('SELECT club, data FROM rosters ORDER BY club').toArray(),

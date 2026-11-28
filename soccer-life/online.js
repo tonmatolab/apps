@@ -546,6 +546,60 @@
     if (ST.me.status === 'draft') return renderDraft();
     renderHome();
   }
+  // ===== おかえりのまとめ =====
+  const OKAERI_MS = 3 * 3600000; // これだけ空いて開いたら、まとめを出す
+  const snapOf = (j) => {
+    const me = j.me, T = me.totals || {}, S = me.season || {}, R = me.rsv || {};
+    return { id: me.id, at: Date.now(), year: j.world.year, week: j.world.week, phase: j.world.phase, ovr: me.ovr, money: me.money, age: me.age, fame: me.fame, club: me.club, reserve: !!me.reserve,
+      apps: (T.apps || 0) + (S.apps || 0), goals: (T.goals || 0) + (S.goals || 0), assists: (T.assists || 0) + (S.assists || 0), cs: (T.cs || 0) + (S.cs || 0), rsvApps: R.apps || 0, rsvGoals: R.goals || 0,
+      histLen: (me.history || []).length, lastLog: (me.log || []).length ? me.log[me.log.length - 1].t : null };
+  };
+  const LOG_ICON = { promote: '⬆️', reserve: '🅱️', award: '🏆', move: '✈️', europe: '🌍', winter: '❄️', debut: '🎉', nat: '🇯🇵', injury: '🚑', motw: '🏅', streak: '🔥', request: '📣', hat: '⚽' };
+  function okaeriHTML(a, b, j) {
+    const me = j.me, hrs = (b.at - a.at) / 3600000;
+    const away = hrs >= 48 ? `${Math.floor(hrs / 24)}日ぶり` : `${Math.floor(hrs)}時間ぶり`;
+    const seasons = b.year - a.year;
+    const span = seasons > 0 ? `リーグは ${a.year}年 → ${b.year}年（${seasons}シーズン）進みました` : `${b.year}年シーズンが第${a.week}節 → 第${b.week}節まで進みました`;
+    const d = (x, y) => y - x, sign = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '±0');
+    const lines = [];
+    const dApps = d(a.apps, b.apps);
+    if (dApps > 0) lines.push(`⚽ 1軍で ${dApps}試合に出場（${me.pos === 'GK' || me.pos === 'DF' ? `無失点 ${d(a.cs, b.cs)}` : `${d(a.goals, b.goals)}ゴール・${d(a.assists, b.assists)}アシスト`}）`);
+    else if (!b.reserve) lines.push('⚽ 1軍の試合には出られなかった');
+    if (b.reserve && a.reserve && seasons === 0 && b.rsvApps > a.rsvApps) lines.push(`🅱️ Bチームで ${b.rsvApps - a.rsvApps}試合（${b.rsvGoals - a.rsvGoals}ゴール）`);
+    if (b.ovr !== a.ovr) lines.push(`📈 総合力 ${a.ovr} → <b>${b.ovr}</b>（${sign(b.ovr - a.ovr)}）`);
+    if (b.age !== a.age) lines.push(`🎂 ${a.age}歳 → ${b.age}歳`);
+    if (b.money !== a.money) lines.push(`💰 貯金 ${sign(b.money - a.money)}万円（いま ${man(b.money)}）`);
+    if (b.club !== a.club && b.club != null) lines.push(`✈️ 所属が <b>${esc(club(b.club).name)}</b>${b.reserve ? '（Bチーム）' : ''} に`);
+    else if (a.reserve && !b.reserve) lines.push('⬆️ Bチームから1軍に昇格した！');
+    else if (!a.reserve && b.reserve) lines.push('🅱️ Bチームに入った');
+    // 終わったシーズン
+    const done = (me.history || []).slice(a.histLen);
+    const seasonRows = done.map((h) => `<li><b>${h.year}年</b> ${esc(h.club)}${h.reserve ? `　${h.reserve.apps}試合${h.reserve.goals}得点` : `（${esc(h.lg)}）`}${h.reserve ? '' : `${h.apps}試合${h.goals}得点${h.assists}アシスト${h.rank ? `・${h.rank}位` : ''}`}${h.awards && h.awards.length ? `<br><span class="sub">🏆 ${h.awards.map(esc).join('・')}</span>` : ''}</li>`).join('');
+    // できごと（前に見た最後のできごとより後）
+    const log = me.log || [], at = a.lastLog ? log.map((l) => l.t).lastIndexOf(a.lastLog) : -1;
+    const news = (at >= 0 ? log.slice(at + 1) : (done.length ? log.slice(-5) : [])).slice(-6).reverse();
+    const newsRows = news.map((l) => `<li>${LOG_ICON[l.k] || '📝'} ${esc(l.t)}</li>`).join('');
+    return `<div class="sheet okaeri"><h2 style="justify-content:center;font-size:1.25rem">👋 おかえりなさい！</h2>
+      <p class="sub" style="text-align:center;margin:-4px 0 10px">${away}。${span}</p>
+      <ul class="okl">${lines.map((t) => `<li>${t}</li>`).join('')}</ul>
+      ${seasonRows ? `<h3>📅 終わったシーズン</h3><ul class="okl">${seasonRows}</ul>` : ''}
+      ${newsRows ? `<h3>📝 できごと</h3><ul class="okl">${newsRows}</ul>` : ''}
+      <button class="btn primary" data-ok="close" style="margin-top:12px">続きを見る</button></div>`;
+  }
+  // 開いたときに呼ぶ：前の様子と比べて、3時間以上たっていればまとめを出す。今の様子を覚えておく
+  function okaeri(j) {
+    if (!j || !j.me || !['active', 'off', 'decided'].includes(j.me.status)) return;
+    let prev = null; try { prev = JSON.parse(store.get('snap') || 'null'); } catch {}
+    const now = snapOf(j);
+    try { store.set('snap', JSON.stringify(now)); } catch {}
+    if (!prev || prev.id !== now.id || now.at - prev.at < OKAERI_MS) return;
+    if (prev.year === now.year && prev.week === now.week && prev.phase === now.phase) return; // リーグが進んでいない
+    const bg = document.createElement('div'); bg.className = 'ov-bg';
+    bg.innerHTML = okaeriHTML(prev, now, j);
+    document.body.appendChild(bg);
+    bg.addEventListener('click', (e) => { if (e.target === bg || e.target.closest('[data-ok]')) bg.remove(); });
+  }
+
   async function load() {
     if (!CODE) return renderStart();
     triedAt = Date.now();
@@ -556,6 +610,7 @@
     setState(j); route();
     if (j.bonus) toast(`🎁 ログインボーナス +${j.bonus.amount}万円`);
     if (j.idleRetired) toast('💤 30日以上来なかったので、休眠のまま引退しました。次の世代から始められます');
+    if (!j.restored) okaeri(j); else try { store.set('snap', JSON.stringify(snapOf(j))); } catch {}
     if (j.restored) alert('🅱️ おかえりなさい！\n\nクラブの満員のせいで引退になっていましたが、ルールを直しました。\nあなたの選手は、最後にいたクラブの Bチームで現役に戻りました。\nBチームで活躍して、1軍を目指そう！');
   }
 

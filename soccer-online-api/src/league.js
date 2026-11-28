@@ -9,7 +9,6 @@ import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉�
 // 登録の上限（休眠・引退をのぞく人数）＝ 1軍の定員の合計（国内22人×40クラブ＋欧州12人×30クラブ＝1240人）＋ Bチームの上限（500人）＝ 1740人。
 // 選手は30人ずつまとめて保存するので、人数が増えても読み書きはほとんど増えない（先に足りなくなるのは Workers のリクエスト）
 const MAX_PLAYERS = G.SL._.CLUB_SEED.reduce((a, c, id) => a + G.capOf(id), 0) + G.RESERVE_CAP;
-const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限（1時間。メモリだけなので、サーバーが休むと消える）
 const SIGNUP_PER_DAY = 3;      // 同じIPからの新規登録の上限（日本時間の1日。保存するので消えない）
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -332,17 +331,11 @@ export class League extends DurableObject {
     T.nextAt = Date.now() + this.rlMs();
     this.saveWorld(); // 回の番号と次の時刻を残す（1日480行ほど）
   }
-  // ログインボーナス：日本時間で1日1回、毎日同じ額（毎日来ないと損をする作りにしない）
+  // ログインボーナス：日本時間で1日1回。続けて来るほど増える（休んでも1日目の額＝前と同じ額はもらえる）。中身は sim.js
   loginBonus(m) {
-    if (m.status === 'draft' || m.status === 'retired') return null;
-    const day = (t) => new Date(t + 9 * 3600000).toISOString().slice(0, 10);
-    const today = day(Date.now());
-    if (m.loginDay === today) return null;
-    m.loginDay = today; delete m.loginStreak;
-    const amount = LOGIN_BONUS;
-    m.pl.money += amount;
-    this.saveMember(m);
-    return { amount };
+    const r = G.loginReward(m);
+    if (r) this.saveMember(m);
+    return r;
   }
   betCount() { let n = 0; for (const m of this.members.values()) if (m.rlBet) n++; return n; }
   tableView(m) {
@@ -689,7 +682,8 @@ export class League extends DurableObject {
     const now = Date.now();
     // 今の区切りが終わる時刻（時刻で決まる日程なら決まった時刻。切りかえ前は残りの節から見積もる）
     const endAt = w.clock ? G.phaseEndAt(now, w.phase) : w.phase === 'off' ? w.nextAt + Math.max(0, w.offLeft - 1) * this.tickMs() : w.nextAt + Math.max(0, G.SEASON_WEEKS - w.week - 1) * this.tickMs();
-    return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, endAt, clock: !!w.clock, now, tickMin: this.tickMs() / 60000, players: this.activeCount() };
+    const offWin = w.clock ? G.nextOffWindow(now, w.phase) : null;
+    return { year: w.year, season: w.season, week: w.week, weeks: G.SEASON_WEEKS, phase: w.phase, offLeft: w.offLeft, nextAt: w.nextAt, endAt, offWin, clock: !!w.clock, now, tickMin: this.tickMs() / 60000, players: this.activeCount() };
   }
   clubsView() {
     const count = new Map();
@@ -783,7 +777,7 @@ export class League extends DurableObject {
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
         caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, winter: m.winter && m.status === 'active' ? { ...m.winter, closeAt: w.nextAt + Math.max(0, G.SL.WINTER.close - 1 - w.week) * this.tickMs() } : null, lineage: m.lineage, log: m.log.slice(-12),
-        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0, col: m.col || null, retirePlan: m.retirePlan || null, reserve: !!m.reserve, rsv: m.rsv ? { ...m.rsv, ratings: undefined, avg: G.avg(m.rsv.ratings || []) } : null, rsvLast: m.rsvLast || null, liveTitles: G.liveTitles(m, w),
+        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0, login: G.loginView(m), col: m.col || null, retirePlan: m.retirePlan || null, reserve: !!m.reserve, rsv: m.rsv ? { ...m.rsv, ratings: undefined, avg: G.avg(m.rsv.ratings || []) } : null, rsvLast: m.rsvLast || null, liveTitles: G.liveTitles(m, w),
         perks: { trainer: p.trainMul > 1, clinic: !!p.clinic, camp: !!p.camp, house: !!p.house, edu: p.edu || 0 },
       },
     };

@@ -18,15 +18,22 @@ export const ARCHIVE_MS = 3 * 24 * 3600000;
 // 作り直し（リセマラ）で捨てられたアカウントが枠をふさがないように1時間。普通は登録して数分で選ぶ。あとで来れば、また選べる
 export const DRAFT_IDLE_MS = 1 * 3600000;
 // ----- 時刻で決まる日程（日本時間）-----
-// シーズンは毎日 5時と17時に開幕し、30分ごとに1節（18節＝9時間）。オフは 2〜5時・14〜17時（3時間＝6節分）。
-// いちばん遊ばれる夜（19〜24時）は必ず試合中になる
-export const SEASON_STARTS_JST = [5, 17];
+// シーズンは毎日 11時と23時に開幕し、30分ごとに1節（18節＝9時間）。オフは 8〜11時・20〜23時（3時間＝6節分）。
+// オフ（契約を選ぶ時間）を、来やすい朝と夜に置く
+// 2026/11/29 2時（日本時間）までは前の日程（5時・17時に開幕、オフは2〜5時・14〜17時）。
+// 切りかえのときは、そのオフ（2時〜）を11時まで延ばす（9時間）。そのあとは新しい日程
+export const SEASON_STARTS_JST = [11, 23];
+const OLD_STARTS_JST = [5, 17];
 const SLOT_MS = 30 * 60000, HOUR = 3600000, JST = 9 * HOUR;
+export const SCHEDULE_SWITCH_AT = Date.UTC(2026, 10, 28, 17); // 2026/11/29 2:00 日本時間
+const SWITCH_OFF_END = Date.UTC(2026, 10, 29, 2);             // 2026/11/29 11:00 日本時間（延ばしたオフの終わり＝新しい日程の最初の開幕）
+const startsAt = (now) => (now < SCHEDULE_SWITCH_AT ? OLD_STARTS_JST : SEASON_STARTS_JST);
 // その時刻に「どこまで進んでいるべきか」：{ phase: 'season', week: 消化した節 } か { phase: 'off', left: オフの残り（節の数） }
 export function clockTarget(now) {
+  if (now >= SCHEDULE_SWITCH_AT && now < SWITCH_OFF_END) return { phase: 'off', left: Math.max(1, Math.ceil((SWITCH_OFF_END - now) / SLOT_MS)) }; // 切りかえの長いオフ（残りが6節分より多い間は、オフの最初のまま待つ）
   const t = now + JST, day = Math.floor(t / (24 * HOUR)) * 24 * HOUR;
   let start = -Infinity;
-  for (const d of [day - 24 * HOUR, day]) for (const h of SEASON_STARTS_JST) { const s = d + h * HOUR; if (s <= t && s > start) start = s; }
+  for (const d of [day - 24 * HOUR, day]) for (const h of startsAt(now)) { const s = d + h * HOUR; if (s <= t && s > start) start = s; }
   const slots = Math.floor((t - start) / SLOT_MS);
   if (slots < SL.SEASON_WEEKS) return { phase: 'season', week: slots };
   return { phase: 'off', left: Math.max(1, OFF_TICKS - (slots - SL.SEASON_WEEKS)) };
@@ -35,11 +42,18 @@ export function clockTarget(now) {
 export const nextSlot = (now) => (Math.floor(now / SLOT_MS) + 1) * SLOT_MS;
 // 今のシーズン（またはオフ）が終わる時刻
 export function phaseEndAt(now, phase) {
-  const t = now + JST, day = Math.floor(t / (24 * HOUR)) * 24 * HOUR;
-  const marks = phase === 'off' ? SEASON_STARTS_JST : SEASON_STARTS_JST.map((h) => h + 9); // オフの終わり＝開幕。シーズンの終わり＝開幕から9時間後
+  if (phase === 'off' && now >= SCHEDULE_SWITCH_AT - 6 * HOUR && now < SWITCH_OFF_END) return SWITCH_OFF_END; // 切りかえの長いオフ
+  const t = now + JST, day = Math.floor(t / (24 * HOUR)) * 24 * HOUR, S = startsAt(now);
+  const marks = phase === 'off' ? S : S.map((h) => h + 9); // オフの終わり＝開幕。シーズンの終わり＝開幕から9時間後
   let best = Infinity;
   for (const d of [day - 24 * HOUR, day, day + 24 * HOUR]) for (const h of marks) { const x = d + h * HOUR; if (x > t && x < best) best = x; }
   return best - JST;
+}
+// 次のオフ（または今のオフ）の始まりと終わり。画面の右上に出す
+export function nextOffWindow(now, phase) {
+  if (phase === 'off') { const end = phaseEndAt(now, 'off'); return { start: null, end, now: true }; }
+  const start = phaseEndAt(now, 'season');
+  return { start, end: phaseEndAt(start + 1, 'off'), now: false };
 }
 export const OFF_TICKS = 6; // オフシーズンの長さ（節の何回分か。30分ごとなら3時間）。この間に契約を選ぶ。選ばなかった人は移籍方針で自動で決まる
 // 1つのクラブに入れる本物のプレイヤーの数（強い人が1つのクラブに集まりすぎないように）
@@ -756,7 +770,7 @@ export function onlineContext(m, w, famClubs) {
   const inRec = (list) => (list || []).some((r) => r.name === m.pl.name && years.has(r.year));
   return {
     lgs: new Set(h.filter((x) => x.lg !== 'Bチーム').map((x) => x.lg)), first: (h.find((x) => x.lg !== 'Bチーム') || {}).lg || null, youth: !!m.youthStart, motw: m.motw || 0, winter: m.winterN || 0,
-    maxClubApps: Math.max(0, ...per.values()), record: inRec(R.seasonGoals) || inRec(R.seasonAssists), famClubs, fromReserve: !!m.fromReserve,
+    maxClubApps: Math.max(0, ...per.values()), record: inRec(R.seasonGoals) || inRec(R.seasonAssists), famClubs, fromReserve: !!m.fromReserve, streak: m.loginBest || 0,
   };
 }
 // 引退した人生を図鑑に記録する（オンライン専用の称号も、ここで summary.titles に足す）。1つの人生で1回だけ
@@ -837,6 +851,7 @@ export function nextGeneration(old, id, name, pos, w, members = [], appeal = nul
   const lineage = old.lineage.concat([{ gen: old.gen, name: sm.name, pos: sm.pos, title: sm.title, letter: sm.letter, score: sm.score, apps: sm.apps, goals: sm.goals, cs: sm.cs, years: `${sm.startYear}-${sm.endYear}` }]);
   const m = newMember(id, old.account, name, pos, { gen: old.gen + 1, lineage, bonus: SL.inheritBonus(sm) + extraBonus, parent: { name: sm.name, title: sm.title }, appeal });
   m.col = old.col || newOnlineCol(); // 称号図鑑はアカウント（一族）で集める
+  if (old.loginDay) { m.loginDay = old.loginDay; m.loginStreak = old.loginStreak || 1; m.loginBest = m.loginStreak; } // 連続ログインは世代をまたいで続く
   m.draft = draftOffers(m, w, members);
   return m;
 }
@@ -857,6 +872,29 @@ export function liveTitles(m, w) {
   return SL.earnedTitles(s, sum).filter((id) => !LIVE_SKIP.has(id) && !SL.ONLINE_HIDE.has(id)).concat(SL.onlineTitles(oc));
 }
 // 引退できる年齢（オフの引退・今季限りの宣言とも）
+// ===== ログインボーナス（続けて来るほど増える。日の切り替わりは日本時間の0時） =====
+export const LOGIN_BASE = 20, LOGIN_STEP = 10, LOGIN_MAX_DAY = 7; // 1日目20万・2日目30万…7日目から80万
+export const loginAmount = (streak) => LOGIN_BASE + (Math.min(LOGIN_MAX_DAY, Math.max(1, streak)) - 1) * LOGIN_STEP;
+const jstDay = (t) => new Date(t + 9 * 3600000).toISOString().slice(0, 10);
+// 今日はじめて来たときにボーナスを渡す（もう受け取っていれば null）
+export function loginReward(m, now = Date.now()) {
+  if (m.status === 'draft' || m.status === 'retired') return null;
+  const today = jstDay(now);
+  if (m.loginDay === today) return null;
+  m.loginStreak = m.loginDay === jstDay(now - 864e5) ? (m.loginStreak || 1) + 1 : 1; // 前から来ている人（連続を数える前）は昨日を1日目として数える
+  m.loginDay = today;
+  m.loginBest = Math.max(m.loginBest || 0, m.loginStreak);
+  const amount = loginAmount(m.loginStreak);
+  m.pl.money += amount;
+  return { amount, streak: m.loginStreak, next: loginAmount(m.loginStreak + 1) };
+}
+// 画面に出す連続ログイン（今日か昨日に来ていれば続いている）
+export function loginView(m, now = Date.now()) {
+  const got = m.loginDay === jstDay(now), alive = got || m.loginDay === jstDay(now - 864e5);
+  const streak = alive ? m.loginStreak || 1 : 0;
+  return { streak, got, next: loginAmount(streak + 1) };
+}
+
 export const RETIRE_AGE = 30;
 // 今季限りで引退する／取り消す。シーズン中・30歳から
 export function planRetire(m, w, on) {

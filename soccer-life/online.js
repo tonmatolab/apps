@@ -163,7 +163,7 @@
   const policyText = (me) => `${POLICY[me.policy].icon} ${POLICY[me.policy].name}${me.policy === 'stay' ? '' : `・契約中も移る：${MOVE_SWITCH[me.sw]}`}`;
   function openPolicy() {
     const html = () => `<h3 style="margin:0 0 4px">🔁 移籍方針</h3>
-      <p class="sub" style="margin:0 0 8px">オフ（毎日 2〜5時・14〜17時）に契約を選ばなかったとき、この方針で自動で決まります。いつでも変えられます</p>
+      <p class="sub" style="margin:0 0 8px">オフ（毎日 8〜11時・20〜23時）に契約を選ばなかったとき、この方針で自動で決まります。いつでも変えられます</p>
       <div class="stack">${Object.entries(POLICY).map(([k, p]) => `<button class="btn pol${ST.me.policy === k ? ' primary' : ''}" data-p="${k}" style="text-align:left">${p.icon} ${p.name}<br><span class="sub" style="font-weight:600">${p.desc}</span></button>`).join('')}</div>
       <h3 style="margin:12px 0 4px">契約が残っていても移る？</h3>
       <div class="tabs rk">${Object.entries(MOVE_SWITCH).map(([k, v]) => `<button class="sw${ST.me.sw === k ? ' on' : ''}" data-s="${k}">${v}</button>`).join('')}</div>
@@ -198,6 +198,8 @@
     const me = ST.me, w = ST.world, c = me.club != null ? club(me.club) : null;
     $('topYear').textContent = `${w.year}年 ${w.phase === 'season' ? `第${Math.min(w.week + 1, w.weeks)}節` : 'オフシーズン'}・${w.players}人`;
     $('topCd').textContent = countdown();
+    { const o = w.offWin, hm = (t) => new Date(t - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), el = $('topOff');
+      if (el) { el.textContent = !o ? '' : o.now ? `📝 契約を選べるのは ${hm(o.end)} まで` : `次のオフ ${hm(o.start)}〜${hm(o.end)}`; el.classList.toggle('now', !!(o && o.now)); } }
     const color = c ? c.color : '#8a96a0';
     $('pCard').innerHTML = `<div class="band" style="background:${color}"></div>
       <div class="in"><div class="av">${avatar(color, me.number, me.age, me.pos)}</div>
@@ -305,7 +307,8 @@
         <p class="sub" style="margin:4px 0 0">⏰ ${new Date(W.closeAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}ごろ（第${SL.WINTER.close}節が終わるまで）。選ばなければ今のクラブに残ります</p>
         <div class="stack" style="margin-top:10px" id="ol-winterList">${W.list.map((x, i) => offerCard(x, i, SL.isEU(club(x.club).lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('')}</div>
         <button class="btn" id="ol-winterStay" style="margin-top:8px">${esc(club(me.club).city)}に残る</button></div>` : '';
-      el.innerHTML = reserveCard + winterCard + `<div class="card"><h2>🏋️ 練習メニュー <span class="sub" style="margin-left:auto">毎節の前に反映</span></h2><div class="trains">${Object.entries(SL.TRAINING).filter(([k, t]) => !t.gkOnly || me.pos === 'GK')
+      const LG = me.login, loginCard = LG && LG.got ? `<div class="card" style="padding:10px 14px"><p style="margin:0;font-weight:700">🔥 ${LG.streak}日連続ログイン中 <span class="sub" style="font-weight:400">明日来ると +${LG.next}万円${LG.streak < 7 ? '・7日続けると称号「皆勤賞」' : ''}</span></p></div>` : '';
+      el.innerHTML = reserveCard + winterCard + loginCard + `<div class="card"><h2>🏋️ 練習メニュー <span class="sub" style="margin-left:auto">毎節の前に反映</span></h2><div class="trains">${Object.entries(SL.TRAINING).filter(([k, t]) => !t.gkOnly || me.pos === 'GK')
         .map(([k, t]) => `<button class="tr${me.training === k ? ' on' : ''}" data-k="${k}"><i>${t.icon}</i>${t.name}${t.stats && t.stats.length === 1 && main.includes(t.stats[0]) ? '<br><span class="sub" style="font-size:.6rem">得意</span>' : ''}</button>`).join('')}</div>
         <p class="sub" style="margin:8px 0 0">${me.injury ? '🚑 ケガの間はリハビリになります' : SL.TRAINING[me.training].desc || ''}</p></div>`
         + (me.age >= 30 ? (me.retirePlan === w.year
@@ -347,7 +350,7 @@
           ${!o.forced && !o.requested && !me.reserve ? '<button class="btn" id="ol-requestBtn">📣 移籍を希望する（オファーが増える・人気-1）</button>' : ''}
           ${o.forced || o.canRetire ? `<button class="btn ${o.forced ? 'primary' : 'ghost'}" data-c="retire">👋 引退する</button>` : ''}
         </div>
-        <p class="sub" style="margin:8px 0 0">⏰ オフは${offUntil(w)}まで（毎日 2〜5時・14〜17時）。選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}${me.reserve ? 'の1軍へ' : 'へ移籍'}` : me.reserve || (onlyB) ? `${esc(c.name)}のBチームへ` : `${esc(c.name)}に残留`}</b>` : ''}</p>
+        <p class="sub" style="margin:8px 0 0">⏰ オフは${offUntil(w)}まで（毎日 8〜11時・20〜23時）。選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}${me.reserve ? 'の1軍へ' : 'へ移籍'}` : me.reserve || (onlyB) ? `${esc(c.name)}のBチームへ` : `${esc(c.name)}に残留`}</b>` : ''}</p>
         <button class="btn small" id="ol-polBtn2" style="margin-top:6px">🔁 移籍方針を変える</button></div>`;
       const pick = async (choice) => {
         if (choice === 'retire' && !me.offer.forced && !(await retireSheet('now'))) return;
@@ -360,7 +363,7 @@
       const rq = el.querySelector('#ol-requestBtn');
       if (rq) rq.onclick = async () => { rq.disabled = true; const j = await api('/request', {}); if (j.error) { rq.disabled = false; return toast(errMsg(j.error)); } setState(j); renderHome(); toast('移籍を希望した。オファーが届いた'); };
     } else if (me.status === 'decided') {
-      el.innerHTML = `<div class="card"><h2>✅ 契約済み</h2><p style="margin:0;font-weight:700">${esc(club(me.club).name)}で新シーズンを待とう。開幕は${offUntil(w)}。</p><p class="sub" style="margin:6px 0 0">試合は毎日 5〜14時・17〜深夜2時に30分ごと。オフは 2〜5時・14〜17時</p></div>`;
+      el.innerHTML = `<div class="card"><h2>✅ 契約済み</h2><p style="margin:0;font-weight:700">${esc(club(me.club).name)}で新シーズンを待とう。開幕は${offUntil(w)}。</p><p class="sub" style="margin:6px 0 0">試合は毎日 11〜20時・23〜翌8時に30分ごと。オフは 8〜11時・20〜23時</p></div>`;
     } else if (me.status === 'retired') {
       const sm = me.summary;
       el.innerHTML = `<div class="card panel" style="text-align:center"><div class="sub" style="font-weight:800">${sm.retireAge}歳で現役引退</div>
@@ -636,7 +639,7 @@
     if (j.error === 'unauthorized') { CODE = null; store.del('code'); return renderStart(); }
     if (j.error) { toast(errMsg(j.error)); return ST ? route() : renderStart(); }
     setState(j); route();
-    if (j.bonus) toast(`🎁 ログインボーナス +${j.bonus.amount}万円`);
+    if (j.bonus) toast(j.bonus.streak > 1 ? `🎁 ${j.bonus.streak}日連続ログイン！ +${j.bonus.amount}万円（明日は +${j.bonus.next}万円）` : `🎁 ログインボーナス +${j.bonus.amount}万円（明日も来ると +${j.bonus.next}万円）`);
     if (j.idleRetired) toast('💤 30日以上来なかったので、休眠のまま引退しました。次の世代から始められます');
     if (!j.restored) okaeri(j); else try { store.set('snap', JSON.stringify(snapOf(j))); } catch {}
     if (j.restored) alert('🅱️ おかえりなさい！\n\nクラブの満員のせいで引退になっていましたが、ルールを直しました。\nあなたの選手は、最後にいたクラブの Bチームで現役に戻りました。\nBチームで活躍して、1軍を目指そう！');

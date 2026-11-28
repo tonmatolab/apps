@@ -360,7 +360,10 @@
   .ol .codebox { text-align: center; font-family: var(--num); font-weight: 800; font-size: 1.5rem; letter-spacing: .06em; background: var(--chip); border: 2px dashed var(--green); border-radius: 16px; padding: 14px 8px; margin: 10px 0; user-select: all; }
   .ol .warn { background: #fff4d6; color: #6b4b00; border-radius: 12px; padding: 10px 12px; font-size: .8rem; font-weight: 700; }
   .ol .topbar { display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 800; color: var(--sub); }
-  .ol .topbar .cd { margin-left: auto; color: var(--green); font-family: var(--num); }
+  .ol .topbar .cdw { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
+  .ol .topbar .cd { color: var(--green); font-family: var(--num); }
+  .ol .topbar .offw { font-size: .66rem; font-weight: 700; color: var(--sub); white-space: nowrap; }
+  .ol .topbar .offw.now { color: var(--gold, #d4a017); }
   .ol .pc .av { width: 80px; height: 80px; }
   .ol .stl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; }
   /* たためるカード（タップで開く） */
@@ -896,7 +899,7 @@
         <li>🌍 全員が同じ70クラブ（欧州1〜3部・国内1〜4部）の世界に所属。同じクラブになった人とは一緒に試合に出る</li>
         <li>⏰ <b id="ol-tickTxt">30分</b>に1節、試合は自動で進む。あなたが決めるのは練習と契約だけ</li>
         <li>📅 18節でシーズン終了。オフに移籍・残留・引退を選ぶ（1日で2シーズン）</li>
-        <li>🕔 日程は毎日同じ（日本時間）：試合は <b>5〜14時・17〜深夜2時</b>、オフは <b>2〜5時・14〜17時</b>。夜は必ず試合中</li>
+        <li>🕔 日程は毎日同じ（日本時間）：試合は <b>11〜20時・23〜翌8時</b>、オフ（契約を選ぶ時間）は <b>8〜11時・20〜23時</b></li>
         <li>👶 引退したら、子どもが次の世代として続きを生きる</li>
         <li>🔑 ログインは「引き継ぎコード」だけ。メモしておけば別の端末でも続きから</li>
       </ul>
@@ -961,7 +964,7 @@
   <!-- ===== オンライン：ホーム ===== -->
   <section id="ol-scrHome" class="ol hidden">
     <!-- 画面下のナビは online.js が最後に足す -->
-    <div class="topbar"><span id="ol-topYear"></span><span class="cd" id="ol-topCd"></span><button class="btn small" id="ol-refreshBtn">🔄</button></div>
+    <div class="topbar"><span id="ol-topYear"></span><span class="cdw"><span class="cd" id="ol-topCd"></span><small class="offw" id="ol-topOff"></small></span><button class="btn small" id="ol-refreshBtn">🔄</button></div>
     <div class="card hidden" id="ol-motwCard" style="padding:10px 14px"></div>
     <details class="card hidden fold" id="ol-newsCard"><summary><h2>📰 リーグ速報 <span class="sub" id="ol-newsPeek"></span></h2></summary><ul class="newslist" id="ol-newsList"></ul></details>
     <div class="card pc" id="ol-pCard"></div>

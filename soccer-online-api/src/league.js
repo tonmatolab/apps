@@ -6,9 +6,9 @@ import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（全国ランキングと共通）
 
-// 登録の上限（休眠・引退をのぞく人数）。1軍の定員（国内22人×40クラブ＋欧州12人×30クラブ＝1240人）をこえた人は Bチームに入る。
-// 無料枠の書き込み（1節ごとに1人1行）を守るため、全体では 1300人まで
-const MAX_PLAYERS = 1300;
+// 登録の上限（休眠・引退をのぞく人数）＝ 1軍の定員の合計（国内22人×40クラブ＋欧州12人×30クラブ＝1240人）＋ Bチームの上限（500人）＝ 1740人。
+// 選手は30人ずつまとめて保存するので、人数が増えても読み書きはほとんど増えない（先に足りなくなるのは Workers のリクエスト）
+const MAX_PLAYERS = G.SL._.CLUB_SEED.reduce((a, c, id) => a + G.capOf(id), 0) + G.RESERVE_CAP;
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限（1時間。メモリだけなので、サーバーが休むと消える）
 const SIGNUP_PER_DAY = 3;      // 同じIPからの新規登録の上限（日本時間の1日。保存するので消えない）

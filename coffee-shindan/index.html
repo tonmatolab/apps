@@ -87,6 +87,8 @@
   .rec h3 { margin: 0 0 6px; font-size: 1rem; }
   .rec a { display: flex; align-items: center; gap: 10px; padding: 11px 14px; margin-top: 8px; border: 2px solid var(--line); border-radius: 14px; color: var(--ink); text-decoration: none; font-weight: 800; font-size: .92rem; background: var(--card); }
   .rec a:hover { border-color: var(--accent); }
+  .rec a.shop { position: relative; border-color: #bf0000; background: color-mix(in srgb, #bf0000 7%, var(--card)); }
+  .rec a.shop small { display: block; font-size: .72rem; font-weight: 700; color: var(--sub); }
   .pr { font-size: .72rem; color: var(--sub); margin: 6px 0 0; }
   #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 80; background: rgba(40,28,20,.95); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: .85rem; font-weight: 700; opacity: 0; transition: .25s; pointer-events: none; width: max-content; max-width: 90vw; }
   #toast.on { opacity: 1; transform: translate(-50%, 0); }
@@ -134,6 +136,7 @@
       <div class="rec">
         <h3>☕ このタイプにおすすめ</h3>
         <div id="rRec"></div>
+        <div class="hidden" id="adRec"></div>
         <p class="pr hidden" id="prNote">※本ページはプロモーション（広告）を含みます</p>
       </div>
       <button class="ghost" id="retry">もう一度診断する</button>
@@ -144,6 +147,7 @@
   <footer><a href="../">ほかのゲーム・診断を見る</a></footer>
 </main>
 
+<script src="../shared/ads.js"></script><!-- 広告（結果を描く前に読む） -->
 <script>
 // ===== アフィリエイト設定（IDを入れると自動でリンクに付与＆PR表記が出ます） =====
 const AFFILIATE = { amazonTag: '' }; // 例: 'yourname-22'
@@ -319,7 +323,12 @@ function renderResult(key) {
     a.innerHTML = `<span style="font-size:1.4rem">${r.icon}</span><span></span>`; a.lastChild.textContent = `${r.label} をAmazonで見る →`;
     $('rRec').appendChild(a);
   });
-  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag);
+  // 楽天市場へのボタン（Cloudflare 版だけ）。おすすめの一番上に置く
+  const SHOP = { espresso: 'エスプレッソ用の深煎り豆', latte: 'ラテに合うコーヒー', drip: 'ハンドドリップ用の豆', cold: '水出しコーヒーパック', decaf: 'デカフェのコーヒー', fruity: '浅煎りのシングルオリジン' };
+  const shop = window.TonmatoAds && TonmatoAds.link('rakuten', `<span style="font-size:1.4rem">🛒</span><span>${SHOP[key]}は楽天市場で探そう →<small>ポイントもたまる・ドリップバッグも豊富</small></span>`);
+  if (shop) { shop.className = 'shop'; $('rRec').prepend(shop); }
+  const ad = !!(window.TonmatoAds && TonmatoAds.show($('adRec'), 'doutorDrip')) || !!shop; // 広告（Cloudflare 版だけ）
+  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag && !ad);
   show('result');
   imgPromise = null; makeShareImage();
 }

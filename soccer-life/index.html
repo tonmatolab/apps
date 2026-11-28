@@ -686,7 +686,6 @@
 <main>
   <!-- ===== タイトル ===== -->
   <section id="scrTitle">
-    <div class="hidden" id="adTop"></div>
     <div class="hero" id="heroArt"><img src="hero.jpg" width="1200" height="675" alt="サッカー人生：背番号10の選手がボールを抱えてスタジアムに立つ" fetchpriority="high"></div>
     <div class="logo">
       <h1 class="vh">サッカー<span>人生</span></h1>
@@ -1304,7 +1303,6 @@ function treeHead(gen) {
 }
 
 function renderTitle() {
-  if (window.TonmatoAds) TonmatoAds.show($('adTop'), 'wowowTop', 'top'); // 広告（Cloudflare 版だけ）
   // タイトル画面の絵は hero.jpg（index.html に直接書いている）。読み込めなかったときだけ、前の絵（SVG）に戻す
   const hi = $('heroArt').querySelector('img');
   const fallback = () => { $('heroArt').innerHTML = heroSVG(); document.querySelector('#scrTitle .logo h1').classList.remove('vh'); };
@@ -1972,7 +1970,11 @@ async function contractStep() {
     if (act === 'request') { SL.requestTransfer(S); save(); toast('移籍を希望した。オファーが届いた'); return contractStep(); }
     if (act === 'retire') {
       if (!forced) {
-        const ok = await sheet(`<div class="ev"><div class="ic">👋</div><p>本当に引退しますか？</p><p class="sub">最後に引退試合があります</p></div>`, [{ label: '引退する', cls: 'primary' }, { label: 'やっぱり続ける', cls: 'ghost' }]);
+        const pv = SL.retirePreview(S), ts = pv.titles.map((id) => SL.titleInfo(id)).filter(Boolean), col = loadCol();
+        const nw = ts.filter((t) => !col.titles[t.id]).length;
+        const ok = await sheet(`<div class="ev"><div class="ic">👋</div><p>本当に引退しますか？</p><p class="sub">最後に引退試合があります</p>
+          <div class="bigstat" style="margin:10px 0 6px"><div>生涯スコア<b>${pv.score.toLocaleString()}</b></div><div>ランク<b>${pv.letter}</b></div><div>子どもの才能<b>+${pv.bonus}</b></div></div>
+          <p class="sub">${pv.next ? `あと ${pv.next.need.toLocaleString()}点でランク${pv.next.letter}・` : ''}手に入る称号 ${ts.length}個（図鑑に新しく入るもの ${nw}個）${ts.length ? `<br>いちばんレア：【${ts[0].rarity.id}】${esc(ts[0].name)}` : ''}</p></div>`, [{ label: '引退する', cls: 'primary' }, { label: 'やっぱり続ける', cls: 'ghost' }]);
         if (ok !== 0) return contractStep();
       }
       return doRetire();

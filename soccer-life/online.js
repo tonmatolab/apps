@@ -38,7 +38,7 @@
       return r.ok ? j : { error: (j && j.error) || 'http_' + r.status };
     } catch { return { error: 'network' }; }
   }
-  const ERR = { pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（国内は1クラブ14人・欧州は12人・GKは3人・FWは4人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', too_many_today: '同じ回線からの登録は1日3人までです。明日またどうぞ（前に作ったアカウントは、引き継ぎコードで続けられます）', name_crowded: 'その名前の選手はもう2人います。ほかの名前にしてください', full: 'オンラインリーグは定員に達しています。空きが出るまでお待ちください（3日来ていない人は休眠になり、枠が空きます）', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
+  const ERR = { reserve_full: 'Bチームが満員です。ほかの候補を選ぶか、しばらくしてから試してください', pos_full: 'そのポジションは満員です。ほかのポジションを選んでください', bad_move: 'その名前は使えません', already: 'もう移籍を希望しています', pk_ended: 'PKチャレンジは終わりました。PKは試合の中で起きます', bad_kick: '蹴り方がおかしい', club_full: 'そのクラブは満員です（国内は1クラブ14人・欧州は12人・GKは3人・FWは4人まで）', 'お金が足りない': 'お金が足りません', network: '通信できませんでした', bad_name: 'その名前は使えません', too_many: '登録が多すぎます。しばらく待ってください', too_many_today: '同じ回線からの登録は1日3人までです。明日またどうぞ（前に作ったアカウントは、引き継ぎコードで続けられます）', name_crowded: 'その名前の選手はもう2人います。ほかの名前にしてください', full: 'オンラインリーグは定員に達しています。空きが出るまでお待ちください（3日来ていない人は休眠になり、枠が空きます）', unauthorized: 'コードが正しくありません', not_now: '今はできません', must_retire: '引退するしかありません', too_young: '30歳から引退できます', no_contract: '契約が切れています。オファーを選んでください', bad_choice: '選べません' };
   const errMsg = (e) => ERR[e] || 'エラー：' + e;
   function show(id) { showScreen('ol-' + id); if (location.hash !== '#online') history.replaceState(null, '', '#online'); }
 
@@ -47,14 +47,14 @@
   const startChanceTxt = (ovr, c, age) => SL.chanceLabel(SL.startChanceOvr(ovr, c, age));
   function offerCard(o, i, badge = '') {
     const c = club(o.club), L = SL.LEAGUES[c.lg], pc = startChanceTxt(ST.me.ovr, c, ST.me.age);
-    const full = !o.stay && c.humans >= c.cap;
+    const full = !o.stay && !o.reserve && c.humans >= c.cap;
     return `<button class="offer" data-i="${i}"${full ? ' disabled style="opacity:.55"' : ''}>${crest(c)}<div class="bd"><div class="nm">${badge}${esc(c.name)}<span class="hum">👤${c.humans}/${c.cap}</span>${full ? ' <span class="full">満員</span>' : ''}</div>
       <div class="mt"><b>${L.name}</b>｜チーム力 <b class="num">${c.str}</b><br>年俸 <b>${man(o.salary)}</b>${o.capped ? '（上限）' : ''}・${o.years}年契約${o.trial ? '（テスト入団）' : ''}${o.fee ? `<br>移籍金 <b>${man(o.fee)}</b>` : ''}</div></div><div class="pt"><b>${pc[0]}</b>${pc[1]}</div></button>`;
   }
   // オフが終わる（開幕する）時刻の言い方
   const offUntil = (w) => w.endAt ? new Date(w.endAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : `約${w.offLeft * w.tickMin}分後`;
   // 入団先が欧州3部の育成枠なら一言
-  const youthNote = (o) => (o && o.youth ? '<span class="badge eu">育成枠</span>' : '');
+  const youthNote = (o) => (o && o.reserve ? '<span class="badge">Bチーム</span>' : o && o.youth ? '<span class="badge eu">育成枠</span>' : '');
   function countdown() {
     if (!ST) return '';
     const off = ST.world.phase !== 'season';
@@ -73,9 +73,11 @@
     const j = await api('/public');
     if (j.error) { $('startWorld').innerHTML = `<div style="grid-column:1/-1">${errMsg(j.error)}</div>`; $('startScorers').innerHTML = '<li class="empty">-</li>'; return; }
     const w = j.world; skew = w.now - Date.now(); POSI = j.positions || null;
-    const full = !!POSI && Object.values(POSI).every((p) => !p.open);
-    $('fullBox').classList.toggle('hidden', !full);
-    $('startBtn').textContent = full ? '🈵 いまは満員です（新しい選手は登録できません）' : '⚽ 選手になる（無料・メール不要）';
+    const allFirst = !!POSI && Object.values(POSI).every((p) => !p.open), rsvFull = !!j.reserve && j.reserve.n >= j.reserve.cap;
+    const full = allFirst && rsvFull;
+    $('fullBox').classList.toggle('hidden', !allFirst);
+    $('fullBox').querySelector('p').textContent = full ? '🈵 いまは1軍も Bチームも満員です。空きが出るまで、一人用で選手人生を楽しもう（一人用は登録なしですぐ遊べます）' : '🅱️ いまはどのクラブも1軍が満員です。登録すると、どこかのクラブのBチームから始まります。Bチームで活躍して、1軍を目指そう';
+    $('startBtn').textContent = full ? '🈵 いまは満員です（新しい選手は登録できません）' : allFirst ? '⚽ 選手になる（1軍は満員：Bチームから）' : '⚽ 選手になる（無料・メール不要）';
     $('startBtn').disabled = full;
     $('tickTxt').textContent = w.tickMin >= 60 ? `${w.tickMin / 60}時間` : `${w.tickMin}分`;
     $('startWorld').innerHTML = `<div>シーズン<b>${w.year}年</b></div><div>${w.phase === 'season' ? '節' : 'オフ'}<b>${w.phase === 'season' ? `${w.week}/${w.weeks}` : `残り${w.offLeft}`}</b></div><div>プレイヤー<b>${w.players}人</b></div>`;
@@ -86,14 +88,14 @@
 
   // ===== 作成 =====
   let selPos = 'FW', selAppeal = null, POSI = null;
-  // ポジションのボタンに混み具合を出す。満員のポジションは選べない（選んでいたら空いているポジションに移す）
-  const POS_LABEL = { 満員: '🚫 満員', 激戦: '🔥 激戦', ふつう: '🙂 ふつう', 狙い目: '🎯 狙い目' };
+  // ポジションのボタンに混み具合を出す。1軍が満員のポジションも選べる（Bチームから始める）
+  const POS_LABEL = { 満員: '🅱️ 1軍満員', 激戦: '🔥 激戦', ふつう: '🙂 ふつう', 狙い目: '🎯 狙い目' };
   function paintPositions(pickAp) {
     if (!POSI) return;
     const btns = [...$('poses').querySelectorAll('.pos')];
     for (const b of btns) {
       const P = POSI[b.dataset.p]; if (!P) continue;
-      b.disabled = !P.open; b.classList.toggle('full', !P.open);
+      b.disabled = false; b.classList.toggle('full', !P.open);
       b.querySelector('.crowd')?.remove();
       b.insertAdjacentHTML('beforeend', `<em class="crowd c-${P.label}">${POS_LABEL[P.label]}${P.open ? `・空き${P.open}` : ''}${P.bonus ? `・才能+${P.bonus}` : ''}</em>`);
     }
@@ -101,9 +103,9 @@
       const ok = btns.find((b) => !b.disabled);
       if (ok) { selPos = ok.dataset.p; btns.forEach((x) => x.classList.toggle('on', x === ok)); pickAp(); }
     }
-    const allFull = btns.every((b) => b.disabled);
-    $('signupMsg').textContent = allFull ? 'いまはどのポジションも満員です。空きが出るまでお待ちください' : '';
-    $('signupBtn').disabled = allFull;
+    const allFull = Object.values(POSI).every((P) => !P.open), selFull = POSI[selPos] && !POSI[selPos].open;
+    $('signupMsg').textContent = selFull ? 'このポジションは1軍が満員です。Bチームから始めて、空きが出たら1軍を目指そう' : '';
+    $('signupBtn').disabled = false;
     $('soloBtn2').classList.toggle('hidden', !allFull);
   }
   function renderCreate(next = false) {
@@ -200,7 +202,7 @@
     $('pCard').innerHTML = `<div class="band" style="background:${color}"></div>
       <div class="in"><div class="av">${avatar(color, me.number, me.age, me.pos)}</div>
         <div class="who"><div class="nm">${esc(me.name)}</div>
-          <div class="cl">${posTag(me.pos)} ${c ? `背番号<b>${me.number}</b>・` : ''}${me.age}歳${me.gen > 1 ? `・${me.gen}代目` : ''}<br>${c ? `<b>${esc(c.name)}</b><br>${SL.LEAGUES[c.lg].name}・年俸 ${man(me.salary)}` : '所属なし'}</div></div>
+          <div class="cl">${posTag(me.pos)} ${c ? `背番号<b>${me.number}</b>・` : ''}${me.age}歳${me.gen > 1 ? `・${me.gen}代目` : ''}<br>${c ? `<b>${esc(c.name)}</b>${me.reserve ? ' <span class="badge">Bチーム</span>' : ''}<br>${me.reserve ? 'Bチーム' : SL.LEAGUES[c.lg].name}・年俸 ${man(me.salary)}` : '所属なし'}</div></div>
         <div class="ov"><b style="color:${me.ovr >= 80 ? 'var(--gold)' : 'var(--ink)'}">${me.ovr}</b><span>総合力</span></div></div>
       <div class="meters"><div>調子<b>${['↓', '↘', '→', '↗', '↑'][me.cond + 2]}</b></div><div>疲労<b>${me.fatigue}</b></div><div>人気<b>${me.fame}</b></div><div>${me.injury ? 'ケガ' : '貯金'}<b style="font-size:.78rem">${me.injury ? `🚑 ${me.injury}週` : man(me.money)}</b></div></div>`;
     // 立ち位置と成長の見通し（選手カードの下）
@@ -289,6 +291,13 @@
     const me = ST.me, w = ST.world, el = $('statusPanel');
     if (me.status === 'active') {
       const main = SL.mainStats(me.pos);
+      // Bチームの人：今季の Bチームの成績と、前節の Bチームの試合・昇格の目安
+      const R = me.rsv, RL = me.rsvLast, rc = club(me.club);
+      const reserveCard = me.reserve ? `<div class="card panel"><h2>🅱️ ${esc(rc.name)} のBチーム</h2>
+        <p style="margin:0;font-weight:700">1軍の定員が空いて、Bチームで活躍する（3試合以上・平均評価6.7以上）か、1軍に通用する力がつくと昇格します。</p>
+        <div class="season" style="margin-top:8px"><div>出場<b>${R ? R.apps : 0}</b></div><div>ゴール<b>${R ? R.goals : 0}</b></div><div>アシスト<b>${R ? R.assists : 0}</b></div><div>平均評価<b>${R && R.avg ? R.avg.toFixed(2) : '-'}</b></div></div>
+        ${RL ? `<p class="sub" style="margin:8px 0 0">前節のBチームの試合：${{ start: `先発（${RL.mins}分）`, sub: `途中出場（${RL.mins}分）`, bench: 'ベンチで出番なし', injured: 'ケガで欠場' }[RL.role]}${RL.rating ? `・評価${RL.rating.toFixed(1)}` : ''}${RL.goals ? `・⚽${RL.goals}` : ''}${RL.assists ? `・👟${RL.assists}` : ''}</p>` : ''}
+        <p class="sub" style="margin:4px 0 0">Bチームの成績は経歴に残りますが、通算成績・生涯スコアには入りません。</p></div>` : '';
       // 冬の移籍期間（第8〜10節）のオファー
       const W = me.winter;
       const winterCard = W ? `<div class="card panel"><h2>❄️ 冬の移籍のオファー</h2>
@@ -296,7 +305,7 @@
         <p class="sub" style="margin:4px 0 0">⏰ ${new Date(W.closeAt - skew).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}ごろ（第${SL.WINTER.close}節が終わるまで）。選ばなければ今のクラブに残ります</p>
         <div class="stack" style="margin-top:10px" id="ol-winterList">${W.list.map((x, i) => offerCard(x, i, SL.isEU(club(x.club).lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('')}</div>
         <button class="btn" id="ol-winterStay" style="margin-top:8px">${esc(club(me.club).city)}に残る</button></div>` : '';
-      el.innerHTML = winterCard + `<div class="card"><h2>🏋️ 練習メニュー <span class="sub" style="margin-left:auto">毎節の前に反映</span></h2><div class="trains">${Object.entries(SL.TRAINING).filter(([k, t]) => !t.gkOnly || me.pos === 'GK')
+      el.innerHTML = reserveCard + winterCard + `<div class="card"><h2>🏋️ 練習メニュー <span class="sub" style="margin-left:auto">毎節の前に反映</span></h2><div class="trains">${Object.entries(SL.TRAINING).filter(([k, t]) => !t.gkOnly || me.pos === 'GK')
         .map(([k, t]) => `<button class="tr${me.training === k ? ' on' : ''}" data-k="${k}"><i>${t.icon}</i>${t.name}${t.stats && t.stats.length === 1 && main.includes(t.stats[0]) ? '<br><span class="sub" style="font-size:.6rem">得意</span>' : ''}</button>`).join('')}</div>
         <p class="sub" style="margin:8px 0 0">${me.injury ? '🚑 ケガの間はリハビリになります' : SL.TRAINING[me.training].desc || ''}</p></div>`;
       if (W) {
@@ -316,19 +325,22 @@
       });
     } else if (me.status === 'off') {
       const o = me.offer, c = club(me.club);
+      const onlyB = o.released && o.list.every((x) => x.reserve);
       const head = o.forced ? (me.age >= 40 ? '40歳。体が限界を迎えた…' : 'どのクラブからも声がかからなかった…')
+        : me.reserve ? `${esc(c.name)}のBチームでシーズンを終えた。${o.list.some((x) => !x.stay) ? '1軍から声がかかった！' : '1軍の声はまだかからない。Bチームで力をつけよう'}`
+        : onlyB ? `${esc(c.name)} から戦力外通告…1軍からの声はなかったが、Bチームで続けられる`
         : o.released ? `${esc(c.name)} から戦力外通告…` : o.expiring ? `${esc(c.name)} との契約が切れた。` : `${esc(c.name)} との契約はあと${me.contract}年。`;
       el.innerHTML = `<div class="card panel"><h2>📝 オフシーズン：契約を選ぼう</h2>
         ${o.awards && o.awards.length ? `<ul class="ach" style="margin-bottom:8px">${o.awards.map((a) => `<li>🏅 ${esc(a)}</li>`).join('')}</ul>` : ''}
         ${o.nat ? `<p class="sub" style="margin:0 0 6px">🇯🇵 日本代表に選ばれた（${o.nat}試合）</p>` : ''}
         <p style="font-weight:800;margin:0">${head}</p>${o.notes.map((n) => `<p class="sub" style="margin:2px 0">${esc(n)}</p>`).join('')}
-        <div class="stack" style="margin-top:10px" id="ol-offerList">${o.forced ? '' : o.list.map((x, i) => offerCard(x, i, x.stay ? '<span class="badge stay">残留</span>' : SL.isEU(club(x.club).lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>')).join('')}</div>
+        <div class="stack" style="margin-top:10px" id="ol-offerList">${o.forced ? '' : o.list.map((x, i) => (x.stay && x.reserve ? '' : offerCard(x, i, x.reserve ? '<span class="badge">Bチーム</span>' : x.keep ? '<span class="badge stay">1年だけ残留</span>' : x.promote ? '<span class="badge stay">1軍に昇格</span>' : x.stay ? '<span class="badge stay">残留</span>' : SL.isEU(club(x.club).lg) ? '<span class="badge eu">海外</span>' : '<span class="badge">移籍</span>'))).join('')}</div>
         <div class="stack" style="margin-top:10px">
-          ${!o.forced && !o.expiring && !o.released ? `<button class="btn primary" data-c="stay">${esc(c.city)}に残る（契約あと${me.contract}年）</button>` : ''}
-          ${!o.forced && !o.requested ? '<button class="btn" id="ol-requestBtn">📣 移籍を希望する（オファーが増える・人気-1）</button>' : ''}
+          ${!o.forced && !o.expiring && !o.released ? `<button class="btn primary" data-c="stay">${me.reserve ? `${esc(c.city)}のBチームに残る` : `${esc(c.city)}に残る（契約あと${me.contract}年）`}</button>` : ''}
+          ${!o.forced && !o.requested && !me.reserve ? '<button class="btn" id="ol-requestBtn">📣 移籍を希望する（オファーが増える・人気-1）</button>' : ''}
           ${o.forced || o.canRetire ? `<button class="btn ${o.forced ? 'primary' : 'ghost'}" data-c="retire">👋 引退する</button>` : ''}
         </div>
-        <p class="sub" style="margin:8px 0 0">⏰ オフは${offUntil(w)}まで（毎日 2〜5時・14〜17時）。選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}へ移籍` : `${esc(c.name)}に残留`}</b>` : ''}</p>
+        <p class="sub" style="margin:8px 0 0">⏰ オフは${offUntil(w)}まで（毎日 2〜5時・14〜17時）。選ばなかった場合は、オフ終了時に移籍方針（${policyText(me)}）で自動で決まります${me.autoPlan ? `<br>👉 このままだと：<b>${me.autoPlan.kind === 'retire' ? '引退' : me.autoPlan.kind === 'move' ? `${esc(club(me.autoPlan.club).name)}${me.reserve ? 'の1軍へ' : 'へ移籍'}` : me.reserve || (onlyB) ? `${esc(c.name)}のBチームへ` : `${esc(c.name)}に残留`}</b>` : ''}</p>
         <button class="btn small" id="ol-polBtn2" style="margin-top:6px">🔁 移籍方針を変える</button></div>`;
       const pick = async (choice) => {
         if (choice === 'retire' && !confirm('本当に引退しますか？')) return;
@@ -533,6 +545,7 @@
     setState(j); route();
     if (j.bonus) toast(`🎁 ログインボーナス +${j.bonus.amount}万円`);
     if (j.idleRetired) toast('💤 30日以上来なかったので、休眠のまま引退しました。次の世代から始められます');
+    if (j.restored) alert('🅱️ おかえりなさい！\n\nクラブの満員のせいで引退になっていましたが、ルールを直しました。\nあなたの選手は、最後にいたクラブの Bチームで現役に戻りました。\nBチームで活躍して、1軍を目指そう！');
   }
 
   // 自動では何度も取りに行かない（無料枠を守る）。節が進んだ直後に1回だけ取り直す

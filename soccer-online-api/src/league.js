@@ -6,7 +6,9 @@ import { DurableObject } from 'cloudflare:workers';
 import * as G from './sim.js';
 import { isNg } from '../../shared/ng-words.js'; // 名前に使えない言葉（全国ランキングと共通）
 
-const MAX_PLAYERS = G.SL._.CLUB_SEED.reduce((a, c, id) => a + G.capOf(id), 0); // 登録の上限（国内14人×40クラブ＋欧州12人×10クラブ＝680人）
+// 登録の上限（休眠・引退をのぞく人数）。1軍の定員（国内14人×40クラブ＋欧州12人×30クラブ＝920人）をこえた人は Bチームに入る。
+// 無料枠の書き込み（1節ごとに1人1行）を守るため、全体では 1300人まで
+const MAX_PLAYERS = 1300;
 const LOGIN_BONUS = 20;       // ログインボーナス（万円／日）
 const SIGNUP_PER_HOUR = 5;     // 同じIPからの新規登録の上限（1時間。メモリだけなので、サーバーが休むと消える）
 const SIGNUP_PER_DAY = 3;      // 同じIPからの新規登録の上限（日本時間の1日。保存するので消えない）
@@ -407,6 +409,20 @@ export class League extends DurableObject {
         return json({ loaded: this.members.size, players: this.activeCount(), max: MAX_PLAYERS, status: st, lastSeen: seen, visitDays: days, idle, past });
       }
       // 管理用：使えない言葉を含む名前の一覧（言葉を増やしたあと、前からいる人を探す）
+      if (req.method === 'POST' && path === '/admin/restore-reserve') {
+        if (!this.isAdmin(req)) return err('not_found', 404);
+        // 対象：満員のせいで若くして強制引退になった人（30歳未満・ランクD・30日来なかったための引退ではない）
+        const targets = [...this.members.values()].filter((m) => m.status === 'retired' && m.summary && m.summary.retireAge < 30 && m.summary.letter === 'D' && !m.idleRetired);
+        const idleRows = this.sql.exec('SELECT COUNT(*) AS n FROM idle').toArray()[0].n;
+        if (body.dry) return json({ targets: targets.length, idleRows, reserveNow: G.reserveCount([...this.members.values()]), cap: G.RESERVE_CAP, ages: targets.map((m) => m.summary.retireAge) });
+        let n = 0;
+        this.atomic(() => {
+          for (const m of targets) { if (G.reserveCount([...this.members.values()]) >= G.RESERVE_CAP) break; if (G.restoreToReserve(m, this.w)) { this.saveMember(m); n++; } }
+          if (n) G.addNews(this.w, `🅱️ 満員のため引退になっていた${n}人が、Bチームで現役に復帰した`);
+          this.saveWorld();
+        });
+        return json({ restored: n, reserveNow: G.reserveCount([...this.members.values()]) });
+      }
       if (method === 'GET' && path === '/admin/ng') {
         if (!this.isAdmin(req)) return err('not_found', 404);
         return json({ players: [...this.members.values()].filter((m) => isNg(m.pl.name) || (m.pl.move && isNg(m.pl.move))).map((m) => ({ id: m.id, name: m.pl.name, move: m.pl.move || null, status: m.status })) });
@@ -449,6 +465,11 @@ export class League extends DurableObject {
         };
         return json(dump);
       }
+      if (req.method === 'POST' && path === '/dev/reserve') { // 開発用：自分を Bチームにする／1軍に戻す（画面の確認用）
+        if (this.env.DEV !== '1') return err('not_found', 404);
+        const me = await this.me(req); if (!me) return err('unauthorized', 401);
+        me.reserve = !me.reserve; me.rsv = G.emptyRsv(); this.saveMember(me); return json(this.stateView(me));
+      }
       if (req.method === 'POST' && path === '/dev/race') {
         if (this.env.DEV !== '1') return err('not_found', 404);
         this.atomic(() => this.kbRun()); await this.armAlarm(); return json({ ok: true, last: this.w.kb.last });
@@ -464,11 +485,12 @@ export class League extends DurableObject {
         if (G.wake(m, this.w, [...this.members.values()])) { this.saveMember(m); this.saveWorld(); }
         if (m.status === 'draft') {
           const all = [...this.members.values()];
-          if (!(m.draft || []).some((o) => !G.clubFull(all, o.club, m.pl.pos, m))) { m.draft = G.draftOffers(m, this.w, all); this.saveMember(m); }
+          if (!(m.draft || []).some((o) => (o.reserve ? G.reserveOpen(all) : !G.clubFull(all, o.club, m.pl.pos, m)))) { const d = G.draftOffers(m, this.w, all); if (JSON.stringify(d) !== JSON.stringify(m.draft || [])) { m.draft = d; this.saveMember(m); } }
         }
         const bonus = this.loginBonus(m);
         const idleRetired = !!m.idleRetired; if (idleRetired) { delete m.idleRetired; this.saveMember(m); }
-        return json({ ...this.stateView(m), bonus, idleRetired });
+        const restored = !!m.restored; if (restored) { delete m.restored; this.saveMember(m); }
+        return json({ ...this.stateView(m), bonus, idleRetired, restored });
       }
       // PKチャレンジは終了（試合中のPKに変わった）。古い画面から呼ばれたとき用
       if (req.method === 'POST' && (path === '/pk/start' || path === '/pk/kick')) return err('pk_ended', 410);
@@ -547,7 +569,6 @@ export class League extends DurableObject {
         if (G.nameCrowded(this.members.values(), name, m)) return err('name_crowded', 409);
         if (!G.POS[body.pos]) return err('bad_pos');
         const PI = G.positionInfo(this.w, [...this.members.values()]);
-        if (!PI[body.pos].open) return err('pos_full', 409);
         const nm = G.nextGeneration(m, crypto.randomUUID(), name, body.pos, this.w, [...this.members.values()], G.SL.appealChoices(body.pos).includes(body.appeal) ? body.appeal : null, PI[body.pos].bonus);
         this.atomic(() => { this.saveMember(m, 0); this.saveMember(nm); });
         this.members.delete(m.id); this.members.set(nm.id, nm); this.byAccount.set(nm.account, nm.id);
@@ -565,8 +586,8 @@ export class League extends DurableObject {
     if (!G.POS[body.pos]) return err('bad_pos');
     if (this.activeCount() >= MAX_PLAYERS) return err('full', 503);
     const PI = G.positionInfo(this.w, [...this.members.values()]);
-    if (!PI[body.pos].open) return err('pos_full', 409);
     if (G.nameCrowded(this.members.values(), name)) return err('name_crowded', 409);
+    if (!G.draftOffers(G.newMember('probe', '', name, body.pos, { bonus: PI[body.pos].bonus }), this.w, [...this.members.values()]).length) return err('full', 503); // 1軍も Bチームも満員
     const ip = req.headers.get('CF-Connecting-IP') || 'local';
     const now = Date.now(), hits = (this.signups.get(ip) || []).filter((t) => now - t < 3600000);
     if (hits.length >= SIGNUP_PER_HOUR) return err('too_many', 429);
@@ -599,7 +620,7 @@ export class League extends DurableObject {
   }
   clubsView() {
     const count = new Map();
-    for (const m of this.members.values()) if (m.pl.club != null && m.status !== 'retired') count.set(m.pl.club, (count.get(m.pl.club) || 0) + 1);
+    for (const m of this.members.values()) if (m.pl.club != null && m.status !== 'retired' && !m.reserve) count.set(m.pl.club, (count.get(m.pl.club) || 0) + 1);
     return this.w.clubs.map((c) => ({ id: c.id, name: c.name, city: c.city, short: c.short, mark: c.mark, lg: c.lg, str: c.str, atk: c.atk, dfn: c.dfn, depth: c.depth, youth: c.youth, money: c.money, pop: c.pop, recruit: c.recruit, color: c.color, humans: count.get(c.id) || 0, cap: G.capOf(c.id) }));
   }
   ranking(lg, key) {
@@ -633,7 +654,8 @@ export class League extends DurableObject {
   }
 
   publicView() {
-    return { world: this.worldView(), positions: G.positionInfo(this.w, [...this.members.values()]), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, news: (this.w.news || []).slice(0, 8), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
+    const all = [...this.members.values()];
+    return { reserve: { n: G.reserveCount(all), cap: G.RESERVE_CAP }, world: this.worldView(), positions: G.positionInfo(this.w, all), scorers: this.ranking(null, 'goals'), motw: this.w.motw || null, news: (this.w.news || []).slice(0, 8), last: this.w.last ? { week: this.w.last.week, year: this.w.last.year } : null };
   }
   // 今季の個人成績の表（NPC＋本物のプレイヤー）。メモリから作るだけで、書き込みはしない
   seasonEntries() {
@@ -681,12 +703,12 @@ export class League extends DurableObject {
         policy: G.POLICY[m.policy] ? m.policy : 'auto', sw: G.MOVE_SWITCH[m.sw] ? m.sw : 'bench',
         autoPlan: m.status === 'off' && m.offer ? (() => { const pl = G.planAuto(m, this.w, [...this.members.values()], this.npcs); return { kind: pl.kind, club: pl.offer ? pl.offer.club : null }; })() : null,
         appeal: p.appeal || null, move: p.move || null, outlook: G.SL.growthOutlook(p), returning: !!m.returning,
-        depth: p.club != null ? G.SL.depthOf(this.npcs, p.club, { pos: p.pos, ovr: G.ovr(p) }, [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: G.ovr(x.pl) }))) : null,
+        depth: p.club != null && !m.reserve ? G.SL.depthOf(this.npcs, p.club, { pos: p.pos, ovr: G.ovr(p) }, [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: G.ovr(x.pl) }))) : null,
         grow: p.growKnown ? p.grow : null, gtype: p.growKnown ? p.gtype : null, best: Math.max(p.best || 0, G.ovr(p)), cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,
         caps: m.caps, natGoals: m.natGoals, last: m.last, draft: m.draft, offer, summary: m.summary, winter: m.winter && m.status === 'active' ? { ...m.winter, closeAt: w.nextAt + Math.max(0, G.SL.WINTER.close - 1 - w.week) * this.tickMs() } : null, lineage: m.lineage, log: m.log.slice(-12),
-        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0, col: m.col || null, liveTitles: G.liveTitles(m, w),
+        potLo: p.potLo, potHi: p.potHi, potKnown: p.potLo === p.potHi ? p.pot : null, records: m.records || null, cupSeason: m.cupSeason || null, lastCup: m.lastCup || null, motw: m.motw || 0, col: m.col || null, reserve: !!m.reserve, rsv: m.rsv ? { ...m.rsv, ratings: undefined, avg: G.avg(m.rsv.ratings || []) } : null, rsvLast: m.rsvLast || null, liveTitles: G.liveTitles(m, w),
         perks: { trainer: p.trainMul > 1, clinic: !!p.clinic, camp: !!p.camp, house: !!p.house, edu: p.edu || 0 },
       },
     };

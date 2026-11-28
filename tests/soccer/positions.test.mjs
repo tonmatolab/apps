@@ -35,7 +35,7 @@ const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '�
   check(P.GK.open === dom.length * 3, `GKの空きはGKの上限まで（${P.GK.open}）`);
   // 満員のポジションでは入団先の候補が出ない。空いているポジションは出る
   const fw = G.newMember('x1', 'x1', 'あたらしいFW', 'FW'), df = G.newMember('x2', 'x2', 'あたらしいDF', 'DF');
-  check(G.draftOffers(fw, w, ms).length === 0, 'FWが満員なら、FWの新人には候補が出ない（登録の時点で止める）');
+  { const d = G.draftOffers(fw, w, ms); check(d.length > 0 && d.every((o) => o.reserve), 'FWの1軍が満員なら、FWの新人には Bチームの候補だけが出る'); }
   check(G.draftOffers(df, w, ms).length >= 1, 'DFの新人には候補が出る');
 }
 
@@ -53,7 +53,7 @@ const add = (members, pos, club) => { const m = G.newMember('m' + n, 'a' + n, '�
   check(ok, '1部が満員なら、空いている2部〜4部のクラブが候補になる（30人とも候補がある）');
   // 1部・2部とも満員 → 候補なし
   for (const c of dom.filter((c) => c.lg >= 2)) for (let i = 0; i < G.CLUB_CAP; i++) add(ms, i < 3 ? 'GK' : 'MF', c.id);
-  check(G.draftOffers(G.newMember('z', 'z', '満員', 'DF'), w, ms).length === 0 && G.positionInfo(w, ms).DF.open === 0, '国内がすべて満員なら候補なし・空き0');
+  { const d = G.draftOffers(G.newMember('z', 'z', '満員', 'DF'), w, ms); check(d.length > 0 && d.every((o) => o.reserve) && G.positionInfo(w, ms).DF.open === 0, '国内も育成枠もすべて満員なら、Bチームの候補だけ・1軍の空き0'); }
 }
 
 console.log(`positions: ${failures ? failures + ' failed' : 'all passed'}`);

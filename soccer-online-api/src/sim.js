@@ -127,7 +127,7 @@ function clubRec(w, id) { return w.records.clubs[id] || (w.records.clubs[id] = {
 // ----- 人数制限・年俸上限 -----
 export function humansAt(members, clubId, pos = null, except = null) {
   let n = 0;
-  for (const m of members) if (m !== except && m.pl.club === clubId && m.status !== 'retired' && m.status !== 'draft' && (!pos || m.pl.pos === pos)) n++;
+  for (const m of members) if (m !== except && m.pl.club === clubId && !m.reserve && m.status !== 'retired' && m.status !== 'draft' && (!pos || m.pl.pos === pos)) n++;
   return n;
 }
 export function clubFull(members, clubId, pos, except = null) {
@@ -212,14 +212,103 @@ export function draftOffers(m, w, members = []) {
       out.push(capSalary(w, { club: c.id, salary: Math.min(600, SL._.wageFor(c, o, m.pl.fame)), years: 3, rookie: true, youth: true }));
     }
   }
+  if (!out.length && reserveOpen(members)) out.push(...reserveOffers(m, w)); // 1軍がどこも満員：Bチームから始める（Bチームにも上限あり）
   return out;
 }
+// ----- Bチーム（リザーブ） -----
+// 1軍に空きがないときの受け皿。人数の上限なし。毎節「Bチームの試合」（簡単な計算）に出て、成績と評価がつく。
+// Bチームの成績は通算成績・生涯スコアには数えない（経歴には別に残す）。1軍に空きが出て、活躍していれば昇格する
+export const RESERVE_GROWTH = .7;      // Bチームの試合経験での伸び（1軍の7割）
+export const RESERVE_SALARY = 120;     // Bチームの年俸（万円）
+export const MAX_RESERVE_OFFERS = 3;   // 新人に出す Bチームの候補の数
+export const RESERVE_CAP = 500;        // Bチームの人数の上限（全クラブの合計）。まずはこの人数で様子を見る
+// 今 Bチームにいる人の数（休眠・引退・入団前はのぞく）
+export function reserveCount(members) { let n = 0; for (const m of members) if (m.reserve && m.pl.club != null && m.status !== 'retired' && m.status !== 'dormant' && m.status !== 'draft') n++; return n; }
+export const reserveOpen = (members) => reserveCount(members) < RESERVE_CAP;
+export const emptyRsv = () => ({ apps: 0, goals: 0, assists: 0, ratings: [] });
+const firstTeam = (m) => m.status === 'active' && m.pl.club != null && !m.reserve;
+const inReserve = (m) => m.status === 'active' && m.pl.club != null && !!m.reserve;
+// Bチームの候補（新人・戦力外の人）：実力に近いクラブから。1軍の定員とは関係ない
+export function reserveOffers(m, w, n = MAX_RESERVE_OFFERS) {
+  const o = SL.ovr(m.pl);
+  return w.clubs.filter((c) => !SL.isEU(c.lg) || c.lg === 6).map((c) => ({ c, d: Math.abs(c.str - 8 - o) })).sort((a, b) => a.d - b.d || a.c.str - b.c.str).slice(0, n)
+    .map(({ c }) => ({ club: c.id, salary: RESERVE_SALARY, years: 1, rookie: true, reserve: true }));
+}
+// Bチームの1節：実力と運で出場時間・評価・ゴール・アシストを決める（1軍のような試合の計算はしない）
+function reserveGame(m, w) {
+  const p = m.pl, c = w.clubs[p.club], o = SL.ovr(p), lvl = c.str - 8;
+  const R = m.rsv || (m.rsv = emptyRsv());
+  if (p.injury > 0) { weeklyAfter(m, 0, 0, true); m.rsvLast = { year: w.year, week: w.week + 1, role: 'injured', mins: 0 }; return; }
+  const startP = 1 / (1 + Math.exp(-(o - lvl + 3) / 3));
+  const role = chance(startP) ? 'start' : chance(.5) ? 'sub' : 'bench';
+  const mins = role === 'start' ? ri(70, 90) : role === 'sub' ? ri(15, 35) : 0;
+  let rating = 0, goals = 0, assists = 0;
+  if (mins) {
+    const edge = clamp((o - lvl) / 40, -.4, .6), f = mins / 90;
+    goals = poisson(POS[p.pos].goal * 1.4 * f * (1 + edge));
+    assists = poisson(POS[p.pos].assist * 1.2 * f * (1 + edge));
+    rating = Math.round(clamp(6.2 + (o - lvl) / 12 + goals * .5 + assists * .3 + gauss() * .5, 4.5, 9.8) * 10) / 10;
+    R.apps++; R.goals += goals; R.assists += assists; R.ratings.push(rating);
+    if (role === 'start') p.fatigue = clamp(p.fatigue + 6, 0, 100);
+  }
+  weeklyAfter(m, mins * RESERVE_GROWTH, rating, false);
+  m.rsvLast = { year: w.year, week: w.week + 1, role, mins, rating: rating || null, goals, assists };
+}
+// 1軍に空きが出たら、Bチームで活躍している人（または十分に強い人）を昇格させる。1クラブ1節に1人まで
+function promoteReserves(w, members) {
+  const out = [];
+  const cands = members.filter(inReserve).map((m) => {
+    const R = m.rsv || emptyRsv(), c = w.clubs[m.pl.club], o = SL.ovr(m.pl), ar = avg(R.ratings);
+    const ok = (R.apps >= 3 && ar >= 6.7) || o >= c.str - 6;
+    return { m, ok, score: ar + (o - c.str) / 10 };
+  }).filter((x) => x.ok).sort((a, b) => b.score - a.score);
+  const done = new Set();
+  for (const { m } of cands) {
+    const cid = m.pl.club;
+    if (done.has(cid) || clubFull(members, cid, m.pl.pos, m)) continue;
+    promote(m, w); done.add(cid); out.push(m);
+  }
+  return out;
+}
+function promote(m, w) {
+  const c = w.clubs[m.pl.club];
+  m.reserve = false; m.fromReserve = true;
+  m.pl.salary = Math.max(m.pl.salary, Math.round(SL._.wageFor(c, SL.ovr(m.pl), m.pl.fame) * .8 / 10) * 10);
+  m.pl.contract = Math.max(m.pl.contract, 2);
+  m.log.push({ y: w.year, age: m.pl.age, k: 'promote', t: `${w.year}年、${c.name}のBチームから1軍に昇格。` });
+  addNews(w, `⬆️ ${m.pl.name}が${c.name}のBチームから1軍に昇格！`);
+}
+// オフ：Bチームの人へのオファー（自分のクラブの1軍・ほかのクラブの1軍。空きのあるところだけ）。選ばなければ Bチームに残る
+function reserveOffSeason(m, w, members) {
+  const p = m.pl, o = SL.ovr(p), c = w.clubs[p.club], R = m.rsv || emptyRsv(), good = R.apps >= 6 && avg(R.ratings) >= 6.6;
+  const list = [];
+  if (!clubFull(members, c.id, p.pos, m) && (o >= c.str - 9 || good)) list.push(capSalary(w, { club: c.id, salary: SL._.wageFor(c, o, p.fame), years: 2, promote: true }));
+  const fits = w.clubs.filter((x) => x.id !== c.id && !clubFull(members, x.id, p.pos, m) && o >= x.str - (good ? 9 : 7) && o <= x.str + 18 && (!SL.isEU(x.lg) || o >= x.str - 6))
+    .sort(() => Math.random() - .5).slice(0, good ? 3 : 2);
+  for (const x of fits) list.push(capSalary(w, { club: x.id, salary: SL._.wageFor(x, o, p.fame), years: 2 }));
+  return { contract: { club: c.id, salary: RESERVE_SALARY, years: 1, reserve: true }, transfers: list, expiring: false, released: false };
+}
+// オファーを受けたあと：Bチームに入る／Bチームから1軍に上がる
+function afterAccept(m, w, offer) {
+  const was = !!m.reserve;
+  if (offer.reserve) {
+    if (!was) { m.log.push({ y: w.year, age: m.pl.age, k: 'reserve', t: `${w.year}年、${w.clubs[offer.club].name}のBチームに入った。` }); addNews(w, `🔽 ${m.pl.name}が${w.clubs[offer.club].name}のBチームへ`); }
+    m.reserve = true;
+  } else if (was) {
+    m.reserve = false; m.fromReserve = true;
+    m.log.push({ y: w.year, age: m.pl.age, k: 'promote', t: `${w.year}年、Bチームから${w.clubs[offer.club].name}の1軍へ。` });
+    addNews(w, `⬆️ ${m.pl.name}がBチームから${w.clubs[offer.club].name}の1軍へ！`);
+  }
+}
+
 export function join(m, w, i, members = []) {
   const o = m.draft[i]; if (!o) return 'bad_choice';
-  if (clubFull(members, o.club, m.pl.pos, m)) return 'club_full';
+  if (!o.reserve && clubFull(members, o.club, m.pl.pos, m)) return 'club_full';
+  if (o.reserve && !reserveOpen(members)) return 'reserve_full';
   SL.joinClub(adapter(m, w), o);
+  m.reserve = !!o.reserve; m.rsv = emptyRsv();
   if (o.youth && !m.history.length) m.youthStart = true;
-  addNews(w, `🆕 ${m.pl.name}（${m.pl.pos}）が${w.clubs[o.club].name}に入団${m.gen > 1 ? `。${m.gen}代目` : ''}`);
+  addNews(w, `🆕 ${m.pl.name}（${m.pl.pos}）が${w.clubs[o.club].name}${o.reserve ? 'のBチーム' : ''}に入団${m.gen > 1 ? `。${m.gen}代目` : ''}`);
   m.draft = null; m.season = emptySeason(); m.cupSeason = emptySeason();
   if (m.debutYear == null) m.debutYear = w.year; // 休眠から戻ったときは最初のデビューの年のまま
   m.returning = false;
@@ -330,8 +419,9 @@ function clubMatch(w, h, a, byClub, npcs, npcSeason, cup = false) {
 // npcSeason：{ season, stats }（NPCの今季の成績。シーズンが変わったら空にする）
 export function playMatchday(w, members, npcs = [], npcSeason = null) {
   const store = npcSeason && npcSeason.season === w.season ? npcSeason : { season: w.season, stats: {} };
-  const active = members.filter((m) => m.status === 'active' && m.pl.club != null);
+  const active = members.filter(firstTeam);
   for (const m of active) { weeklyTraining(m); m._mins = 0; m._rating = 0; }
+  for (const m of members.filter(inReserve)) { weeklyTraining(m); reserveGame(m, w); }
   const byClub = new Map();
   for (const m of active) { if (!byClub.has(m.pl.club)) byClub.set(m.pl.club, []); byClub.get(m.pl.club).push(m); }
   const results = [];
@@ -359,6 +449,7 @@ export function playMatchday(w, members, npcs = [], npcSeason = null) {
   }
   w.week++;
   w.last = { year: w.year, week: w.week, at: Date.now(), results, cup: cupRes };
+  promoteReserves(w, members); // 1軍に空きが出たら、Bチームから昇格
   // 冬の移籍期間：第7節が終わったらオファーが届き、第10節が終わるまで選べる（選ばなければ残留）
   if (w.week === SL.WINTER.open) {
     let n = 0;
@@ -391,7 +482,7 @@ const avg = (a) => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length
 
 // npcs・npcSeason：NPCの名簿と今季の成績（個人賞をNPCも含めて決める）。NPCの受賞は npcs に書き込む
 export function endSeason(w, members, npcs = [], npcSeason = null) {
-  const active = members.filter((m) => m.status === 'active' && m.pl.club != null);
+  const active = members.filter(firstTeam), reserves = members.filter(inReserve);
   const rankOf = (cid) => standings(w, w.clubs[cid].lg).findIndex((x) => x.c.id === cid) + 1;
   const champions = LEAGUES.map((L) => standings(w, L.id)[0].c.name);
   // 個人賞：NPCと本物のプレイヤーを同じ表に並べ、実際の成績で決める（core-awards.js）
@@ -454,14 +545,33 @@ export function endSeason(w, members, npcs = [], npcSeason = null) {
       for (let i = 0; i < n; i++) if (chance(POS[m.pl.pos].goal * 1.1)) m.natGoals++;
     } else m.natCalled = 0;
   }
+  // Bチームの人：経歴（Bチームの成績は別に残す）・年俸・契約
+  for (const m of reserves) {
+    const p = m.pl, c = w.clubs[p.club], R = m.rsv || emptyRsv();
+    p.money += p.salary; p.contract--;
+    m.history.push({ year: w.year, age: p.age, club: `${c.name} B`, clubId: c.id, lg: 'Bチーム', number: p.number, apps: 0, starts: 0, goals: 0, assists: 0, cs: 0, rating: 0, rank: 0, awards: [], ovr: ovr(p), salary: p.salary,
+      reserve: { apps: R.apps, goals: R.goals, assists: R.assists, rating: avg(R.ratings) } });
+    m.seasonAwards = [];
+  }
   // 年をとって、オファーが届く
-  for (const m of active) {
+  let rsvLeft = RESERVE_CAP - reserveCount(members);
+  for (const m of active.concat(reserves)) {
     const s = adapter(m, w);
     const notes = SL.ageUp(s); // （NPCの1年は上でまとめて済ませた。adapter には名簿がないので ageUp では動かない）
-    const res = SL.offers(s);
-    res.transfers = res.transfers.filter((t) => !clubFull(members, t.club, m.pl.pos, m)).map((t) => capSalary(w, t));
-    if (res.contract) capSalary(w, res.contract);
-    m.offer = { res, notes, forced: SL.mustRetire(s, res), canRetire: SL.canRetire(s), year: w.year, awards: m.seasonAwards, nat: m.natCalled };
+    let res;
+    if (m.reserve) res = reserveOffSeason(m, w, members);
+    else {
+      res = SL.offers(s);
+      res.transfers = res.transfers.filter((t) => !clubFull(members, t.club, m.pl.pos, m)).map((t) => capSalary(w, t));
+      if (res.contract) capSalary(w, res.contract);
+      // 戦力外：満員で行き先がなくても引退させない。今のクラブの Bチームに入れる（40歳まで）
+      if (res.released && m.pl.age < 40) {
+        if (rsvLeft > 0) { res.transfers.push({ club: m.pl.club, salary: RESERVE_SALARY, years: 1, reserve: true }); rsvLeft--; }
+        else res.transfers.push({ club: m.pl.club, salary: RESERVE_SALARY * 2, years: 1, keep: true }); // Bチームが満員：今のクラブに1年だけ残る
+      }
+    }
+    const forced = m.pl.age >= 40 || (!m.reserve && res.released && !res.transfers.length);
+    m.offer = { res, notes, forced, canRetire: SL.canRetire(s), year: w.year, awards: m.seasonAwards, nat: m.natCalled, reserve: !!m.reserve };
     m.status = 'off';
     trimLog(m);
   }
@@ -486,14 +596,17 @@ export function decide(m, w, choice, members = []) {
   const o = m.offer, res = o.res;
   if (choice === 'retire') { if (!o.forced && !o.canRetire) return 'too_young'; retire(m, w); return null; }
   if (o.forced) return 'must_retire';
-  if (choice === 'stay') { if (res.expiring || res.released) return 'no_contract'; }
-  else {
+  if (choice === 'stay') {
+    if (res.expiring || res.released) return 'no_contract';
+    if (m.reserve) m.pl.contract = Math.max(m.pl.contract, 1); // Bチームに残る
+  } else {
     const offer = offerList(m)[Number(choice)];
     if (!offer) return 'bad_choice';
-    if (!offer.stay && clubFull(members, offer.club, m.pl.pos, m)) return 'club_full';
-    const fromEU = m.pl.club != null && SL.isEU(w.clubs[m.pl.club].lg);
+    if (!offer.stay && !offer.reserve && clubFull(members, offer.club, m.pl.pos, m)) return 'club_full';
+    const fromEU = m.pl.club != null && SL.isEU(w.clubs[m.pl.club].lg), wasRes = !!m.reserve;
     SL.accept(adapter(m, w), offer);
-    if (!offer.stay) addNews(w, `✈️ ${m.pl.name}が${w.clubs[offer.club].name}へ移籍${SL.isEU(w.clubs[offer.club].lg) && !fromEU ? '（欧州挑戦！）' : ''}`);
+    afterAccept(m, w, offer);
+    if (!offer.stay && !offer.reserve && !wasRes) addNews(w, `✈️ ${m.pl.name}が${w.clubs[offer.club].name}へ移籍${SL.isEU(w.clubs[offer.club].lg) && !fromEU ? '（欧州挑戦！）' : ''}`);
   }
   m.status = 'decided'; m.offer = null; trimLog(m);
   return null;
@@ -557,7 +670,21 @@ const MARGIN = { money: (cur) => cur * .1, minutes: () => 1000, top: () => 3, au
 export function planAuto(m, w, members, npcs = null) {
   const o = m.offer, res = o.res, pol = POLICY[m.policy] ? m.policy : 'auto', sw = MOVE_SWITCH[m.sw] ? m.sw : 'bench';
   if (o.forced) return { kind: 'retire' };
-  const list = offerList(m).filter((x) => x.stay || !clubFull(members, x.club, m.pl.pos, m));
+  let list = offerList(m).filter((x) => x.stay || x.reserve || !clubFull(members, x.club, m.pl.pos, m));
+  // Bチームの人：1軍のオファーがあれば（方針でいちばん良いもの）、なければ Bチームに残る
+  if (m.reserve) {
+    const up = list.filter((x) => !x.stay);
+    if (!up.length) return { kind: 'stay' };
+    const cur = { club: m.pl.club, salary: m.pl.salary };
+    const best = up.map((t) => ({ t, v: policyValue(pol, t, seatAt(m, w, t.club, members, npcs), w.clubs[t.club], cur) })).sort((a, b) => b.v - a.v)[0].t;
+    return { kind: 'move', offer: best };
+  }
+  // 戦力外：1軍のオファーがなければ Bチームへ
+  if (res.released) {
+    const firsts = list.filter((x) => !x.reserve);
+    if (!firsts.length) { const b = list.find((x) => x.reserve); return b ? { kind: 'stay', offer: b } : { kind: 'retire' }; }
+    list = firsts;
+  }
   const free = res.expiring || res.released;
   if (!free) {
     const here = seatAt(m, w, m.pl.club, members, npcs);
@@ -584,6 +711,7 @@ function autoDecide(m, w, members, npcs) {
   if (plan.kind === 'retire') return retire(m, w);
   if (plan.offer) {
     SL.accept(adapter(m, w), plan.offer);
+    afterAccept(m, w, plan.offer);
     if (plan.kind === 'move') {
       const P = POLICY[m.policy] || POLICY.auto;
       addNews(w, `🔁 ${m.pl.name}が${w.clubs[plan.offer.club].name}へ移籍（移籍方針：${P.icon}${P.name}）`);
@@ -602,7 +730,7 @@ export function finishOffseason(w, members, now = Date.now(), npcs = null) {
   else if (slept.length) addNews(w, `💤 3日以上来ていない${slept.length}人が休眠に入り、クラブの枠が空いた（戻ってきたら選び直せる）`);
   startSeason(w);
   for (const m of members) if (m.status === 'decided') {
-    m.status = 'active'; m.season = emptySeason(); m.cupSeason = emptySeason(); m.last = null; m.lastCup = null;
+    m.status = 'active'; m.season = emptySeason(); m.cupSeason = emptySeason(); m.last = null; m.lastCup = null; m.rsv = emptyRsv(); m.rsvLast = null;
     m.pl.trainMul = 1; m.pl.clinic = false;
   }
 }
@@ -617,8 +745,8 @@ export function onlineContext(m, w, famClubs) {
   const years = new Set(h.map((x) => x.year)), R = w.records || {};
   const inRec = (list) => (list || []).some((r) => r.name === m.pl.name && years.has(r.year));
   return {
-    lgs: new Set(h.map((x) => x.lg)), first: h[0] ? h[0].lg : null, youth: !!m.youthStart, motw: m.motw || 0, winter: m.winterN || 0,
-    maxClubApps: Math.max(0, ...per.values()), record: inRec(R.seasonGoals) || inRec(R.seasonAssists), famClubs,
+    lgs: new Set(h.filter((x) => x.lg !== 'Bチーム').map((x) => x.lg)), first: (h.find((x) => x.lg !== 'Bチーム') || {}).lg || null, youth: !!m.youthStart, motw: m.motw || 0, winter: m.winterN || 0,
+    maxClubApps: Math.max(0, ...per.values()), record: inRec(R.seasonGoals) || inRec(R.seasonAssists), famClubs, fromReserve: !!m.fromReserve,
   };
 }
 // 引退した人生を図鑑に記録する（オンライン専用の称号も、ここで summary.titles に足す）。1つの人生で1回だけ
@@ -637,6 +765,26 @@ export function recordLife(m, w, col = m.col || (m.col = newOnlineCol())) {
   col.last = { gen: m.gen, name: sm.name, titles: fresh };
   sm.colDone = true;
   return fresh;
+}
+
+// 満員のせいで若くして引退になった人を、最後にいたクラブの Bチームに戻す。図鑑に入れたその人生の記録も取り消す
+export function restoreToReserve(m, w) {
+  const sm = m.summary, last = m.history.at(-1);
+  if (m.status !== 'retired' || !sm || !last || m.idleRetired) return false;
+  const col = m.col;
+  if (col && sm.colDone) {
+    col.lives = Math.max(0, col.lives - 1);
+    for (const id of sm.titles || []) { const t = col.t[id]; if (!t) continue; t[0]--; if (t[0] <= 0) delete col.t[id]; }
+    for (const h of m.history) { if (col.clubs[h.clubId] != null) { col.clubs[h.clubId]--; if (col.clubs[h.clubId] <= 0) delete col.clubs[h.clubId]; } }
+    if (col.last && col.last.gen === m.gen) col.last = null;
+  }
+  m.summary = null; m.offer = null;
+  m.pl.club = last.clubId; m.pl.salary = RESERVE_SALARY; m.pl.contract = 1;
+  m.reserve = true; m.rsv = emptyRsv(); m.rsvLast = null;
+  m.status = w.phase === 'season' ? 'active' : 'decided';
+  m.restored = true; // 画面で一度だけ知らせる
+  m.log.push({ y: w.year, age: m.pl.age, k: 'reserve', t: `${w.year}年、${w.clubs[last.clubId].name}のBチームで現役に復帰。` });
+  return true;
 }
 
 // ----- 引退と次の世代 -----

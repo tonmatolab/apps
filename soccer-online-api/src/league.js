@@ -163,7 +163,7 @@ export class League extends DurableObject {
     const pub = G.SL.keibaPublic(card), win = card.horses[order[0] - 1];
     K.round = round;
     K.hist.unshift({ no: win.no, odds: win.win }); if (K.hist.length > 10) K.hist.length = 10;
-    K.last = { round, name: card.name, course: card.course, horses: pub.horses, order, at: Date.now(), players, totalBet, winners: winners.filter((x) => x.net > 0).sort((a, b) => b.net - a.net).slice(0, 5) };
+    K.last = { round, name: card.name, course: card.course, horses: pub.horses, order, q: card.pairs[`${Math.min(order[0], order[1])}-${Math.max(order[0], order[1])}`], at: Date.now(), players, totalBet, winners: winners.filter((x) => x.net > 0).sort((a, b) => b.net - a.net).slice(0, 5) };
     K.card = G.SL.newKeibaCard(round + 1);
     K.nextAt = this.kbNext();
     this.saveWorld();

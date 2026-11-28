@@ -27,14 +27,14 @@
       <div class="kb-title"></div>
       <div class="kb-track"></div>
       <div class="rl-result">${online ? '読み込み中…' : '馬券を買ってから「スタート」'}</div>
+      <div class="kb-last"></div>
       <div class="kb-hist"></div>
       ${online ? '<div class="rl-winners"></div>' : ''}
       <div class="rl-chips">${CHIPS.map((c) => `<button data-c="${c}">${fmt(c).replace('円', '')}</button>`).join('')}</div>
       <div class="kb-types">${Object.entries(TYPES).map(([k, n]) => `<button data-t="${k}">${n}</button>`).join('')}</div>
       <p class="sub kb-note"></p>
       <div class="kb-card"></div>
-      <div class="kb-bets"></div>
-      <div class="rl-sum"></div>
+      <div class="kb-mine"><div class="kb-mine-h">🎫 あなたの馬券</div><div class="kb-bets"></div><div class="rl-sum"></div></div>
       <div class="row" style="margin-top:8px"><button class="btn" data-act="clear">クリア</button><button class="btn" data-act="again">前回と同じ</button></div>
       ${online ? `<button class="btn gold" data-act="confirm" style="margin-top:10px">この馬券で確定</button><button class="btn ghost" data-act="cancel">馬券を取り消す</button>`
         : `<button class="btn gold" data-act="run" style="margin-top:10px">スタート！</button><button class="btn" data-act="newcard" style="margin-top:6px">次のレースへ（出走表を変える）</button>`}
@@ -48,6 +48,9 @@
     const total = () => Object.values(st.bets).reduce((a, b) => a + b, 0);
     function flash(t) { const el = $q('.rl-result'); el.textContent = t; el.className = 'rl-result warn'; }
     function betName(k) { const info = SL.keibaBetInfo(st.card, k); return info ? info.name : k; }
+    // 馬券の中身：{ type: '単勝'|'複勝'|'馬連', nos: [馬番] }
+    const betParts = (k) => { const m = /^([wp])(\d)$/.exec(k); if (m) return { type: m[1] === 'w' ? '単勝' : '複勝', nos: [+m[2]] }; const q = /^q(\d)-(\d)$/.exec(k); return q ? { type: '馬連', nos: [+q[1], +q[2]] } : { type: '', nos: [] }; };
+    const horseLabel = (card, nos) => nos.map((no) => `${cap(no)}${nos.length === 1 && card ? esc(card.horses[no - 1].name) : ''}`).join(nos.length > 1 ? '<i class="kb-dash">-</i>' : '');
     function paintCard() {
       const c = st.card;
       if (!c) { $q('.kb-title').textContent = ''; $q('.kb-card').innerHTML = ''; return; }
@@ -55,15 +58,19 @@
       const T = st.type;
       $q('.kb-card').innerHTML = `<table class="kb-tbl"><tr><th>馬</th><th></th><th>人気</th><th>${TYPES[T === 'q' ? 'w' : T]}</th></tr>${c.horses.map((h) => {
         const k = T === 'q' ? null : T + h.no, v = k ? st.bets[k] : 0, picked = st.pick === h.no;
-        return `<tr class="kb-row${v ? ' bet' : ''}${picked ? ' pick' : ''}" data-no="${h.no}"><td>${cap(h.no)}</td><td class="nm">${esc(h.name)}<small>${esc(h.style)}</small></td><td class="pop">${h.pop}</td><td class="od">${od(T === 'p' ? h.place : h.win)}${v ? `<i>${fmt(v).replace('円', '')}</i>` : ''}</td></tr>`;
+        const tags = Object.keys(st.bets).filter((bk) => betParts(bk).nos.includes(h.no)).map((bk) => { const P = betParts(bk); return `<em class="kb-tag t-${bk[0]}">${P.type}${P.nos.length > 1 ? ' ' + P.nos.join('-') : ''} ${fmt(st.bets[bk]).replace('円', '')}</em>`; }).join('');
+        return `<tr class="kb-row${v || tags ? ' bet' : ''}${picked ? ' pick' : ''}" data-no="${h.no}"><td>${cap(h.no)}</td><td class="nm">${esc(h.name)}<small>${esc(h.style)}</small>${tags ? `<span class="kb-tags">${tags}</span>` : ''}</td><td class="pop">${h.pop}</td><td class="od">${od(T === 'p' ? h.place : h.win)}${v ? `<i>${fmt(v).replace('円', '')}</i>` : ''}</td></tr>`;
       }).join('')}</table>${T === 'q' ? `<p class="sub" style="margin:6px 0 0;text-align:center">${st.pick ? `${st.pick}番を選択中。もう1頭をタップ` : '1頭目をタップ'}</p>` : ''}`;
     }
     function paintBets() {
       const ks = Object.keys(st.bets);
+      $q('.kb-mine').classList.toggle('empty', !ks.length);
       $q('.kb-bets').innerHTML = ks.length ? ks.map((k) => {
-        const info = SL.keibaBetInfo(st.card, k);
-        return `<div class="kb-bet"><span>${esc(betName(k))}<small>（${info ? od(info.odds) : '-'}倍）</small></span><b>${fmt(st.bets[k])}</b><button data-del="${k}" aria-label="取り消す">×</button></div>`;
-      }).join('') : '';
+        const info = SL.keibaBetInfo(st.card, k), P = betParts(k), a = st.bets[k];
+        return `<div class="kb-bet"><em class="kb-type t-${k[0]}">${P.type}</em><span class="kb-who">${horseLabel(st.card, P.nos)}</span>
+          <span class="kb-amt"><b>${fmt(a)}</b><small>× ${info ? od(info.odds) : '-'}倍 → 当たれば ${info ? fmt(Math.round(a * info.odds)) : '-'}</small></span>
+          ${st.locked ? '' : `<button data-del="${k}" aria-label="この馬券を取り消す">×</button>`}</div>`;
+      }).join('') : '<p class="sub" style="margin:2px 0 0">まだ買っていません。チップを選んで、出走表の馬をタップ</p>';
     }
     function paintCommon(money) {
       $q('.rl-money').innerHTML = `所持金 <b>${fmt(money)}</b>`;
@@ -109,9 +116,28 @@
       if (!c) { track.innerHTML = ''; return; }
       track.innerHTML = c.horses.map((h) => `<div class="kb-lane"><span class="kb-no">${cap(h.no)}</span><div class="kb-run"><span class="kb-horse" style="left:0">🏇</span></div></div>`).join('') + '<div class="kb-goal"></div>';
     }
+    // race：走ったレース（horses に人気・オッズ）、order：着順、q：馬連のオッズ、mine：自分の馬券の結果（なければ null）
+    function resultBoard(race, order, q, mine, note) {
+      if (!race || !order) { $q('.kb-last').innerHTML = ''; return; }
+      const H = (no) => race.horses[no - 1], top3 = order.slice(0, 3);
+      const rows = order.map((no, i) => { const h = H(no); return `<tr class="${i < 3 ? 'top' : ''}"><td class="rk">${i + 1}</td><td>${cap(no)}${esc(h.name)}</td><td class="pop">${h.pop}人気</td><td class="od">${od(h.win)}</td></tr>`; }).join('');
+      const pay = `<div class="kb-pay"><div><em class="kb-type t-w">単勝</em>${cap(order[0])}<b>${od(H(order[0]).win)}倍</b></div>
+        <div><em class="kb-type t-p">複勝</em>${top3.map((no) => `<span>${cap(no)}<b>${od(H(no).place)}倍</b></span>`).join('')}</div>
+        <div><em class="kb-type t-q">馬連</em>${cap(Math.min(order[0], order[1]))}<i class="kb-dash">-</i>${cap(Math.max(order[0], order[1]))}<b>${q ? od(q) + '倍' : '-'}</b></div></div>`;
+      let my = '<p class="sub" style="margin:6px 0 0">このレースは買っていません</p>';
+      if (note) my = `<p class="sub" style="margin:6px 0 0">${note}</p>`;
+      else if (mine && mine.results) {
+        my = `<div class="kb-myres">${mine.results.map((x) => { const P = betParts(x.k); return `<div class="${x.win ? 'hit' : 'miss'}"><span>${x.win ? '🎯' : '✕'} <em class="kb-type t-${x.k[0]}">${P.type}</em>${horseLabel(race, P.nos)}</span><span>${fmt(x.a)} → <b>${x.win ? fmt(x.payout) : 'はずれ'}</b></span></div>`; }).join('')}
+          <div class="kb-net ${mine.net > 0 ? 'plus' : mine.net < 0 ? 'minus' : ''}">収支 ${mine.net > 0 ? '+' : mine.net < 0 ? '−' : '±'}${fmt(Math.abs(mine.net))}（${fmt(mine.total)} 買って ${fmt(mine.back)} 戻り）</div></div>`;
+      }
+      $q('.kb-last').innerHTML = `<div class="kb-board"><div class="kb-board-h">🏁 第${race.round}レース ${esc(race.name)} の結果</div>
+        <table class="kb-res"><tr><th>着</th><th>馬</th><th>人気</th><th>単勝</th></tr>${rows}</table>
+        <div class="kb-sub">払い戻し（オッズ）</div>${pay}
+        <div class="kb-sub">あなたの馬券</div>${my}</div>`;
+    }
     const orderText = (order, card) => order.slice(0, 3).map((no, i) => `${i + 1}着 ${cap(no)}${esc(card.horses[no - 1].name)}`).join('<br>');
     const resultLine = (r) => `${r.net > 0 ? `🎉 +${fmt(r.net)}` : r.net < 0 ? `−${fmt(-r.net)}` : '±0'}${(r.results || []).some((x) => x.win) ? `<br><small>的中：${r.results.filter((x) => x.win).map((x) => `${esc(x.name)}（${fmt(x.payout)}）`).join('・')}</small>` : ''}`;
-    return { $q, total, flash, paintCommon, tapHorse, runAnim, trackIdle, orderText, resultLine };
+    return { $q, total, flash, paintCommon, tapHorse, runAnim, trackIdle, orderText, resultLine, resultBoard };
   }
 
   // ===== 一人用 =====
@@ -124,7 +150,8 @@
     function paint() {
       V.paintCommon(opt.getMoney());
       const t = V.total();
-      $q('.rl-sum').innerHTML = t ? `合計 <b>${fmt(t)}</b>（${Object.keys(st.bets).length}点）` : '<span class="sub">チップを選んで、馬をタップ</span>';
+      $q('.kb-mine-h').innerHTML = `🎫 あなたの馬券（第${st.card.round}レース）`;
+      $q('.rl-sum').innerHTML = t ? `合計 <b>${fmt(t)}</b>（${Object.keys(st.bets).length}点）` : '';
       $q('[data-act="run"]').disabled = st.busy || !t;
       $q('[data-act="again"]').disabled = st.busy || !st.prev;
       $q('[data-act="newcard"]').disabled = st.busy;
@@ -138,11 +165,13 @@
       if (!r || r.error) { st.busy = false; V.flash((r && r.error) || 'エラー'); paint(); return; }
       st.prev = list;
       $q('.rl-result').className = 'rl-result'; $q('.rl-result').textContent = '各馬いっせいにスタート！';
+      const race = st.card;
       V.runAnim(r.order, () => {
-        const win = st.card.horses[r.order[0] - 1];
+        const win = race.horses[r.order[0] - 1];
         st.hist.unshift({ no: win.no, odds: win.win }); if (st.hist.length > 10) st.hist.length = 10;
         $q('.rl-result').className = `rl-result ${r.net > 0 ? 'win' : r.net < 0 ? 'lose' : ''}`;
-        $q('.rl-result').innerHTML = `${V.orderText(r.order, st.card)}<br>${V.resultLine(r)}`;
+        $q('.rl-result').innerHTML = `1着 ${cap(win.no)}${esc(win.name)}（${win.pop}番人気・${od(win.win)}倍）<br>${r.net > 0 ? `🎉 +${fmt(r.net)}` : r.net < 0 ? `−${fmt(-r.net)}` : '±0'}`;
+        V.resultBoard(race, r.order, race.pairs[`${Math.min(r.order[0], r.order[1])}-${Math.max(r.order[0], r.order[1])}`], r);
         st.busy = false; st.bets = {}; paint();
         $q('[data-act="run"]').textContent = 'もう一度（同じ出走表）';
       });
@@ -179,6 +208,17 @@
       if (my && my.round === L.round) mine = my.void ? `<small>馬券は無効になりました（${esc(my.void)}）</small>` : V.resultLine(my);
       return `<small>第${L.round}レース ${esc(L.name)}</small><br>${V.orderText(L.order, L)}<br>${mine}`;
     }
+    function board() {
+      const L = T && T.last, my = T && T.myLast;
+      if (!L) { V.resultBoard(null); return; }
+      const mine = my && my.round === L.round ? my : null;
+      V.resultBoard(L, L.order, L.q, mine && !mine.void ? mine : null, mine && mine.void ? `馬券は無効になりました（${esc(mine.void)}）` : '');
+    }
+    function shortLast() {
+      const L = T && T.last; if (!L) return '<span class="sub">まだ1回も走っていません</span>';
+      const w = L.horses[L.order[0] - 1], my = T.myLast && T.myLast.round === L.round && !T.myLast.void ? T.myLast : null;
+      return `第${L.round}レースは 1着 ${cap(w.no)}${esc(w.name)}（${w.pop}番人気・${od(w.win)}倍）${my ? `<br>${my.net > 0 ? `🎉 +${fmt(my.net)}` : my.net < 0 ? `−${fmt(-my.net)}` : '±0'}` : ''}`;
+    }
     function paint() {
       if (!T) return;
       V.paintCommon(T.money);
@@ -188,6 +228,7 @@
       const W = (T.last && T.last.winners) || [];
       $q('.rl-winners').innerHTML = W.length ? `<div class="sub" style="text-align:center">第${T.last.round}レースの大当たり：${W.map((x) => `${esc(x.name)} +${fmt(x.net)}`).join('・')}</div>` : '';
       const t = V.total(), ok = confirmed();
+      $q('.kb-mine-h').innerHTML = `🎫 あなたの馬券（第${T.round}レース）${t ? (ok ? ' <span class="ok">✅ 確定済み</span>' : ' <span class="ng">まだ確定していません</span>') : ''}`;
       $q('.rl-sum').innerHTML = t ? `第${T.round}レースへ 合計 <b>${fmt(t)}</b>（${Object.keys(st.bets).length}点）　${ok ? '<span style="color:#7be3a5">✅ 確定済み</span>' : '<span style="color:#ffb37a">まだ確定していません</span>'}`
         : T.myBets.length ? '<span style="color:#ffb37a">馬券を取り消すには「馬券を取り消す」</span>' : '<span class="sub">チップを選んで、馬をタップ → 「この馬券で確定」</span>';
       $q('[data-act="confirm"]').disabled = st.busy || !t || ok;
@@ -209,13 +250,13 @@
         shown = j.last.round;
         st.card = lastCard; st.busy = true; // 走ったレースを見せてから、次の出走表へ
         $q('.rl-result').className = 'rl-result'; $q('.rl-result').textContent = '各馬いっせいにスタート！';
-        V.runAnim(j.last.order, () => { st.busy = false; st.card = j.card; $q('.rl-result').innerHTML = lastText(); V.trackIdle(); paint(); });
+        V.runAnim(j.last.order, () => { st.busy = false; st.card = j.card; $q('.rl-result').innerHTML = shortLast(); board(); V.trackIdle(); paint(); });
         paint(); return;
       }
       if (newRace) shown = j.last.round;
       st.card = j.card;
       st.bets = j.myBets.length ? Object.fromEntries(j.myBets.map((b) => [b.k, b.a])) : (newRace ? {} : st.bets);
-      $q('.rl-result').innerHTML = lastText();
+      $q('.rl-result').innerHTML = shortLast(); board();
       V.trackIdle(); paint();
     }
     async function refresh(animate) {

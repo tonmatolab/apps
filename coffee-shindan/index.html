@@ -149,8 +149,6 @@
 
 <script src="../shared/ads.js"></script><!-- 広告（結果を描く前に読む） -->
 <script>
-// ===== アフィリエイト設定（IDを入れると自動でリンクに付与＆PR表記が出ます） =====
-const AFFILIATE = { amazonTag: '' }; // 例: 'yourname-22'
 const APP_TITLE = 'コーヒータイプ診断';
 const HASHTAGS = ['コーヒータイプ診断'];
 
@@ -303,11 +301,6 @@ function finish() {
   history.replaceState(null, '', `?r=${resultKey}`);
   countPlay();
 }
-function amazonUrl(q) {
-  const u = new URL('https://www.amazon.co.jp/s'); u.searchParams.set('k', q);
-  if (AFFILIATE.amazonTag) u.searchParams.set('tag', AFFILIATE.amazonTag);
-  return u.toString();
-}
 function renderResult(key) {
   const t = TYPES[key];
   document.documentElement.style.setProperty('--tc', t.color);
@@ -318,17 +311,14 @@ function renderResult(key) {
   $('rTraits').innerHTML = ''; t.traits.forEach((s) => { const li = document.createElement('li'); li.textContent = s; $('rTraits').appendChild(li); });
   $('rMatch').innerHTML = `<div>${drinkSVG(t.good, { bg: false })}<b>相性◎</b>${TYPES[t.good].name.replace('タイプ', '')}</div><div>${drinkSVG(t.bad, { bg: false })}<b>ちょっと苦手</b>${TYPES[t.bad].name.replace('タイプ', '')}</div>`;
   $('rRec').innerHTML = '';
-  t.rec.forEach((r) => {
-    const a = document.createElement('a'); a.href = amazonUrl(r.q); a.target = '_blank'; a.rel = 'noopener sponsored';
-    a.innerHTML = `<span style="font-size:1.4rem">${r.icon}</span><span></span>`; a.lastChild.textContent = `${r.label} をAmazonで見る →`;
-    $('rRec').appendChild(a);
-  });
-  // 楽天市場へのボタン（Cloudflare 版だけ）。おすすめの一番上に置く
+  // おすすめは楽天（もしもアフィリエイト）だけ。広告を出さない GitHub 版では、おすすめの欄ごと隠す
+  // 楽天市場へのボタン（Cloudflare 版だけ）
   const SHOP = { espresso: 'エスプレッソ用の深煎り豆', latte: 'ラテに合うコーヒー', drip: 'ハンドドリップ用の豆', cold: '水出しコーヒーパック', decaf: 'デカフェのコーヒー', fruity: '浅煎りのシングルオリジン' };
   const shop = window.TonmatoAds && TonmatoAds.link('rakuten', `<span style="font-size:1.4rem">🛒</span><span>${SHOP[key]}は楽天市場で探そう →<small>ポイントもたまる・ドリップバッグも豊富</small></span>`);
-  if (shop) { shop.className = 'shop'; $('rRec').prepend(shop); }
+  if (shop) { shop.className = 'shop'; $('rRec').appendChild(shop); }
   const ad = !!(window.TonmatoAds && TonmatoAds.show($('adRec'), 'doutorDrip')) || !!shop; // 広告（Cloudflare 版だけ）
-  $('prNote').classList.toggle('hidden', !AFFILIATE.amazonTag && !ad);
+  $('prNote').classList.toggle('hidden', !ad);
+  document.querySelector('.rec').classList.toggle('hidden', !ad);
   show('result');
   imgPromise = null; makeShareImage();
 }

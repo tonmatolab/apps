@@ -481,7 +481,7 @@
       if (TABLE_LG == null || !lgs.includes(TABLE_LG)) TABLE_LG = lgs.includes(lg) ? lg : lgs[0];
       const lgBtn = (i) => `<button data-lg="${i}" class="${i === TABLE_LG ? 'on' : ''}${i === lg && me.club != null ? ' mine' : ''}">${SL.LEAGUES[i].short}</button>`;
       body.innerHTML = `<div class="lgtabs"><div class="tabs">${lgs.filter(SL.isEU).map(lgBtn).join('')}</div><div class="tabs">${lgs.filter((i) => !SL.isEU(i)).map(lgBtn).join('')}</div></div>` + [SL.LEAGUES[TABLE_LG]].map((L, k) => `<div class="sub" style="margin:0 0 4px;font-weight:800">${L.name}</div>
-        <div class="tbwrap"><table class="tb"><tr><th></th><th style="text-align:left">クラブ</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
+        <div class="tbwrap"><table class="tb stand"><tr><th></th><th style="text-align:left">クラブ</th><th>勝</th><th>分</th><th>敗</th><th>差</th><th>点</th></tr>
         ${ST.tables[L.id].map((t, i) => { const c = club(t.id); return `<tr class="${t.id === me.club ? 'me' : ''}"><td>${i + 1}</td><td class="l"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}${c.humans ? `<span class="hum">👤${c.humans}</span>` : ''}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf - t.ga > 0 ? '+' : ''}${t.gf - t.ga}</td><td><b>${t.p}</b></td></tr>`; }).join('')}</table></div>`).join('');
       body.querySelectorAll('.lgtabs button').forEach((b) => b.onclick = () => { TABLE_LG = +b.dataset.lg; renderTab(); });
     } else if (tab === 'col') {

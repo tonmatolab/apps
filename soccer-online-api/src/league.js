@@ -665,7 +665,7 @@ export class League extends DurableObject {
   }
   // クラブの名簿（NPC＋本物のプレイヤー）。本物のプレイヤーが入った分、同じポジションのNPCが控え組に回る
   squadView(clubId, me) {
-    const humans = [...this.members.values()].filter((x) => x.pl.club === clubId && x.status !== 'retired' && x.status !== 'draft');
+    const humans = [...this.members.values()].filter((x) => x.pl.club === clubId && !x.reserve && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant');
     const sq = G.SL.clubSquad(this.npcs, clubId, humans.map((x) => ({ pos: x.pl.pos })));
     const rows = sq.npcs.map(G.SL.npcView).concat(humans.map((x) => ({ type: 'user', me: x === me, name: x.pl.name, pos: x.pl.pos, age: x.pl.age, ovr: G.ovr(x.pl), no: x.pl.number, nat: '日本', style: '' })));
     return { rows, reserves: sq.reserves.length };
@@ -673,8 +673,10 @@ export class League extends DurableObject {
   stateView(m) {
     const w = this.w, p = m.pl, lg = p.club != null ? w.clubs[p.club].lg : 1;
     const tables = G.LEAGUES.map((L) => G.standings(w, L.id).map((x) => ({ id: x.c.id, ...x.t })));
-    const mates = p.club == null ? [] : [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft')
-      .map((x) => ({ name: x.pl.name, pos: x.pl.pos, age: x.pl.age, ovr: G.ovr(x.pl), gen: x.gen, apps: x.season.apps, goals: x.season.goals, assists: x.season.assists }));
+    const mates = p.club == null ? [] : [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant')
+      .map((x) => (x.reserve
+        ? { b: true, name: x.pl.name, pos: x.pl.pos, age: x.pl.age, ovr: G.ovr(x.pl), gen: x.gen, apps: (x.rsv || {}).apps || 0, goals: (x.rsv || {}).goals || 0, assists: (x.rsv || {}).assists || 0 }
+        : { name: x.pl.name, pos: x.pl.pos, age: x.pl.age, ovr: G.ovr(x.pl), gen: x.gen, apps: x.season.apps, goals: x.season.goals, assists: x.season.assists }));
     let next = null;
     if (w.phase === 'season' && p.club != null && w.schedule[lg][w.week]) {
       const pair = w.schedule[lg][w.week].find(([h, a]) => h === p.club || a === p.club);
@@ -703,7 +705,7 @@ export class League extends DurableObject {
         policy: G.POLICY[m.policy] ? m.policy : 'auto', sw: G.MOVE_SWITCH[m.sw] ? m.sw : 'bench',
         autoPlan: m.status === 'off' && m.offer ? (() => { const pl = G.planAuto(m, this.w, [...this.members.values()], this.npcs); return { kind: pl.kind, club: pl.offer ? pl.offer.club : null }; })() : null,
         appeal: p.appeal || null, move: p.move || null, outlook: G.SL.growthOutlook(p), returning: !!m.returning,
-        depth: p.club != null && !m.reserve ? G.SL.depthOf(this.npcs, p.club, { pos: p.pos, ovr: G.ovr(p) }, [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: G.ovr(x.pl) }))) : null,
+        depth: p.club != null && !m.reserve ? G.SL.depthOf(this.npcs, p.club, { pos: p.pos, ovr: G.ovr(p) }, [...this.members.values()].filter((x) => x !== m && x.pl.club === p.club && !x.reserve && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: G.ovr(x.pl) }))) : null,
         grow: p.growKnown ? p.grow : null, gtype: p.growKnown ? p.gtype : null, best: Math.max(p.best || 0, G.ovr(p)), cond: p.cond, fatigue: Math.round(p.fatigue), injury: p.injury, fame: Math.round(p.fame), money: p.money,
         club: p.club, salary: p.salary, contract: p.contract, number: p.number,
         season: { ...m.season, ratings: undefined, avg: G.avg(m.season.ratings) }, totals: m.totals, history: m.history, awards: m.awards, trophies: m.trophies,

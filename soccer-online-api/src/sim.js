@@ -654,7 +654,7 @@ const LG_RANK = { 0: 7, 5: 6, 6: 5, 1: 4, 2: 3, 3: 2, 4: 1 };
 function seatAt(m, w, clubId, members, npcs) {
   const o = ovr(m.pl);
   if (!npcs) { const x = SL.startChanceOvr(o, w.clubs[clubId], m.pl.age); return { starter: x > .45, rank: x > .45 ? 1 : 9 }; }
-  const hum = members.filter((x) => x !== m && x.pl.club === clubId && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: ovr(x.pl) }));
+  const hum = members.filter((x) => x !== m && x.pl.club === clubId && !x.reserve && x.status !== 'retired' && x.status !== 'draft' && x.status !== 'dormant').map((x) => ({ pos: x.pl.pos, ovr: ovr(x.pl) }));
   return SL.depthOf(npcs, clubId, { pos: m.pl.pos, ovr: o }, hum);
 }
 // 方針ごとの点数（大きいほど良い）と、契約中に移るのに必要な差

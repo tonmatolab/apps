@@ -488,7 +488,12 @@
     } else if (tab === 'rank') {
       renderRanking(body, me, lg);
     } else if (tab === 'mates') {
-      body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `${ST.squad ? squadHTML(club(me.club), ST.squad.rows, ST.squad.reserves) + '<h2 style="margin-top:12px">👥 本物のプレイヤーの今季</h2>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>`}${ST.mates.length ? `<ul class="list">${ST.mates.map((m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`).join('')}</ul>` : '<p class="empty">ほかのプレイヤーはまだいません。友達を誘おう</p>'}`;
+      body.innerHTML = me.club == null ? '<p class="empty">所属なし</p>' : `${ST.squad ? squadHTML(club(me.club), ST.squad.rows, ST.squad.reserves) + '<h2 style="margin-top:12px">👥 本物のプレイヤーの今季（1軍）</h2>' : `<h2>👥 ${esc(club(me.club).name)}のプレイヤー</h2>`}${(() => {
+        const row = (m) => `<li>${posTag(m.pos)}<span class="nm">${esc(m.name)} <span class="sub">${m.age}歳${m.gen > 1 ? `・${m.gen}代目` : ''}</span></span><span class="v">${m.ovr}</span><span class="sub">${m.apps}試${m.goals}G${m.assists}A</span></li>`;
+        const A = ST.mates.filter((m) => !m.b), B = ST.mates.filter((m) => m.b);
+        return (A.length ? `<ul class="list">${A.map(row).join('')}</ul>` : `<p class="empty">${me.reserve ? '1軍の' : 'ほかの'}プレイヤーはまだいません。友達を誘おう</p>`)
+          + (B.length || me.reserve ? `<h2 style="margin-top:12px">🅱️ Bチーム（${B.length + (me.reserve ? 1 : 0)}人）</h2><p class="sub" style="margin:0 0 6px">1軍の名簿とは別。成績は Bチームの今季</p>${B.length ? `<ul class="list">${B.map(row).join('')}</ul>` : '<p class="empty">ほかの Bチームのプレイヤーはいません</p>'}` : '');
+      })()}`;
     } else if (tab === 'national') {
       renderNational(body);
     } else if (tab === 'cohort') {
